@@ -31,7 +31,9 @@ const CONFIG_INICIAL = {
   hashtags: ["maternidad", "crianzarespetuosa", "frasesdemama", "mamaprimeriza", "crianzaconamor"],
   busquedas: ["frases para mamás", "reflexión maternidad"],
   dias: 45,
-  porFuente: 25,
+  porFuente: 10,   // por hashtag o búsqueda
+  porCuenta: 6,    // publicaciones recientes por cada cuenta de referencia
+  topeUsd: 0.3,    // tope de gasto de Apify por cada tarea (la corrida se corta sola al llegar)
   propuestas: 10,
   marca: "Levania vende rutinas y checklists para familias. Las frases NO venden: conectan. El cierre invita a comentar una palabra (p. ej. RUTINA).",
 };
@@ -52,8 +54,8 @@ export function listarInvestigaciones() {
 export const leerInvestigacion = (f) => JSON.parse(fs.readFileSync(path.join(DIR_INV, path.basename(f)), "utf8"));
 
 // ---------------- recolección (Apify) ----------------
-async function apify(actor, entrada) {
-  const url = `https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${encodeURIComponent(CFG.apifyToken)}&timeout=280`;
+async function apify(actor, entrada, tope = 0.3) {
+  const url = `https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${encodeURIComponent(CFG.apifyToken)}&timeout=280&maxTotalChargeUsd=${tope}`;
   const r = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(entrada), signal: AbortSignal.timeout(300000) });
   if (!r.ok) throw new Error(`Apify (${actor}) respondió ${r.status}: ${(await r.text()).slice(0, 200)}`);
   return r.json();
@@ -83,15 +85,15 @@ function normInstagram(x) {
 
 async function recolectar(cfg, avisar) {
   const tareas = [];
-  const n = cfg.porFuente;
+  const n = Math.min(cfg.porFuente || 10, 12), nc = Math.min(cfg.porCuenta || 6, 10), tope = cfg.topeUsd ?? 0.3;
   if (cfg.redes.includes("tiktok")) {
-    if (cfg.cuentasTiktok.length) tareas.push(["TikTok · cuentas", () => apify("clockworks~tiktok-scraper", { profiles: cfg.cuentasTiktok.map((c) => c.replace(/^@/, "")), resultsPerPage: n, shouldDownloadVideos: false, shouldDownloadCovers: false }), normTiktok]);
-    if (cfg.hashtags.length) tareas.push(["TikTok · hashtags", () => apify("clockworks~tiktok-scraper", { hashtags: cfg.hashtags.map((h) => h.replace(/^#/, "")), resultsPerPage: n, shouldDownloadVideos: false, shouldDownloadCovers: false }), normTiktok]);
-    if (cfg.busquedas.length) tareas.push(["TikTok · búsquedas", () => apify("clockworks~tiktok-scraper", { searchQueries: cfg.busquedas, resultsPerPage: n, shouldDownloadVideos: false, shouldDownloadCovers: false }), normTiktok]);
+    if (cfg.cuentasTiktok.length) tareas.push(["TikTok · cuentas", () => apify("clockworks~tiktok-scraper", { profiles: cfg.cuentasTiktok.map((c) => c.replace(/^@/, "")), resultsPerPage: n, shouldDownloadVideos: false, shouldDownloadCovers: false }, tope), normTiktok]);
+    if (cfg.hashtags.length) tareas.push(["TikTok · hashtags", () => apify("clockworks~tiktok-scraper", { hashtags: cfg.hashtags.map((h) => h.replace(/^#/, "")), resultsPerPage: n, shouldDownloadVideos: false, shouldDownloadCovers: false }, tope), normTiktok]);
+    if (cfg.busquedas.length) tareas.push(["TikTok · búsquedas", () => apify("clockworks~tiktok-scraper", { searchQueries: cfg.busquedas, resultsPerPage: n, shouldDownloadVideos: false, shouldDownloadCovers: false }, tope), normTiktok]);
   }
   if (cfg.redes.includes("instagram")) {
-    if (cfg.cuentasInstagram.length) tareas.push(["Instagram · cuentas", () => apify("apify~instagram-scraper", { directUrls: cfg.cuentasInstagram.map((c) => c.startsWith("http") ? c : `https://www.instagram.com/${c.replace(/^@/, "")}/`), resultsType: "posts", resultsLimit: n }), normInstagram]);
-    if (cfg.hashtags.length) tareas.push(["Instagram · hashtags", () => apify("apify~instagram-hashtag-scraper", { hashtags: cfg.hashtags.map((h) => h.replace(/^#/, "")), resultsLimit: n }), normInstagram]);
+    if (cfg.cuentasInstagram.length) tareas.push(["Instagram · cuentas", () => apify("apify~instagram-scraper", { directUrls: cfg.cuentasInstagram.map((c) => c.startsWith("http") ? c : `https://www.instagram.com/${c.replace(/^@/, "")}/`), resultsType: "posts", resultsLimit: nc }, tope), normInstagram]);
+    if (cfg.hashtags.length) tareas.push(["Instagram · hashtags", () => apify("apify~instagram-hashtag-scraper", { hashtags: cfg.hashtags.map((h) => h.replace(/^#/, "")), resultsLimit: n }, tope), normInstagram]);
   }
   const todas = [], errores = [];
   for (const [k, [nombre, fn, norm]] of tareas.entries()) {
@@ -282,7 +284,7 @@ export async function investigar(avisar = () => {}) {
   if (CFG.apifyToken) {
     // Apify cuesta: si Gemini falla después, el siguiente intento reutiliza lo ya recolectado (hasta 12 h, misma configuración)
     const F_RECOL = path.join(DIR_INV, "recoleccion.json");
-    const huella = JSON.stringify({ r: cfg.redes, a: cfg.cuentasTiktok, b: cfg.cuentasInstagram, c: cfg.hashtags, d: cfg.busquedas, e: cfg.dias, f: cfg.porFuente });
+    const huella = JSON.stringify({ r: cfg.redes, a: cfg.cuentasTiktok, b: cfg.cuentasInstagram, c: cfg.hashtags, d: cfg.busquedas, e: cfg.dias, f: cfg.porFuente, g: cfg.porCuenta });
     let rec = null;
     try { const x = JSON.parse(fs.readFileSync(F_RECOL, "utf8")); if (x.huella === huella && Date.now() - new Date(x.fecha) < 12 * 3600e3 && x.lista?.length) rec = x; } catch {}
     if (rec) avisar({ progreso: 0.65, msg: "Reutilizo las publicaciones que ya traje hace un rato (no vuelvo a gastar Apify)…" });

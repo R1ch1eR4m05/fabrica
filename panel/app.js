@@ -462,7 +462,7 @@ async function investigador(archivo) {
           <label>Cuentas de Instagram de referencia</label><textarea id="iIg" placeholder="@cuenta">${h(c.cuentasInstagram.join("\n"))}</textarea>
           <label>Hashtags (sin #, separados por coma)</label><input id="iHash" value="${h(c.hashtags.join(", "))}">
           <label>Búsquedas</label><input id="iBus" value="${h(c.busquedas.join(", "))}">
-          <div class="fila"><div><label>Últimos días</label><input id="iDias" type="number" value="${c.dias}" style="width:100px"></div><div><label>Por fuente</label><input id="iPor" type="number" value="${c.porFuente}" style="width:100px"></div><div><label>Propuestas</label><input id="iProp" type="number" value="${c.propuestas}" style="width:100px"></div></div></div>
+          <div class="fila"><div><label>Últimos días</label><input id="iDias" type="number" value="${c.dias}" style="width:100px"></div><div><label>Por hashtag</label><input id="iPor" type="number" value="${c.porFuente}" style="width:100px"></div><div><label>Propuestas</label><input id="iProp" type="number" value="${c.propuestas}" style="width:100px"></div></div></div>
       </div>
       <div class="fila" style="margin-top:14px"><button class="btn" id="iGuardar">Guardar</button></div>
     </details>
@@ -496,7 +496,7 @@ async function investigador(archivo) {
       busquedas: lista($("#iBus").value), dias: Number($("#iDias").value), porFuente: Number($("#iPor").value), propuestas: Number($("#iProp").value) });
     avisar("Nicho guardado.");
   };
-  $("#iCorrer").onclick = async () => { await $("#iGuardar").onclick(); api("/api/investigacion", "POST").catch((e) => avisar(e.message, true)); };
+  $("#iCorrer").onclick = async () => { if (S.info.apify && !confirm("Esto trae publicaciones con Apify y GASTA de tu saldo (tope de unos $1.5 USD por investigación; tu plan gratis da $5 al mes). ¿Seguir?")) return; await $("#iGuardar").onclick(); api("/api/investigacion", "POST").catch((e) => avisar(e.message, true)); };
   $("#iPrompt").onclick = async () => navigator.clipboard.writeText(await api("/api/investigacion/prompt")).then(() => avisar("Prompt copiado. Pégalo en Gemini con Deep Research."));
   $("#iImportar").onclick = async () => {
     const texto = $("#iInforme").value.trim(); if (texto.length < 80) return avisar("Pega el informe completo.", true);
