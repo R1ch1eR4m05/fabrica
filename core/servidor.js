@@ -84,18 +84,28 @@ async function api(req, res, partes) {
     if (!id && m === "GET") return json(res, 200, { config: INV.leerConfig(), lista: INV.listarInvestigaciones(), trabajando: !!investigando, apify: !!CFG.apifyToken, ia: INV.hayIA(), motor: CFG.geminiKey ? "Gemini" : CFG.anthropicKey ? "Claude" : null, pendientes: INV.informesPendientes() });
     if (id === "prompt" && m === "GET") { res.writeHead(200, { "content-type": "text/plain; charset=utf-8" }); return res.end(INV.promptDeepResearch()); }
     if (id === "importar" && m === "POST") {
-      // también lo puede llamar n8n: POST /api/investigacion/importar  { "texto": "...", "fuente": "muse" }   (o texto plano en el cuerpo)
+      // también lo llama n8n: POST /api/investigacion/importar  { "texto": "...", "fuente": "muse" }   (o texto plano)
+      // responde al instante (el informe queda guardado) y convierte en segundo plano
       const crudo = await new Promise((ok) => { let b = ""; req.on("data", (d) => (b += d)); req.on("end", () => ok(b)); });
       let datos; try { datos = JSON.parse(crudo); } catch { datos = { texto: crudo }; }
-      if (investigando) return json(res, 409, { error: "Hay una investigación en marcha; intenta en un momento." });
-      investigando = { inicio: Date.now() };
-      const av = (a) => emitir({ id: "_investigador", paso: "investigar", estado: "trabajando", ...a });
-      try {
-        const r = await INV.importarInforme(datos.texto ?? datos.informe ?? crudo, datos.fuente || "informe", av);
-        emitir({ id: "_investigador", paso: "investigar", estado: "listo", msg: r.pendiente ? "Informe guardado. Pídele a Claude Code que lo convierta." : `Listo: ${r.propuestas} propuestas`, resultado: r });
-        return json(res, 200, r);
-      } catch (e) { emitir({ id: "_investigador", paso: "investigar", estado: "error", msg: e.message }); return json(res, 400, { error: e.message }); }
-      finally { investigando = null; }
+      const fuente = datos.fuente || "informe";
+      let nombre;
+      try { nombre = INV.guardarInforme(datos.texto ?? datos.informe ?? crudo, fuente); } catch (e) { return json(res, 400, { error: e.message }); }
+      const conIA = INV.hayIA();
+      json(res, 200, { recibido: true, informe: nombre, convirtiendo: conIA, pendiente: !conIA });
+      if (!conIA) { emitir({ id: "_investigador", paso: "investigar", estado: "listo", msg: "Informe guardado. Pídele a Claude Code que lo convierta." }); return; }
+      const correr = async () => {
+        while (investigando) await new Promise((r) => setTimeout(r, 5000));
+        investigando = { inicio: Date.now() };
+        const av = (a) => emitir({ id: "_investigador", paso: "investigar", estado: "trabajando", ...a });
+        try {
+          const r = await INV.convertirInforme(nombre, fuente, av);
+          emitir({ id: "_investigador", paso: "investigar", estado: "listo", msg: `Llegó un informe (${fuente}): ${r.propuestas} propuestas`, resultado: r });
+        } catch (e) { console.error("Informe", nombre, e); emitir({ id: "_investigador", paso: "investigar", estado: "error", msg: `No pude convertir el informe: ${e.message}. Quedó guardado; Claude Code lo puede convertir.` }); }
+        finally { investigando = null; }
+      };
+      correr();
+      return;
     }
     if (!id && m === "PUT") return json(res, 200, INV.guardarConfig(await cuerpo(req)));
     if (!id && m === "POST") { correrInvestigacion(); return json(res, 200, { ok: true }); }

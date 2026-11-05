@@ -386,7 +386,7 @@ async function investigador(archivo) {
   $("#iImportar").onclick = async () => {
     const texto = $("#iInforme").value.trim(); if (texto.length < 80) return avisar("Pega el informe completo.", true);
     $("#iImportar").disabled = true; avisar("Importando…");
-    try { const r = await api("/api/investigacion/importar", "POST", { texto, fuente: $("#iFuente").value || "informe" }); r.pendiente ? (avisar("Guardado. Pídele a Claude Code que lo convierta."), investigador()) : investigador(r.archivo); }
+    try { const r = await api("/api/investigacion/importar", "POST", { texto, fuente: $("#iFuente").value || "informe" }); avisar(r.pendiente ? "Guardado. Pídele a Claude Code que lo convierta." : "Recibido. Convirtiendo en propuestas… (aparecen aquí solas)"); investigador(); }
     catch (e) { avisar(e.message, true); $("#iImportar").disabled = false; }
   };
   if ($("#iTodas")) $("#iTodas").onclick = async () => {

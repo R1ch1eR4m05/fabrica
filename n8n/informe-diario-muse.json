@@ -21,8 +21,8 @@
         "genericAuthType": "httpBasicAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ texto: $json.text || $json.textAsHtml || $json.html || '', fuente: 'muse' }) }}",
-        "options": { "timeout": 180000 }
+        "jsonBody": "={{ JSON.stringify({ texto: $json.textPlain || $json.text || $json.textHtml || '', fuente: 'muse' }) }}",
+        "options": { "timeout": 30000 }
       },
       "name": "Mandar a la fábrica",
       "type": "n8n-nodes-base.httpRequest",
@@ -37,7 +37,7 @@
         "headerParameters": { "parameters": [{ "name": "apikey", "value": "TU-APIKEY-DE-EVOLUTION" }] },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ number: '52TU-NUMERO', text: $json.pendiente ? '📥 Llegó el informe de Muse. Dile a Claude Code: convierte los informes pendientes.' : `🎬 Llegó el informe de Muse: ${$json.propuestas} propuestas nuevas en el Investigador de la fábrica.` }) }}",
+        "jsonBody": "={{ JSON.stringify({ number: '52TU-NUMERO', text: $json.pendiente ? '📥 Llegó el informe de Muse. Dile a Claude Code: convierte los informes pendientes.' : '🎬 Llegó el informe de Muse. En unos minutos estarán las propuestas en el Investigador de la fábrica.' }) }}",
         "options": {}
       },
       "name": "Avisarme por WhatsApp (opcional)",

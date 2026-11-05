@@ -177,7 +177,7 @@ export const hayIA = () => !!(CFG.geminiKey || CFG.anthropicKey);
 async function pedirIA(sistema, texto) {
   if (CFG.geminiKey) {
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${CFG.geminiModelo}:generateContent`, {
-      method: "POST", headers: { "x-goog-api-key": CFG.geminiKey, "content-type": "application/json" },
+      method: "POST", signal: AbortSignal.timeout(240000), headers: { "x-goog-api-key": CFG.geminiKey, "content-type": "application/json" },
       body: JSON.stringify({ systemInstruction: { parts: [{ text: sistema }] }, contents: [{ role: "user", parts: [{ text: texto }] }], generationConfig: { responseMimeType: "application/json", temperature: 0.8 } }),
     });
     if (!r.ok) throw new Error(`Gemini respondió ${r.status}: ${(await r.text()).slice(0, 300)}`);
@@ -185,7 +185,7 @@ async function pedirIA(sistema, texto) {
     return (j.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join("");
   }
   if (CFG.anthropicKey) {
-    const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "x-api-key": CFG.anthropicKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+    const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", signal: AbortSignal.timeout(240000), headers: { "x-api-key": CFG.anthropicKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
       body: JSON.stringify({ model: CFG.anthropicModelo, max_tokens: 12000, system: sistema, messages: [{ role: "user", content: texto }] }) });
     if (!r.ok) throw new Error(`La API de Claude respondió ${r.status}: ${(await r.text()).slice(0, 300)}`);
     return (await r.json()).content.filter((b) => b.type === "text").map((b) => b.text).join("");
@@ -221,12 +221,18 @@ Cita las fuentes. No inventes métricas: si no hay datos, dilo.`;
 }
 
 // guarda el informe y, si hay IA configurada, lo convierte en propuestas
-export async function importarInforme(texto, fuente = "informe", avisar = () => {}) {
+export function guardarInforme(texto, fuente = "informe") {
   texto = String(texto || "").trim();
   if (texto.length < 80) throw new Error("El informe está vacío o es demasiado corto.");
   const fecha = new Date().toISOString();
-  const nombre = `${fecha.slice(0, 16).replace(/[:T]/g, "-")}-${(fuente || "informe").replace(/[^\w-]+/g, "-").slice(0, 30)}.md`;
+  const nombre = `${fecha.slice(0, 19).replace(/[:T]/g, "-")}-${(fuente || "informe").replace(/[^\w-]+/g, "-").slice(0, 30)}.md`;
   fs.writeFileSync(path.join(DIR_INFORMES, nombre), texto);
+  return nombre;
+}
+
+export async function convertirInforme(nombre, fuente = "informe", avisar = () => {}) {
+  const fecha = new Date().toISOString();
+  const texto = fs.readFileSync(path.join(DIR_INFORMES, nombre), "utf8");
   if (!hayIA()) return { pendiente: true, informe: `investigacion/informes/${nombre}` };
   avisar({ progreso: 0.5, msg: `Convirtiendo el informe en propuestas (${CFG.geminiKey ? "Gemini" : "Claude"})…` });
   const cfg = leerConfig();
@@ -234,6 +240,10 @@ export async function importarInforme(texto, fuente = "informe", avisar = () => 
   const r = guardarResultado({ fecha, config: cfg, modo: "informe", fuente, informe: nombre, errores: [] }, j);
   const f = path.join(DIR_INFORMES, nombre); fs.renameSync(f, f.replace(/\.md$/, ".hecho.md"));
   return r;
+}
+
+export async function importarInforme(texto, fuente = "informe", avisar = () => {}) {
+  return convertirInforme(guardarInforme(texto, fuente), fuente, avisar);
 }
 
 export function informesPendientes() { return fs.readdirSync(DIR_INFORMES).filter((f) => f.endsWith(".md") && !f.endsWith(".hecho.md")); }
