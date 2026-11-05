@@ -73,7 +73,7 @@ function nuevo(estiloId) {
       <textarea id="nIdea" placeholder="Ej.: Si escuchas que alguien te llama por tu nombre a las 3 de la mañana"></textarea>
       <div class="ideas" id="nIdeas"></div>
       <div class="fila" style="margin-top:6px">
-        <div><label>Formato</label><div class="seg" id="nFormato">${Object.entries(S.info.formatos).map(([k, f]) => `<button data-v="${k}" title="${h(f.nombre)}">${k}</button>`).join("")}</div></div>
+        <div><label>Formato</label><div class="seg" id="nFormato"></div></div>
         <div><label>Duración</label><div class="seg" id="nDur"><button data-v="corto">Corto</button><button data-v="largo">Largo</button></div></div>
       </div>
       <div id="nExtra"></div>
@@ -87,9 +87,16 @@ function nuevo(estiloId) {
       ${e.vozOpcional ? `<div><label>Voz</label><div class="seg" id="nVoz"><button data-v="si" class="on">Con voz</button><button data-v="no">Solo música</button></div></div>` : ""}</div>`;
     for (const b of document.querySelectorAll("#nVoz button")) b.onclick = () => { for (const x of document.querySelectorAll("#nVoz button")) x.classList.toggle("on", x === b); };
   };
-  const ideas = () => { extra(); const e = estiloDe($("#nEstilo").value); $("#nIdeas").innerHTML = (e.ideas || []).map((i) => `<span class="idea">${h(i)}</span>`).join(""); for (const el of document.querySelectorAll(".idea")) el.onclick = () => ($("#nIdea").value = el.textContent); };
+  const formatos = () => {
+    const e = estiloDe($("#nEstilo").value), fs = e.formatos || Object.keys(S.info.formatos);
+    if (!fs.includes(st.formato)) st.formato = fs[0];
+    $("#nFormato").innerHTML = fs.map((k) => `<button data-v="${k}" title="${h(S.info.formatos[k]?.nombre || k)}">${k}</button>`).join("");
+    seg("#nFormato", "formato");
+    $("#nIdea").placeholder = e.tipo === "motion" ? "Ej.: 3 pasos para mañanas sin gritos (anuncio de Levania)" : "Ej.: Si escuchas que alguien te llama por tu nombre a las 3 de la mañana";
+  };
+  const ideas = () => { extra(); formatos(); const e = estiloDe($("#nEstilo").value); $("#nIdeas").innerHTML = (e.ideas || []).map((i) => `<span class="idea">${h(i)}</span>`).join(""); for (const el of document.querySelectorAll(".idea")) el.onclick = () => ($("#nIdea").value = el.textContent); };
   const seg = (sel, k) => { for (const b of document.querySelectorAll(`${sel} button`)) { b.classList.toggle("on", b.dataset.v === st[k]); b.onclick = () => { st[k] = b.dataset.v; seg(sel, k); }; } };
-  seg("#nFormato", "formato"); seg("#nDur", "duracion"); ideas();
+  seg("#nDur", "duracion"); ideas();
   $("#nEstilo").onchange = ideas;
   $("#nCancelar").onclick = inicio;
   $("#nCrear").onclick = async () => {
@@ -124,6 +131,7 @@ function pasoCab(n, clave, titulo, derecha = "") {
 function pintarProyecto() {
   parar();
   const p = S.actual, est = estiloDe(p.estilo), ocupado = (k) => ["trabajando", "en-fila"].includes(p.estado[k]);
+  if (est?.tipo === "motion") return pintarMotion(p, est, ocupado);
   $("#main").innerHTML = `
     <div class="fila" style="justify-content:space-between">
       <div style="flex:1;min-width:260px"><input id="pTitulo" value="${h(p.titulo)}" style="font-size:20px;font-weight:700;background:none;border-color:transparent;padding-left:0"></div>
@@ -215,6 +223,87 @@ function pintarProyecto() {
   }
   for (const k of Object.keys(PASOS)) if (S.progreso[p.id]?.[k]) mostrarProgreso(k, S.progreso[p.id][k]);
   if (p.guion) montarVista();
+}
+
+// ---------- motion graphics ----------
+const MARCA_LEVANIA = "Levania: rosa #C4837A, salvia #8FA58A, crema #F6EEE4, tinta #3D3230. Tipografías Cormorant Garamond (títulos) y Jost (texto). Logo en proyectos/<id>/motion/media si lo subo.";
+function pintarMotion(p, est, ocupado) {
+  const b = p.motion || {}, me = p.motionEstado || {}, cat = est.catalogo || [];
+  const sel = b.estiloMotion || "";
+  const familias = [...new Set(cat.map((c) => c.familia))];
+  const cmd = `construye el motion de ${p.id}`;
+  $("#main").innerHTML = `
+    <div class="fila" style="justify-content:space-between">
+      <div style="flex:1;min-width:260px"><input id="pTitulo" value="${h(p.titulo)}" style="font-size:20px;font-weight:700;background:none;border-color:transparent;padding-left:0"></div>
+      <div class="seg" id="pFormato">${(est.formatos || ["9:16"]).map((k) => `<button data-v="${k}" class="${p.formato === k ? "on" : ""}">${k}</button>`).join("")}</div>
+    </div>
+    <p class="sub">${h(est.nombre)} · <span style="opacity:.7">${h(p.idea)}</span></p>
+    <div class="pasos">
+      <section class="paso">${pasoCab(1, "guion", "Estilo y brief", `<button class="btn primario peq" id="mGuardar">Guardar brief</button>`)}
+        <div class="cont">
+          <label>Elige el estilo (pasa el mouse para verlo moverse)</label>
+          ${familias.map((fa) => `<div class="estado" style="margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px;font-size:11px">${h(fa)}</div>
+            <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(210px,1fr))">${cat.filter((c) => c.familia === fa).map((c) => `
+              <div class="card estilo mot ${c.id === sel ? "sel" : ""}" data-mot="${h(c.id)}" style="padding:10px;${c.id === sel ? "border-color:var(--a);box-shadow:0 0 0 2px var(--a) inset" : ""}">
+                <video src="/motion/galeria/videos/${h(c.id)}.mp4" poster="/motion/galeria/portadas/${h(c.id)}.jpg" muted loop playsinline preload="none" style="width:100%;border-radius:8px;max-height:130px;object-fit:cover;background:#000"></video>
+                <h3 style="font-size:14px;margin:8px 0 4px;padding-right:0">${h(c.nombre)}</h3><p style="font-size:12.5px">${h(c.que)}</p>
+              </div>`).join("")}</div>`).join("")}
+          <div class="fila" style="align-items:flex-start;margin-top:14px">
+            <div style="flex:1;min-width:260px">
+              <label>¿Para qué es?</label>
+              <select id="mPara">${["Reels / TikTok", "Anuncio", "Intro de YouTube", "Explicación de un dato", "Lanzamiento de producto", "Vinheta / marca"].map((o) => `<option ${b.para === o ? "selected" : ""}>${o}</option>`).join("")}</select>
+              <div class="fila"><div><label>Segundos</label><input id="mSeg" type="number" min="4" max="90" value="${h(b.segundos || cat.find((c) => c.id === sel)?.seg || 12)}" style="width:110px"></div>
+                <div><label>Loop</label><label style="display:flex;gap:6px;align-items:center;color:var(--t)"><input id="mLoop" type="checkbox" style="width:auto" ${b.loop ? "checked" : ""}> termina como empieza</label></div></div>
+              <label>Medios</label>
+              <select id="mMedios">${["ninguno, solo gráfico", "mis fotos o clips (los pongo en proyectos/" + p.id + "/motion/media)", "un clip de Google Flow (con aprobación)"].map((o) => `<option ${b.medios === o ? "selected" : ""}>${h(o)}</option>`).join("")}</select>
+            </div>
+            <div style="flex:1;min-width:260px">
+              <label>Texto en pantalla (opcional; si no, Claude lo escribe del tema)</label>
+              <textarea id="mTextos" placeholder="Las palabras exactas, una idea por línea">${h(b.textos || "")}</textarea>
+              <label>Marca: colores, fuentes, logo <button class="mini" id="mLevania" style="margin-left:6px">Usar Levania</button></label>
+              <textarea id="mMarca" placeholder="Vacío = las del estilo">${h(b.marca || "")}</textarea>
+              <label>Notas para Claude</label><textarea id="mNotas" style="min-height:44px">${h(b.notas || "")}</textarea>
+            </div>
+          </div>
+        </div></section>
+
+      <section class="paso">${pasoCab(2, "voz", "Construir con Claude Code")}
+        <div class="cont">
+          ${!me.brief ? `<div class="estado">Primero elige el estilo y guarda el brief.</div>` : `
+          <p class="estado" style="margin-top:0">Cada pieza se diseña a mano (por eso queda de estudio). Abre <b>Claude Code</b> en la carpeta de la fábrica en tu laptop (mejor con Opus) y escríbele:</p>
+          <div class="fila"><code style="background:var(--f);border:1px solid var(--b);padding:8px 12px;border-radius:8px">${h(cmd)}</code><button class="btn peq" id="mCopiar">Copiar</button></div>
+          <p class="estado">Te va a enseñar tarjetas y fotogramas para aprobar antes de renderizar. ${me.construido ? "<b style='color:var(--ok)'>✓ Ya está construido.</b>" : "Todavía no está construido."}</p>
+          ${me.frames?.length ? `<div class="fila">${me.frames.slice(0, 6).map((f) => `<img src="/${h(f)}" style="height:140px;border-radius:8px;border:1px solid var(--b)">`).join("")}</div>` : ""}`}
+        </div></section>
+
+      <section class="paso">${pasoCab(3, "render", "Video", `<button class="btn peq ${me.construido ? "primario" : ""}" id="rHacer" ${!me.construido || ocupado("render") ? "disabled" : ""}>${p.tieneFinal ? "Volver a renderizar" : "Renderizar"}</button>`)}
+        <div class="cont">
+          <div class="barra oculto" id="bar-render"><div></div></div>
+          ${p.tieneFinal ? `<video controls src="/proyectos/${h(p.id)}/final.mp4?v=${Date.now()}" style="max-height:520px"></video>
+            <div class="fila" style="margin:10px 0"><a class="btn peq" href="/proyectos/${h(p.id)}/final.mp4" download="${h(p.id)}.mp4">Descargar video</a></div>`
+          : `<div class="estado">Cuando Claude Code termine, renderiza aquí (o él mismo te lo deja listo).</div>`}
+        </div></section>
+    </div>`;
+
+  for (const v of document.querySelectorAll(".mot video")) { const c = v.closest(".mot"); c.onmouseenter = () => v.play().catch(() => {}); c.onmouseleave = () => { v.pause(); }; }
+  let elegido = sel;
+  for (const c of document.querySelectorAll("[data-mot]")) c.onclick = () => {
+    elegido = c.dataset.mot;
+    for (const x of document.querySelectorAll("[data-mot]")) { const on = x.dataset.mot === elegido; x.style.borderColor = on ? "var(--a)" : ""; x.style.boxShadow = on ? "0 0 0 2px var(--a) inset" : ""; }
+    const s = cat.find((x) => x.id === elegido); if (s && !b.segundos) $("#mSeg").value = Math.round(s.seg);
+  };
+  $("#mLevania").onclick = () => ($("#mMarca").value = MARCA_LEVANIA.replace("<id>", p.id));
+  $("#mGuardar").onclick = async () => {
+    if (!elegido) return avisar("Elige un estilo de la galería.", true);
+    await api(`/api/proyectos/${p.id}/brief`, "PUT", { estiloMotion: elegido, formato: p.formato, para: $("#mPara").value, segundos: Number($("#mSeg").value),
+      loop: $("#mLoop").checked, textos: $("#mTextos").value, marca: $("#mMarca").value, medios: $("#mMedios").value, notas: $("#mNotas").value });
+    avisar("Brief guardado."); S.proyectos = await api("/api/proyectos"); abrir(p.id, { mantener: true });
+  };
+  if ($("#mCopiar")) $("#mCopiar").onclick = () => navigator.clipboard.writeText(cmd).then(() => avisar("Copiado. Pégalo en Claude Code."));
+  $("#rHacer").onclick = () => api(`/api/proyectos/${p.id}/render`, "POST").catch((e) => avisar(e.message, true));
+  $("#pTitulo").onchange = async (e) => { await api(`/api/proyectos/${p.id}`, "PATCH", { titulo: e.target.value }); S.proyectos = await api("/api/proyectos"); pintarLista(); };
+  for (const bt of document.querySelectorAll("#pFormato button")) bt.onclick = async () => { await api(`/api/proyectos/${p.id}`, "PATCH", { formato: bt.dataset.v }); abrir(p.id, { mantener: true }); };
+  if (S.progreso[p.id]?.render) mostrarProgreso("render", S.progreso[p.id].render);
 }
 
 function panelFondo(p) {

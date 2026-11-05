@@ -1,0 +1,23 @@
+[
+  { "id": "grafico-de-jornal", "nombre": "Gráfico de periódico", "familia": "Póster y papel", "que": "Papel salmón; una barra se pone azul, se dispara y sube al 1.er lugar. Ideal para un dato o ranking.", "seg": 10 },
+  { "id": "livro-pop-up", "nombre": "Libro pop-up de papel", "familia": "Póster y papel", "que": "Hojas de papel recortado caen una a una; la pila respira y se desarma. Ideal para pasos o rutinas.", "seg": 12 },
+  { "id": "poster-suico", "nombre": "Póster suizo en cuadrícula", "familia": "Póster y papel", "que": "Blanco y negro; la palabra cambia como banda y el punto rojo salta.", "seg": 9 },
+  { "id": "cartaz-risografia", "nombre": "Carteles en risografía", "familia": "Póster y papel", "que": "Dos tintas fuera de registro sellando al ritmo de 120 BPM.", "seg": 12 },
+  { "id": "cartaz-gritado", "nombre": "Cartel gritado", "familia": "Póster y papel", "que": "Amarillo y negro; una palabra gigante por golpe, cortes secos, cuenta 3-2-1.", "seg": 12 },
+  { "id": "giz-de-cera", "nombre": "Crayola", "familia": "Lápiz, gis y pluma", "que": "Crayola y plumón en cartulina (loop). Muy infantil y cálido.", "seg": 5 },
+  { "id": "rabisco-de-caneta", "nombre": "Garabato de pluma", "familia": "Lápiz, gis y pluma", "que": "Garabatos de pluma en el margen del cuaderno (loop).", "seg": 5 },
+  { "id": "dirigivel-a-lapis", "nombre": "Dirigible a lápiz", "familia": "Lápiz, gis y pluma", "que": "Mascota de expedición a lápiz que se vuelve pintura de atardecer.", "seg": 28.6 },
+  { "id": "sessao-na-mesa", "nombre": "Sesión en la mesa", "familia": "Lápiz, gis y pluma", "que": "El día de trabajo, en papel y acuarela.", "seg": 58.7 },
+  { "id": "aviao-em-codigo", "nombre": "Avión en código", "familia": "Escenas y paisajes", "que": "Un avión 3D hecho solo con código se vuelve ilustración y despega.", "seg": 22 },
+  { "id": "festival-da-lua", "nombre": "Festival de la luna", "familia": "Escenas y paisajes", "que": "Tinta china y pincel seco; el dibujo se vuelve foto y anochece.", "seg": 28 },
+  { "id": "porto-de-nova-york", "nombre": "Puerto de Nueva York", "familia": "Escenas y paisajes", "que": "Atardecer, barco y luces que se encienden de abajo hacia arriba.", "seg": 30 },
+  { "id": "barco-e-montanha", "nombre": "Barco y montaña", "familia": "Escenas y paisajes", "que": "Capas de papel, barco y montaña, versión premium.", "seg": 16 },
+  { "id": "showreel", "nombre": "Showreel en fondo claro", "familia": "Tipografía y cine", "que": "Póster suizo que baila al compás, siete capítulos.", "seg": 16 },
+  { "id": "documento-vira-video", "nombre": "El documento se vuelve video", "familia": "Tipografía y cine", "que": "El punto final es un portal; del otro lado hay video.", "seg": 32 },
+  { "id": "diagrama-azul-marinho", "nombre": "Diagrama azul marino", "familia": "Interfaz y diagrama", "que": "Flujo de 5 nodos que se arma con un pulso azul recorriendo los cables.", "seg": 12 },
+  { "id": "folha-de-projeto", "nombre": "Plano técnico", "familia": "Interfaz y diagrama", "que": "Dibujo técnico que se traza, explota en piezas y pinta de amarillo la que importa.", "seg": 12 },
+  { "id": "interface-escura-3d", "nombre": "Interfaz oscura en 3D", "familia": "Interfaz y diagrama", "que": "App oscura vista por una cámara 3D lenta; un cursor verde tacha la lista de la semana.", "seg": 12 },
+  { "id": "editor-ia", "nombre": "Editor con cursor de IA", "familia": "Apps con cursor de IA", "que": "Una IA edita el video dentro del editor y el video llena la pantalla.", "seg": 18 },
+  { "id": "app-de-design", "nombre": "App de diseño con cursor de IA", "familia": "Apps con cursor de IA", "que": "El cursor arma una miniatura en una app de diseño.", "seg": 15 },
+  { "id": "app-de-motion", "nombre": "App de motion con cursor de IA", "familia": "Apps con cursor de IA", "que": "Curvas y keyframes movidos por una IA.", "seg": 16 }
+]

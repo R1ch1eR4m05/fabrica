@@ -14,6 +14,7 @@ import path from "node:path";
 import { prepararFondo } from "./fondos.js";
 import * as INV from "./investigador.js";
 import { clipDeFlow, flowDisponible } from "./flow.js";
+import * as MOT from "./motion.js";
 
 let investigando = null;
 function correrInvestigacion() {
@@ -153,7 +154,11 @@ async function api(req, res, partes) {
   const p = P.leer(id, "proyecto.json");
   if (!p) return json(res, 404, { error: "No encuentro ese video." });
 
-  if (!accion && m === "GET") return json(res, 200, P.detalle(id));
+  if (!accion && m === "GET") { const d = P.detalle(id); if (leerEstilo(p.estilo)?.tipo === "motion") d.motionEstado = MOT.estadoMotion(id); return json(res, 200, d); }
+  if (accion === "brief" && m === "PUT") {
+    MOT.guardarBrief(id, await cuerpo(req)); P.marcar(id, "guion", "listo");
+    const d = P.detalle(id); d.motionEstado = MOT.estadoMotion(id); return json(res, 200, d);
+  }
   if (!accion && m === "PATCH") { // cambiar título, formato, duración
     const b = await cuerpo(req);
     for (const k of ["titulo", "formato", "duracion", "idea", "canal", "vozId", "conVoz", "fondoBuscar", "flowPrompt"]) if (b[k] !== undefined) p[k] = b[k];
@@ -221,7 +226,11 @@ async function api(req, res, partes) {
     return json(res, 200, { ok: true });
   }
   if (accion === "voz" && m === "POST") { encolar(id, "voz", (av) => hacerVoz(id, av)); return json(res, 200, { ok: true }); }
-  if (accion === "render" && m === "POST") { encolar(id, "render", (av) => render(id, av)); return json(res, 200, { ok: true }); }
+  if (accion === "render" && m === "POST") {
+    const esMotion = leerEstilo(p.estilo)?.tipo === "motion";
+    encolar(id, "render", (av) => (esMotion ? MOT.renderMotion(id, av) : render(id, av)));
+    return json(res, 200, { ok: true });
+  }
   if (accion === "subir" && m === "GET") {
     const g = P.leer(id, "guion.json");
     res.writeHead(200, { "content-type": "text/plain; charset=utf-8" });

@@ -18,7 +18,9 @@ export function leerEstilo(id) {
   if (!fs.existsSync(f)) return null;
   const est = JSON.parse(fs.readFileSync(f, "utf8"));
   est.id = id;
-  est.listo = est.estado !== "pronto" && fs.existsSync(path.join(dir, "plantilla.html"));
+  est.listo = est.estado !== "pronto" && (est.tipo === "motion" || fs.existsSync(path.join(dir, "plantilla.html")));
+  const cat = path.join(dir, "catalogo.json");
+  if (fs.existsSync(cat)) est.catalogo = JSON.parse(fs.readFileSync(cat, "utf8"));
   const ideas = path.join(dir, "ideas.json");
   est.ideas = fs.existsSync(ideas) ? JSON.parse(fs.readFileSync(ideas, "utf8")) : [];
   return est;

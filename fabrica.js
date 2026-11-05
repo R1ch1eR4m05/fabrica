@@ -9,6 +9,7 @@
 //   node fabrica.js fotos <id> [seg,seg,…]        saca fotogramas para revisar (proyectos/<id>/revision/)
 //   node fabrica.js render <id> [--formato 16:9]  saca el video final (también en listos/)
 //   node fabrica.js todo <id>                     voz + render
+//   node fabrica.js listo-motion <id>             (Claude Code) marca terminado un motion graphics y lo copia a listos/
 //   node fabrica.js convertir                     convierte en propuestas los informes pendientes (Gemini o Claude)
 //   node fabrica.js recolectar                    junta y puntúa publicaciones virales (Apify) para que Claude Code las analice
 import path from "node:path";
@@ -67,6 +68,10 @@ async function main() {
       const { render } = await import("./core/render.js");
       const r = await render(id, avisar); P.marcar(id, "render", "listo");
       console.log(`\nVideo listo en ${r.archivo} (${r.segundos} s)`); return;
+    }
+    case "listo-motion": {
+      const MOT = await import("./core/motion.js");
+      const r = await MOT.terminar(libres[0]); console.log(`Listo: ${r.archivo}`); return;
     }
     case "investigaciones": {
       const INV = await import("./core/investigador.js");

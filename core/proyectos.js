@@ -50,6 +50,7 @@ export function existe(id, f) { return fs.existsSync(archivo(id, f)); }
 export function marcar(id, paso, valor, extra = {}) {
   const p = leer(id, "proyecto.json");
   p.estado[paso] = valor;
+  if (valor === "listo" || valor === "trabajando") delete p.error; // el error viejo ya no aplica
   Object.assign(p, extra);
   // si cambia un paso, los siguientes quedan desactualizados
   const orden = ["guion", "voz", "render"];

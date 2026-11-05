@@ -1,0 +1,8 @@
+{
+  "nombre": "Motion graphics · 21 estilos",
+  "descripcion": "Piezas de estudio hechas en código (HyperFrames + GSAP): gráfico de periódico, libro pop-up, póster suizo, gis, plano técnico… Eliges el estilo, llenas el brief y Claude Code la construye.",
+  "orden": 4,
+  "tipo": "motion",
+  "formatos": ["9:16", "16:9", "1:1"],
+  "creditos": ""
+}

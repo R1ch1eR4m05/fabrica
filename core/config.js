@@ -51,4 +51,5 @@ export const vozDeEstilo = (id) => process.env["VOZ_" + id.toUpperCase().replace
 export const FORMATOS = {
   "9:16": { w: 1080, h: 1920, nombre: "Vertical (TikTok, Reels, Shorts)" },
   "16:9": { w: 1920, h: 1080, nombre: "Horizontal (YouTube)" },
+  "1:1": { w: 1080, h: 1080, nombre: "Cuadrado" },
 };
