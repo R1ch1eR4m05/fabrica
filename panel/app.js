@@ -360,12 +360,13 @@ async function investigador(archivo) {
       <div class="card" style="margin:16px 0"><h2>Lo que está funcionando</h2><ul style="margin:8px 0 0;padding-left:18px;color:var(--t2)">${(inv.patrones || []).map((x) => `<li>${h(x)}</li>`).join("")}</ul></div>
       <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(330px,1fr))">${inv.propuestas.map((p) => `
         <div class="card">
-          <div class="estado">${h(p.tema || "")}</div>
+          <div class="estado">${h(p.tema || "")}${p.origen === "en" ? ` · <span title="Tendencia en inglés">🇺🇸→🇲🇽</span>` : ""}${p.llegada ? ` · <b style="color:${p.llegada === "aún no llega" ? "var(--ok)" : p.llegada === "poco en español" ? "var(--am)" : "var(--t2)"}">${h(p.llegada)}</b>` : ""}</div>
           <div style="font-size:19px;line-height:1.35;margin:6px 0 8px;font-family:Georgia,serif">${marcarAcento(p.frase)}</div>
           ${p.autor ? `<div class="estado">— ${h(p.autor)}</div>` : ""}
           ${p.cierre ? `<div class="estado" style="margin-top:4px">Cierre: ${h(p.cierre)}</div>` : ""}
           <details style="margin-top:8px"><summary class="estado" style="cursor:pointer">Por qué y clip</summary>
             <p class="estado">${h(p.porque || "")}</p>
+            ${p.adaptacion ? `<p class="estado"><b>Adaptación:</b> ${h(p.adaptacion)}</p>` : ""}
             ${(p.inspiradaEn || []).length ? `<p class="estado">Inspirada en: ${p.inspiradaEn.map((u, i) => `<a href="${h(u)}" target="_blank" style="color:var(--t2)">[${i + 1}]</a>`).join(" ")}</p>` : ""}
             <pre class="subir" style="max-height:120px">${h(p.flowPrompt || "")}</pre>
           </details>

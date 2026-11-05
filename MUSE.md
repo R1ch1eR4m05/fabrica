@@ -22,6 +22,8 @@ PATRONES DE HOY (5 a 8 puntos): temas, emociones, ganchos de los primeros 2 segu
 
 CUENTAS NUEVAS QUE VALE LA PENA SEGUIR (con seguidores y por qué).
 
+LO QUE VIENE (lo más importante): de lo que funciona en inglés, ¿qué todavía casi no se ve en español? Para cada tendencia: qué es, ejemplo en inglés (enlace) y si ya hay algo parecido en español (enlace) o "aún no llega".
+
 **Los domingos**, en vez del diario, manda un **resumen semanal** con el mismo formato, las 25 mejores de la semana y qué temas subieron o bajaron.
 ---
 
