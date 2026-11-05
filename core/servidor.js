@@ -111,6 +111,16 @@ async function api(req, res, partes) {
     if (!id && m === "PUT") return json(res, 200, INV.guardarConfig(await cuerpo(req)));
     if (!id && m === "POST") { correrInvestigacion(); return json(res, 200, { ok: true }); }
     if (id && !accion && m === "GET") return json(res, 200, INV.leerInvestigacion(id));
+    if (id && accion === "reproponer" && m === "POST") {
+      if (investigando) return json(res, 409, { error: "Ya hay una investigación en marcha." });
+      investigando = { inicio: Date.now() };
+      const av = (a) => emitir({ id: "_investigador", paso: "investigar", estado: "trabajando", ...a });
+      INV.reproponer(id, av)
+        .then((r) => emitir({ id: "_investigador", paso: "investigar", estado: "listo", msg: `Listo: ${r.propuestas} propuestas nuevas`, resultado: r }))
+        .catch((e) => emitir({ id: "_investigador", paso: "investigar", estado: "error", msg: e.message }))
+        .finally(() => (investigando = null));
+      return json(res, 200, { ok: true });
+    }
     if (id && accion === "crear" && m === "POST") {
       const b = await cuerpo(req);
       const inv = INV.leerInvestigacion(id), prop = inv.propuestas.find((x) => x.n === Number(b.n));
@@ -123,7 +133,7 @@ async function api(req, res, partes) {
         const p = P.crearProyecto({ estilo: "motion", titulo: prop.tituloPost || prop.tema, idea: prop.idea || prop.frase, formato: b.formato || "9:16", duracion: "corto", conVoz: false });
         p.desdeInvestigacion = { archivo: id, n: prop.n }; if (b.canal) p.canal = b.canal; P.guardar(p.id, "proyecto.json", p);
         MOT.guardarBrief(p.id, { estiloMotion: c.id, formato: b.formato || "9:16", para: "Reels / TikTok", segundos: Math.round(c.seg || 12), loop: false,
-          textos: [String(prop.frase || "").replace(/\*/g, ""), prop.cierre].filter(Boolean).join("\n"),
+          textos: [String(prop.frase || "").replace(/\*/g, ""), INV.cierreValido(prop.cierre)].filter(Boolean).join("\n"),
           marca: /levania/i.test(cfg.nombre) ? "Levania: rosa #C4837A, salvia #8FA58A, crema #F6EEE4, tinta #3D3230. Tipografías Cormorant Garamond (títulos) y Jost (texto). Logo: estilos/render-datos/marca/levania_logo.png" : cfg.marca || "",
           medios: "ninguno, solo gráfico", notas: [prop.idea, prop.porque, prop.adaptacion && `Adaptación: ${prop.adaptacion}`].filter(Boolean).join("\n") });
         P.marcar(p.id, "guion", "listo");
@@ -138,7 +148,7 @@ async function api(req, res, partes) {
       if (esFrases) guion = INV.guionDesdePropuesta(prop);
       else {
         const cfg = INV.leerConfig();
-        const idea = `${prop.idea || prop.frase}\nÁngulo: ${prop.tema || ""}. Gancho sugerido: "${prop.frase}".${prop.adaptacion ? ` Adaptación al público hispano: ${prop.adaptacion}.` : ""}\nMarca: ${cfg.nombre}. Audiencia: ${cfg.descripcion} ${cfg.marca}${prop.cierre ? ` Cierre sugerido: ${prop.cierre}` : ""}`;
+        const idea = `${prop.idea || prop.frase}\nÁngulo: ${prop.tema || ""}. Gancho sugerido: "${prop.frase}".${prop.adaptacion ? ` Adaptación al público hispano: ${prop.adaptacion}.` : ""}\nMarca: ${cfg.nombre}. Audiencia: ${cfg.descripcion} ${cfg.marca}\n${INV.cierreValido(prop.cierre) ? `Cierre (úsalo tal cual): ${INV.cierreValido(prop.cierre)}` : (cfg.cierres || []).length ? `Cierre: usa uno de estos tal cual: ${cfg.cierres.join(" / ")}` : "Sin cierre de 'comenta una palabra': no inventes ninguno."}`;
         try { guion = await escribirGuion({ ...datos, idea }); }
         catch (e) { return json(res, 502, { error: `No pude escribir el guion en el estilo ${est.nombre}: ${e.message}` }); }
         guion.inspiracion = prop.inspiradaEn || [];

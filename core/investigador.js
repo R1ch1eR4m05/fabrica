@@ -36,7 +36,8 @@ const CONFIG_INICIAL = {
   porCuenta: 6,    // publicaciones recientes por cada cuenta de referencia
   topeUsd: 0.3,    // tope de gasto de Apify por cada tarea (la corrida se corta sola al llegar)
   propuestas: 10,
-  marca: "Levania vende rutinas y checklists para familias. Las frases NO venden: conectan. El cierre invita a comentar una palabra (p. ej. RUTINA).",
+  marca: "Levania vende rutinas y checklists para familias. Las frases NO venden: conectan.",
+  cierres: [], // los llamados a la acción que TÚ autorizas (p. ej. la palabra que responde tu automatización). Vacío = sin "comenta X"
 };
 
 export function leerConfig() {
@@ -149,7 +150,7 @@ const FORMATO = `Devuelve SOLO JSON válido:
     "idea": "de qué trata el video en 1-2 frases (tema, ángulo y, si lleva datos, qué dato real hay que verificar). Para el estilo de frases puede ir vacío",
     "frase": "el gancho o mensaje central, ORIGINAL, en español de México, 8 a 28 palabras, con 1-2 palabras clave entre *asteriscos* (en el estilo de frases es lo que sale en pantalla)",
     "autor": "solo si es una cita real verificada; si no, vacío",
-    "cierre": "llamada a la acción corta (comentar una palabra, guardar, enviar a alguien)",
+    "cierre": "uno de los cierres autorizados, copiado tal cual, o vacío",
     "tema": "1-3 palabras",
     "origen": "en" | "es" | "ambos" (de dónde viene la tendencia),
     "llegada": "ya está en español" | "poco en español" | "aún no llega" (qué tanto existe ya en español),
@@ -185,6 +186,9 @@ function sistemaDe(cfg) {
     "Nunca atribuyas una frase a una persona real si no puedes verificarla. Nada de culpa ni de vergüenza hacia las mamás; sí de reconocimiento y ternura.",
     "ADAPTACIÓN AL PÚBLICO HISPANO: muchas fuentes son cuentas en inglés de EE. UU. a propósito, porque ahí aparecen primero las tendencias. Trátalas como señal temprana de lo que viene. No traduzcas literal: adapta la idea a mamás hispanas de México y EE. UU. (familia extendida y abuelas, la escuela y las tareas, las mañanas con prisa, el trabajo y la culpa, la fe cuando venga al caso, la comida, el 'mijo/mija'), con español natural de México. Para EE. UU. se vale un toque bilingüe solo si suena natural.",
     "Prioriza las tendencias que ya funcionan en inglés y todavía casi no existen en español: ahí está la ventaja. Márcalo en cada propuesta.",
+    (cfg.cierres || []).length
+      ? `CIERRES: en "cierre" usa EXACTAMENTE uno de estos (cópialo tal cual, elige el que mejor le quede), o déjalo vacío. Nunca inventes otra palabra para comentar:\n${cfg.cierres.map((c) => "- " + c).join("\n")}`
+      : `CIERRES: deja "cierre" vacío. No inventes llamados a "comenta una palabra": la marca no ha autorizado ninguno.`,
     `Da exactamente ${cfg.propuestas} propuestas, variadas en tema y emoción.`,
     FORMATO,
   ].join("\n\n");
@@ -353,11 +357,34 @@ export async function investigar(avisar = () => {}) {
   return { archivo, propuestas: salida.propuestas.length };
 }
 
+// El cierre solo puede ser uno de los que Richie autorizó en el nicho (si la IA inventó otro, se quita)
+export function cierreValido(c) {
+  const ok = leerConfig().cierres || [];
+  const n = (x) => String(x || "").trim().toLowerCase();
+  return ok.find((x) => n(x) === n(c)) || "";
+}
+
+// Vuelve a sacar propuestas de una investigación ya hecha (mismo informe o mismas publicaciones), con las reglas de hoy
+// (estilos y cierres). No vuelve a gastar Apify.
+export async function reproponer(archivo, avisar = () => {}) {
+  const inv = leerInvestigacion(archivo), cfg = leerConfig();
+  let base;
+  if (inv.informe) { const f = path.join(DIR_INFORMES, inv.informe.replace(/\.md$/, ".hecho.md")); const g = path.join(DIR_INFORMES, inv.informe);
+    base = fs.existsSync(f) ? fs.readFileSync(f, "utf8") : fs.existsSync(g) ? fs.readFileSync(g, "utf8") : null; }
+  if (!base && inv.publicaciones?.length) base = "Publicaciones con mejor desempeño del nicho:\n" + JSON.stringify(inv.publicaciones.slice(0, 15).map((p, i) => ({ n: i + 1, red: p.red, url: p.url, autor: p.autor, vistas: p.vistas, rebase: p.rebase, guardados: p.guardados, compartidos: p.compartidos, texto: (p.texto || "").slice(0, 400) })), null, 1);
+  if (!base) base = "Patrones encontrados antes:\n- " + (inv.patrones || []).join("\n- ") + "\n\nPropuestas anteriores (como referencia de temas):\n" + (inv.propuestas || []).map((p) => `- ${p.tema}: ${p.frase}`).join("\n");
+  avisar({ progreso: 0.4, msg: "Volviendo a proponer con los estilos y cierres de hoy…" });
+  const j = jsonDe(await pedirIA(sistemaDe(cfg), `Esta es la base de una investigación anterior. Saca los patrones y propón de nuevo.\n\n${base.slice(0, 120000)}`));
+  const { propuestas, publicaciones, patrones, ...resto } = inv;
+  return guardarResultado({ ...resto, fecha: new Date().toISOString(), config: cfg, publicaciones, rehechaDe: archivo }, j);
+}
+
 // Convierte una propuesta en el guion del estilo de frases
 export function guionDesdePropuesta(p) {
   const escenas = [{ tipo: "frase", texto: p.frase }];
   if (p.autor) escenas.push({ tipo: "autor", texto: p.autor });
-  if (p.cierre) escenas.push({ tipo: "cierre", texto: p.cierre });
+  const cierre = cierreValido(p.cierre);
+  if (cierre) escenas.push({ tipo: "cierre", texto: cierre });
   return {
     titulo: p.tituloPost || p.tema || "Frase",
     escenas,

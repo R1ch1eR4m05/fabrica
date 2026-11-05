@@ -457,7 +457,9 @@ async function investigador(archivo) {
       <div class="fila" style="align-items:flex-start">
         <div style="flex:1;min-width:260px"><label>Nombre</label><input id="iNombre" value="${h(c.nombre)}">
           <label>Audiencia</label><textarea id="iDesc">${h(c.descripcion)}</textarea>
-          <label>Sobre la marca (qué sí y qué no)</label><textarea id="iMarca">${h(c.marca)}</textarea></div>
+          <label>Sobre la marca (qué sí y qué no)</label><textarea id="iMarca">${h(c.marca)}</textarea>
+          <label>Cierres que autorizas (uno por línea, tal cual se dirán; vacío = sin "comenta X")</label>
+          <textarea id="iCierres" placeholder="Comenta RUTINA y te mando gratis tu checklist">${h((c.cierres || []).join("\n"))}</textarea></div>
         <div style="flex:1;min-width:260px"><label>Cuentas de TikTok de referencia (una por línea)</label><textarea id="iTk" placeholder="@cuenta">${h(c.cuentasTiktok.join("\n"))}</textarea>
           <label>Cuentas de Instagram de referencia</label><textarea id="iIg" placeholder="@cuenta">${h(c.cuentasInstagram.join("\n"))}</textarea>
           <label>Hashtags (sin #, separados por coma)</label><input id="iHash" value="${h(c.hashtags.join(", "))}">
@@ -466,7 +468,7 @@ async function investigador(archivo) {
       </div>
       <div class="fila" style="margin-top:14px"><button class="btn" id="iGuardar">Guardar</button></div>
     </details>
-    <div class="fila">${inv ? `<button class="btn" id="iTodas" title="Crea un video por propuesta y los manda a hacer (voz + video) uno tras otro">Crear y hacer todas</button>` : ""}<button class="btn primario" id="iCorrer" ${!d.ia || d.trabajando ? "disabled" : ""} title="${d.ia ? "" : "Necesita GEMINI_API_KEY o ANTHROPIC_API_KEY"}">Investigar ahora</button>
+    <div class="fila">${inv ? `<button class="btn" id="iRehacer" title="Vuelve a sacar las propuestas de esta misma investigación con los estilos y cierres de hoy (no gasta Apify)">Volver a proponer</button>` : ""}${inv ? `<button class="btn" id="iTodas" title="Crea un video por propuesta y los manda a hacer (voz + video) uno tras otro">Crear y hacer todas</button>` : ""}<button class="btn primario" id="iCorrer" ${!d.ia || d.trabajando ? "disabled" : ""} title="${d.ia ? "" : "Necesita GEMINI_API_KEY o ANTHROPIC_API_KEY"}">Investigar ahora</button>
       ${d.lista.length ? `<select id="iHist" style="width:auto">${d.lista.map((x) => `<option value="${h(x.archivo)}" ${x.archivo === archivo ? "selected" : ""}>${new Date(x.fecha).toLocaleString()} · ${x.propuestas} propuestas${x.modo === "web" ? " · sin métricas" : ` · ${x.analizadas} analizadas`}</option>`).join("")}</select>` : ""}
       ${S.info.flow ? `<label class="estado" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="iFlow" style="width:auto" ${localStorage.getItem("invFlow") === "1" ? "checked" : ""}> Fondos con Google Flow (gasta créditos) · tope <input id="iFlowMax" type="number" min="1" value="${h(localStorage.getItem("invFlowMax") || "25")}" style="width:70px"></label>` : `<span class="estado" title="Abre Flow Studio (flow-mcp) para generar los fondos con Flow">Flow cerrado: los fondos salen de Pexels</span>`}
       <span class="estado" id="est-investigar">${d.trabajando ? "Trabajando…" : ""}</span></div>
@@ -494,7 +496,7 @@ async function investigador(archivo) {
         <div style="overflow:auto"><table style="width:100%;font-size:13px;border-collapse:collapse;margin-top:8px">${inv.publicaciones.map((x, i) => `<tr style="border-bottom:1px solid var(--b)"><td>${i + 1}</td><td>${h(x.red)}</td><td><a href="${h(x.url)}" target="_blank" style="color:var(--t)">@${h(x.autor)}</a></td><td>${(x.vistas || 0).toLocaleString()} vistas</td><td>${x.rebase ? x.rebase + "× seguidores" : ""}</td><td>${(x.guardados || 0).toLocaleString()} guard.</td><td>${(x.compartidos || 0).toLocaleString()} comp.</td><td style="color:var(--t2)">${h((x.texto || "").slice(0, 80))}</td></tr>`).join("")}</table></div></details>` : ""}`
     : `<p class="estado" style="margin-top:14px">Todavía no hay investigaciones.</p>`}`;
   $("#iGuardar").onclick = async () => {
-    await api("/api/investigacion", "PUT", { nombre: $("#iNombre").value, descripcion: $("#iDesc").value, marca: $("#iMarca").value,
+    await api("/api/investigacion", "PUT", { nombre: $("#iNombre").value, descripcion: $("#iDesc").value, marca: $("#iMarca").value, cierres: $("#iCierres").value.split("\n").map((x) => x.trim()).filter(Boolean),
       cuentasTiktok: lista($("#iTk").value), cuentasInstagram: lista($("#iIg").value), hashtags: lista($("#iHash").value).map((x) => x.replace(/^#/, "")),
       busquedas: lista($("#iBus").value), dias: Number($("#iDias").value), porFuente: Number($("#iPor").value), propuestas: Number($("#iProp").value) });
     avisar("Nicho guardado.");
@@ -520,6 +522,7 @@ async function investigador(archivo) {
     S.proyectos = await api("/api/proyectos"); pintarLista();
     avisar(`Quedaron en fila ${ok} de ${inv.propuestas.length}. Míralos en la lista de la izquierda.${motion ? ` ${motion} motion graphics esperan a Claude Code: dile "construye los motion pendientes".` : ""}${fallos.length ? " No se pudo: " + fallos.join(" | ") : ""}`, !!fallos.length);
   };
+  if ($("#iRehacer")) $("#iRehacer").onclick = async () => { await $("#iGuardar").onclick(); api(`/api/investigacion/${archivo}/reproponer`, "POST").then(() => avisar("Volviendo a proponer… (aparecen aquí solas)")).catch((e) => avisar(e.message, true)); };
   if ($("#iHist")) $("#iHist").onchange = (e) => investigador(e.target.value);
   for (const b of document.querySelectorAll("[data-copiar]")) b.onclick = () => navigator.clipboard.writeText(inv.propuestas.find((x) => x.n == b.dataset.copiar).flowPrompt || "").then(() => avisar("Prompt copiado."));
   for (const b of document.querySelectorAll("[data-crear],[data-hacer]")) b.onclick = async () => {

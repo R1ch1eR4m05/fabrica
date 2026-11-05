@@ -57,6 +57,8 @@ Cuando Richie diga "investiga" o "dame frases virales":
 ## Propuestas del investigador y estilos
 - Cada propuesta lleva `estilo` (id exacto de un estilo listo, o `motion:<id del catálogo>` para motion graphics), `porQueEstilo` e `idea`. Elige el que mejor le queda al contenido; si todo son frases, todo va en `frases-desenfocado`.
 - Al crear el video desde una propuesta, `frases-desenfocado` usa la frase tal cual; los demás estilos escriben el guion con la IA siguiendo el GUION.md de ese estilo. Propuestas viejas sin `estilo` se hacen como frases. Los `motion:` quedan creados con su brief y esperan a "construye los motion pendientes".
+- Cierres: solo los que Richie puso en `investigacion/nicho.json` → `cierres`, copiados tal cual. Si la lista está vacía, sin cierre de "comenta X". Nunca inventes la palabra.
+- Música: pistas libres de derechos en `musica/` o `musica/<estilo>/` (cada video toma una distinta).
 - "Crear y hacer" con la casilla de Flow: si flow-mcp está abierto y el estilo usa fondo, primero genera el clip con el `flowPrompt` (con tope de créditos); si falla, sigue con Pexels.
 
 ## Investigador y Flow

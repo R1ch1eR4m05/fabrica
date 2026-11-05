@@ -49,6 +49,24 @@ async function sintetizar(tmp, nombre, d) {
  * @param guion   guion.json   (escena.sfx opcional)
  * @param tiempos tiempos.json
  */
+// Biblioteca de música: musica/<id del estilo>/ primero, si no musica/ (tus pistas libres de derechos; no aplica a terror).
+// Cada video toma una distinta (se reparten por el nombre del proyecto, así no se repite seguido).
+const DIR_MUSICA = path.join(path.dirname(DIR_ESTILOS), "musica");
+const esAudio = (n) => /\.(mp3|m4a|wav|ogg)$/i.test(n);
+export function musicaDeBiblioteca(estiloId, dirProyecto, ambiente) {
+  // la carpeta general no aplica a estilos con ambiente propio oscuro (terror): esos solo usan su subcarpeta
+  const dirs = [path.join(DIR_MUSICA, estiloId), ...(ambiente && ambiente !== "suave" ? [] : [DIR_MUSICA])];
+  for (const d of dirs) {
+    if (!fs.existsSync(d)) continue;
+    const pistas = fs.readdirSync(d).filter(esAudio).sort();
+    if (!pistas.length) continue;
+    const id = path.basename(dirProyecto || "x");
+    let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+    return path.join(d, pistas[h % pistas.length]);
+  }
+  return null;
+}
+
 export async function mezclar({ estilo, guion, tiempos, voz, salida, tmp, dirProyecto }) {
   fs.mkdirSync(tmp, { recursive: true });
   const s = estilo.sonido || {};
@@ -62,12 +80,15 @@ export async function mezclar({ estilo, guion, tiempos, voz, salida, tmp, dirPro
   let amb = null;
   // música propia del video: proyectos/<id>/musica.mp3 (o .m4a/.wav) manda sobre la del estilo
   const propia = dirProyecto && ["musica.mp3", "musica.m4a", "musica.wav"].map((n) => path.join(dirProyecto, n)).find((f) => fs.existsSync(f));
+  const deBiblioteca = !propia && musicaDeBiblioteca(estilo.id, dirProyecto, s.ambiente);
   if (propia) amb = propia;
+  else if (deBiblioteca) amb = deBiblioteca;
   else if (s.ambiente && SINTE[s.ambiente]) amb = await sintetizar(tmp, s.ambiente, D.toFixed(2));
   else if (s.ambiente) amb = path.join(DIR_ESTILOS, estilo.id, s.ambiente); // archivo de música del estilo
   if (amb && fs.existsSync(amb)) {
     entradas.push("-stream_loop", "-1", "-i", amb);
-    filtros.push(`[${n}]atrim=0:${D.toFixed(2)},volume=${(tiempos.sinVoz ? s.volumenSinVoz : null) ?? s.volumenAmbiente ?? 0.35},afade=t=out:st=${Math.max(0, D - 3).toFixed(2)}:d=3[v${n}]`);
+    const vol = (propia || deBiblioteca) ? (tiempos.sinVoz ? s.volumenMusicaSinVoz ?? 0.9 : s.volumenMusica ?? 0.16) : ((tiempos.sinVoz ? s.volumenSinVoz : null) ?? s.volumenAmbiente ?? 0.35);
+    filtros.push(`[${n}]atrim=0:${D.toFixed(2)},volume=${vol},afade=t=out:st=${Math.max(0, D - 3).toFixed(2)}:d=3[v${n}]`);
     etiquetas.push(`[v${n}]`); n++;
   }
 

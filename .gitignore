@@ -8,3 +8,5 @@ listos/*
 investigacion/*
 !investigacion/.gitkeep
 package-lock.json
+musica/*
+!musica/LEEME.md
