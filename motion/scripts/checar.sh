@@ -14,7 +14,10 @@ for t in ffmpeg ffprobe; do
   if command -v $t >/dev/null; then say $t ok; else say $t "Falta $t. Rode: brew install ffmpeg"; ok=0; fi
 done
 
-if command -v python3 >/dev/null; then say python3 "ok"; else say python3 "Falta python3. Rode: brew install python"; ok=0; fi
+# en Windows "python3" puede ser solo el acceso directo de la Microsoft Store (existe pero no corre): hay que ejecutarlo para saber
+if python3 -c "import sys; print(sys.version_info[0])" 2>/dev/null | grep -q 3; then say python3 "ok"
+elif python -c "import sys; print(sys.version_info[0])" 2>/dev/null | grep -q 3; then say python3 "ok (como python)"
+else say python3 "Falta Python 3. Windows: winget install Python.Python.3.12 · Mac: brew install python"; ok=0; fi
 
 if [ "$MODE" = media ]; then
   if [ -n "$HIGGSFIELD_API_KEY" ] || [ -n "$HF_API_KEY_ID" ] || grep -qs '^HIGGSFIELD_API_KEY=' .env; then
