@@ -52,6 +52,17 @@ async function revisarActualizacion() {
 }
 setInterval(() => revisarActualizacion(), 30 * 60000);
 
+// ---------- teléfono ----------
+const esMovil = () => matchMedia("(max-width: 860px)").matches;
+document.addEventListener("click", (e) => {
+  if (e.target.closest("#tituloLista") && esMovil()) { const a = document.querySelector("aside"); a.classList.toggle("cerrada"); $("#flechaLista").textContent = a.classList.contains("cerrada") ? "▸" : "▾"; }
+  if (e.target.closest("#lista .item") && esMovil()) { document.querySelector("aside").classList.add("cerrada"); $("#flechaLista").textContent = "▸"; }
+});
+// en el teléfono no hay "pasar el mouse": las muestras se reproducen solas cuando están en pantalla
+const vigia = "IntersectionObserver" in window ? new IntersectionObserver((es) => { for (const x of es) { if (!esMovil()) continue; x.isIntersecting ? x.target.play().catch(() => {}) : x.target.pause(); } }, { threshold: 0.6 }) : null;
+new MutationObserver(() => { if (vigia) for (const v of document.querySelectorAll(".mot video:not([data-vigia])")) { v.dataset.vigia = "1"; v.preload = "metadata"; vigia.observe(v); } }).observe(document.body, { childList: true, subtree: true });
+if (esMovil()) { document.querySelector("aside")?.classList.add("cerrada"); if ($("#flechaLista")) $("#flechaLista").textContent = "▸"; }
+
 function pintarLista() {
   $("#lista").innerHTML = S.proyectos.map((p) => `
     <div class="item ${S.actual?.id === p.id ? "activo" : ""}" data-id="${h(p.id)}">
@@ -91,7 +102,7 @@ function inicio() {
     }
   }
   $("#main").innerHTML = `
-    <h1>¿Qué video hacemos?</h1><p class="sub">Elige un estilo (pasa el mouse para verlo moverse). Los que dicen "Pronto" los vamos agregando.</p>
+    <h1>¿Qué video hacemos?</h1><p class="sub">Elige un estilo (${matchMedia("(max-width: 860px)").matches ? "las muestras se mueven solas" : "pasa el mouse para verlo moverse"}). Los que dicen "Pronto" los vamos agregando.</p>
     <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(210px,1fr))">${html}</div>`;
   for (const c of document.querySelectorAll(".mot")) {
     const v = c.querySelector("video"); if (v) { c.onmouseenter = () => v.play().catch(() => {}); c.onmouseleave = () => v.pause(); }

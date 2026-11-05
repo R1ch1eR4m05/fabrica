@@ -89,3 +89,16 @@ node fabrica.js todo <id>           # voz + render
 - Tipografías Oswald, Special Elite e Inter: SIL Open Font License, uso comercial libre.
 - Música y efectos: se sintetizan con ffmpeg al hacer el video, así que no hay créditos que citar.
 - Playwright (Apache 2.0) y ffmpeg (LGPL/GPL).
+
+## Desde el teléfono (Tailscale, privado y gratis)
+En el VPS:
+```
+curl -fsSL https://tailscale.com/install.sh | sh
+tailscale up                      # abre el enlace que imprime e inicia sesión
+```
+En `~/fabrica/.env`: `HOST=172.17.0.1,127.0.0.1` y una `PANEL_CLAVE`. Luego `systemctl restart fabrica` y:
+```
+tailscale serve --bg 4870         # si pide activar HTTPS, abre el enlace que imprime
+```
+En el teléfono instala la app Tailscale con la misma cuenta y abre la dirección `https://….ts.net` que muestra `tailscale serve status`.
+El panel no queda abierto a internet: solo tus aparatos con Tailscale lo ven.

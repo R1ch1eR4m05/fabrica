@@ -72,3 +72,28 @@ pre.subir { white-space: pre-wrap; background: var(--f); border: 1px solid var(-
 .aviso { position: fixed; bottom: 20px; right: 20px; background: var(--c2); border: 1px solid var(--b); padding: 12px 16px; border-radius: 10px; max-width: 420px; box-shadow: 0 10px 30px #0008; z-index: 9; }
 .aviso.error { border-color: var(--a); } .oculto { display: none; }
 @media (max-width: 860px) { .cuerpo { grid-template-columns: 1fr; } aside { border-right: 0; border-bottom: 1px solid var(--b); } .escena { grid-template-columns: 1fr 1fr; } .escena .n { display: none; } .escena textarea, .escena .extra, .escena .acc { grid-column: 1 / -1; } .vista { grid-template-columns: 1fr; } main { padding: 18px; } }
+
+/* teléfono */
+.solo-movil { display: none; }
+@media (max-width: 860px) {
+  header { padding: 10px 12px; gap: 10px; }
+  .logo { white-space: nowrap; }
+  #chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; max-width: 70vw; }
+  #chips::-webkit-scrollbar { display: none; }
+  .chip { white-space: nowrap; }
+  aside { padding: 10px 12px; }
+  .solo-movil { display: inline; }
+  #tituloLista { cursor: pointer; margin: 12px 0 4px; }
+  aside.cerrada #lista { display: none; }
+  main { padding: 14px 12px 80px; }
+  h1 { font-size: 20px; }
+  .grid { grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)) !important; gap: 10px; }
+  .card { padding: 12px; }
+  .card video { height: auto !important; max-height: 260px !important; aspect-ratio: 9 / 16; }
+  .estilo h3 { font-size: 14px !important; }
+  .estilo p { font-size: 12px !important; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .fila { flex-wrap: wrap; }
+  .btn { padding: 10px 14px; }
+  video { max-height: 70vh; }
+  .aviso { left: 10px; right: 10px; max-width: none; }
+}

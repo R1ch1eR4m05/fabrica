@@ -296,12 +296,15 @@ export function arrancar() {
       for (const r of await INV.revisarEntrada()) emitir({ id: "_investigador", paso: "investigar", estado: "listo", msg: r.pendiente ? "Llegó un informe nuevo (pendiente de convertir)" : `Llegó un informe: ${r.propuestas} propuestas`, resultado: r });
     } catch (e) { console.error(e); } finally { investigando = null; }
   }, 60000);
-  srv.listen(CFG.puerto, CFG.host, () => {
-    const dir = `http://${CFG.host === "0.0.0.0" ? "TU-IP" : CFG.host}:${CFG.puerto}/`;
+  // HOST puede ser una lista separada por comas (p. ej. "172.17.0.1,127.0.0.1": n8n por Docker y Tailscale por localhost)
+  const hosts = String(CFG.host).split(",").map((x) => x.trim()).filter(Boolean);
+  for (const h of hosts.slice(1)) http.createServer(srv.listeners("request")[0]).listen(CFG.puerto, h);
+  srv.listen(CFG.puerto, hosts[0], () => {
+    const dir = hosts.map((h) => `http://${h === "0.0.0.0" ? "TU-IP" : h}:${CFG.puerto}/`).join("  ·  ");
     console.log(`\n  Fábrica lista → ${dir}\n  (deja esta ventana abierta mientras la usas)\n`);
     if (!CFG.anthropicKey && !CFG.geminiKey) console.log("  · Sin GEMINI_API_KEY ni ANTHROPIC_API_KEY: el guion lo escribe Claude Code o tú en el panel.");
     if (!CFG.elevenKey) console.log("  · Sin ELEVENLABS_API_KEY: se usará voz de prueba (muda) para ensayar.");
-    if (CFG.host === "0.0.0.0" && !CFG.clave) console.log("  ⚠ Estás abriendo el panel a internet sin PANEL_CLAVE. Ponle una en el .env.");
+    if (hosts.includes("0.0.0.0") && !CFG.clave) console.log("  ⚠ Estás abriendo el panel a internet sin PANEL_CLAVE. Ponle una en el .env.");
   });
   return srv;
 }

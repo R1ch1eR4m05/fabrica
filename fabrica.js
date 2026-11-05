@@ -42,7 +42,7 @@ async function main() {
       }
       const { arrancar } = await import("./core/servidor.js");
       arrancar();
-      if (!args.includes("--sin-abrir") && CFG.host === "127.0.0.1") {
+      if (!args.includes("--sin-abrir") && String(CFG.host).split(",")[0].trim() === "127.0.0.1") {
         const url = `http://127.0.0.1:${CFG.puerto}/`;
         const cmd = process.platform === "win32" ? `start "" "${url}"` : process.platform === "darwin" ? `open "${url}"` : `xdg-open "${url}"`;
         setTimeout(() => exec(cmd, () => {}), 600);
