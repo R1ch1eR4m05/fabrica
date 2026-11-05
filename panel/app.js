@@ -594,13 +594,13 @@ async function investigador(archivo) {
   if ($("#iTodas")) $("#iTodas").onclick = async () => {
     const f = conFlow();
     if (!confirm(`Se crearán ${inv.propuestas.length} videos 9:16, cada uno en el estilo que el investigador eligió, y se harán completos uno tras otro.${f ? ` Los fondos se harán con Google Flow (gasta créditos, tope ${f.maxCreditos} por clip).` : " Los fondos salen de Pexels."} Los motion graphics quedan listos para que Claude Code los construya. ¿Seguir?`)) return;
-    let ok = 0, motion = 0; const fallos = [];
+    let ok = 0, motion = 0, sinGuion = 0; const fallos = [];
     for (const pr of inv.propuestas) {
-      try { const p = await api(`/api/investigacion/${archivo}/crear`, "POST", { n: pr.n, formato: "9:16", canal: localStorage.getItem("canal") || "" }); if (await hacerTodo(p.id)) ok++; else motion++; }
+      try { const p = await api(`/api/investigacion/${archivo}/crear`, "POST", { n: pr.n, formato: "9:16", canal: localStorage.getItem("canal") || "" }); if (p.guionPendiente) sinGuion++; else if (await hacerTodo(p.id)) ok++; else motion++; }
       catch (e) { fallos.push(`#${pr.n}: ${e.message}`); }
     }
     S.proyectos = await api("/api/proyectos"); pintarLista();
-    avisar(`Quedaron en fila ${ok} de ${inv.propuestas.length}. Míralos en la lista de la izquierda.${motion ? ` ${motion} motion graphics esperan a Claude Code: dile "construye los motion pendientes".` : ""}${fallos.length ? " No se pudo: " + fallos.join(" | ") : ""}`, !!fallos.length);
+    avisar(`Quedaron en fila ${ok} de ${inv.propuestas.length}. Míralos en la lista de la izquierda.${motion ? ` ${motion} motion graphics esperan a Claude Code: dile "construye los motion pendientes".` : ""}${sinGuion ? ` ${sinGuion} quedaron creados sin guion (Gemini no respondió): dile a Claude Code "escribe los guiones pendientes".` : ""}${fallos.length ? " No se pudo: " + fallos.join(" | ") : ""}`, !!fallos.length);
   };
   if ($("#iRehacer")) $("#iRehacer").onclick = async () => { await $("#iGuardar").onclick(); api(`/api/investigacion/${archivo}/reproponer`, "POST").then(() => avisar("Volviendo a proponer… (aparecen aquí solas)")).catch((e) => avisar(e.message, true)); };
   if ($("#iHist")) $("#iHist").onchange = (e) => investigador(e.target.value);
@@ -609,7 +609,8 @@ async function investigador(archivo) {
     const hacer = b.dataset.hacer != null; b.disabled = true; b.textContent = "Creando…";
     try {
       const p = await api(`/api/investigacion/${archivo}/crear`, "POST", { n: Number(b.dataset.crear ?? b.dataset.hacer), formato: "9:16", canal: localStorage.getItem("canal") || "" });
-      if (hacer && !(await hacerTodo(p.id))) avisar(`Brief listo. En Claude Code di: construye los motion pendientes`);
+      if (p.guionPendiente) avisar(`Creado sin guion (${p.aviso}). En Claude Code di: escribe el guion de ${p.id}`, true);
+      else if (hacer && !(await hacerTodo(p.id))) avisar(`Brief listo. En Claude Code di: construye los motion pendientes`);
       S.proyectos = await api("/api/proyectos"); S.vista = null; abrir(p.id);
     } catch (e) { avisar(e.message, true); b.disabled = false; b.textContent = hacer ? "Crear y hacer 9:16" : "Solo crear"; }
   };

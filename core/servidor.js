@@ -162,7 +162,13 @@ async function api(req, res, partes) {
         const cfg = INV.leerConfig();
         const idea = `${prop.idea || prop.frase}\nÁngulo: ${prop.tema || ""}. Gancho sugerido: "${prop.frase}".${prop.adaptacion ? ` Adaptación al público hispano: ${prop.adaptacion}.` : ""}\nMarca: ${cfg.nombre}. Audiencia: ${cfg.descripcion} ${cfg.marca}\n${INV.cierreValido(prop.cierre) ? `Cierre (úsalo tal cual): ${INV.cierreValido(prop.cierre)}` : (cfg.cierres || []).length ? `Cierre: usa uno de estos tal cual: ${cfg.cierres.join(" / ")}` : "Sin cierre de 'comenta una palabra': no inventes ninguno."}`;
         try { guion = await escribirGuion({ ...datos, idea }); }
-        catch (e) { return json(res, 502, { error: `No pude escribir el guion en el estilo ${est.nombre}: ${e.message}` }); }
+        catch (e) { // sin IA (cuota, saturación): el proyecto se crea igual y el guion lo escribe Claude Code
+          const p = P.crearProyecto({ ...datos, idea });
+          p.flowPrompt = prop.flowPrompt; p.fondoBuscar = prop.pexels; p.desdeInvestigacion = { archivo: id, n: prop.n }; p.tema = prop.tema || ""; p.guionPendiente = e.message;
+          if (b.canal) p.canal = b.canal;
+          P.guardar(p.id, "proyecto.json", p);
+          return json(res, 200, { ...P.detalle(p.id), guionPendiente: true, aviso: e.message });
+        }
         guion.inspiracion = prop.inspiradaEn || [];
         if (!guion.subir) guion.subir = { titulo: prop.tituloPost || "", descripcion: prop.descripcion || "", hashtags: prop.hashtags || [] };
       }

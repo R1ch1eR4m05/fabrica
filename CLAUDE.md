@@ -16,6 +16,9 @@ Habla con Richie en español de México, directo y sin rodeos.
 3. Escribe `proyectos/<id>/guion.json` con el formato de ESTILOS.md, en español de México.
 4. `node fabrica.js listo <id>`. El panel lo muestra al recargar.
 
+### "Escribe los guiones pendientes"
+`node fabrica.js guiones-pendientes` los lista (suelen ser los que el investigador creó cuando Gemini no respondió; la idea, el tema y el ángulo están en `proyecto.json` → `idea`). Escribe cada uno con el proceso de arriba, `node fabrica.js listo <id>`, y si Richie lo pide, hazlos completos con `node fabrica.js todo <id>`.
+
 ## Cuando pida un estilo nuevo
 Sigue ESTILOS.md: carpeta nueva con `estilo.json`, `GUION.md`, `plantilla.html` e `ideas.json`.
 Pruébalo con un proyecto de prueba y `node fabrica.js fotos`, en 9:16 y 16:9. Mira las imágenes y corrige lo que se encime o se salga del cuadro.

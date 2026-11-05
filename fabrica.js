@@ -9,6 +9,7 @@
 //   node fabrica.js fotos <id> [seg,seg,…]        saca fotogramas para revisar (proyectos/<id>/revision/)
 //   node fabrica.js render <id> [--formato 16:9]  saca el video final (también en listos/)
 //   node fabrica.js todo <id>                     voz + render
+//   node fabrica.js guiones-pendientes            (Claude Code) lista los videos que esperan guion
 //   node fabrica.js motion-pendientes             (Claude Code) lista los motion graphics con brief que faltan por construir
 //   node fabrica.js listo-motion <id>             (Claude Code) marca terminado un motion graphics y lo copia a listos/
 //   node fabrica.js convertir                     convierte en propuestas los informes pendientes (Gemini o Claude)
@@ -79,6 +80,11 @@ async function main() {
       const { render } = await import("./core/render.js");
       const r = await render(id, avisar); P.marcar(id, "render", "listo");
       console.log(`\nVideo listo en ${r.archivo} (${r.segundos} s)`); return;
+    }
+    case "guiones-pendientes": {
+      const ps = P.listarProyectos().filter((p) => p.estado?.guion !== "listo" && p.estilo !== "motion");
+      console.log(ps.length ? ps.map((p) => `${p.id}  ·  ${p.estilo}  ·  ${p.titulo}`).join("\n") : "No hay guiones pendientes.");
+      return;
     }
     case "motion-pendientes": {
       const MOT = await import("./core/motion.js");
