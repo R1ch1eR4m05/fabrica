@@ -9,6 +9,8 @@
 //   node fabrica.js fotos <id> [seg,seg,…]        saca fotogramas para revisar (proyectos/<id>/revision/)
 //   node fabrica.js render <id> [--formato 16:9]  saca el video final (también en listos/)
 //   node fabrica.js todo <id>                     voz + render
+//   node fabrica.js pendientes                    (Claude Code) TODO lo que falta: propuestas sin crear, guiones, motion y videos sin sacar
+//   node fabrica.js crear-propuesta <archivo> <n> [--sin-ia]   crea el video de una propuesta del investigador
 //   node fabrica.js guiones-pendientes            (Claude Code) lista los videos que esperan guion
 //   node fabrica.js motion-pendientes             (Claude Code) lista los motion graphics con brief que faltan por construir
 //   node fabrica.js listo-motion <id>             (Claude Code) marca terminado un motion graphics y lo copia a listos/
@@ -80,6 +82,33 @@ async function main() {
       const { render } = await import("./core/render.js");
       const r = await render(id, avisar); P.marcar(id, "render", "listo");
       console.log(`\nVideo listo en ${r.archivo} (${r.segundos} s)`); return;
+    }
+    case "pendientes": { // todo lo que falta, para que Claude Code lo termine con una sola orden: "haz los pendientes"
+      const MOT = await import("./core/motion.js");
+      const INV = await import("./core/investigador.js");
+      const ps = P.listarProyectos();
+      const sinGuion = ps.filter((p) => p.estilo !== "motion" && p.estado?.guion !== "listo");
+      const motion = ps.filter((p) => p.estilo === "motion" && p.motion?.estiloMotion && p.estado?.render !== "listo" && !MOT.estadoMotion(p.id).construido);
+      const sinVideo = ps.filter((p) => p.estilo !== "motion" && p.estado?.guion === "listo" && p.estado?.render !== "listo" && !["trabajando", "en-fila"].includes(p.estado?.render));
+      const ultima = INV.listarInvestigaciones()[0];
+      let sinCrear = [];
+      if (ultima) {
+        const inv = INV.leerInvestigacion(ultima.archivo);
+        const hechas = new Set(ps.filter((p) => p.desdeInvestigacion?.archivo === ultima.archivo).map((p) => p.desdeInvestigacion.n));
+        sinCrear = (inv.propuestas || []).filter((x) => !hechas.has(x.n)).map((x) => ({ n: x.n, estilo: x.estilo || "frases-desenfocado", tema: x.tema || x.frase }));
+      }
+      const lin = (t, l, f) => console.log(`\n${t} (${l.length})` + (l.length ? "\n" + l.map(f).join("\n") : ""));
+      lin(`Propuestas sin crear de ${ultima?.archivo || "(ninguna investigación)"}`, sinCrear, (x) => `  #${x.n} · ${x.estilo} · ${x.tema}`);
+      lin("Videos sin guion", sinGuion, (p) => `  ${p.id} · ${p.estilo} · ${p.titulo}`);
+      lin("Motion graphics sin construir", motion, (p) => `  ${p.id} · ${p.motion.estiloMotion} · ${p.titulo}`);
+      lin("Con guion pero sin video (o con error)", sinVideo, (p) => `  ${p.id} · ${p.estilo} · voz ${p.estado.voz} · video ${p.estado.render}${p.error ? " · error: " + p.error : ""}`);
+      return;
+    }
+    case "crear-propuesta": { // node fabrica.js crear-propuesta <archivo> <n> [--sin-ia]: lo mismo que "Solo crear" en el panel
+      const { crearDesdePropuesta } = await import("./core/propuestas.js");
+      const r = await crearDesdePropuesta(libres[0], Number(libres[1]), { formato: opc("formato", "9:16"), sinIA: args.includes("--sin-ia") });
+      console.log(`${r.id}  ·  ${r.estilo}${r.guionPendiente ? "  ·  SIN GUION: escríbelo tú" : r.estilo === "motion" ? "  ·  brief listo: constrúyelo" : "  ·  guion listo"}`);
+      return;
     }
     case "guiones-pendientes": {
       const ps = P.listarProyectos().filter((p) => p.estado?.guion !== "listo" && p.estilo !== "motion");

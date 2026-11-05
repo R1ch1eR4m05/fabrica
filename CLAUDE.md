@@ -16,6 +16,14 @@ Habla con Richie en español de México, directo y sin rodeos.
 3. Escribe `proyectos/<id>/guion.json` con el formato de ESTILOS.md, en español de México.
 4. `node fabrica.js listo <id>`. El panel lo muestra al recargar.
 
+## "Haz los pendientes" (la orden de siempre)
+1. `node fabrica.js pendientes` muestra todo lo que falta, en 4 grupos.
+2. **Propuestas sin crear** de la última investigación: `node fabrica.js crear-propuesta <archivo> <n> --sin-ia` por cada una (crea el proyecto en su estilo; frases ya sale con guion).
+3. **Videos sin guion**: escribe cada guion (sección de abajo) y `node fabrica.js listo <id>`.
+4. **Motion graphics sin construir**: construye cada uno (sección Motion graphics). Si Richie dijo "sin preguntarme", sáltate las aprobaciones y revisa tú los fotogramas.
+5. **Con guion pero sin video (o con error)**: `node fabrica.js todo <id>` (voz + video). Si hay error, léelo y arréglalo antes de reintentar.
+6. Al final, `node fabrica.js pendientes` otra vez y dile a Richie qué quedó listo (en `listos/`) y qué no y por qué. No gastes créditos de Flow ni de música de ElevenLabs sin que él lo pida.
+
 ### "Escribe los guiones pendientes"
 `node fabrica.js guiones-pendientes` los lista (suelen ser los que el investigador creó cuando Gemini no respondió; la idea, el tema y el ángulo están en `proyecto.json` → `idea`). Escribe cada uno con el proceso de arriba, `node fabrica.js listo <id>`, y si Richie lo pide, hazlos completos con `node fabrica.js todo <id>`.
 
