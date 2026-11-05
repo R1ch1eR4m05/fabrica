@@ -10,8 +10,8 @@ const espera = (ms) => new Promise((r) => setTimeout(r, ms));
 export async function gemini(sistema, texto, { json = true, buscar = false } = {}) {
   let ultimo = "";
   for (const modelo of CFG.geminiModelos) {
-    for (let intento = 0; intento < 3; intento++) {
-      if (intento) await espera([0, 8000, 20000][intento]);
+    for (let intento = 0; intento < 4; intento++) {
+      if (intento) await espera([0, 10000, 25000, 45000][intento]);
       try {
         const cuerpo = {
           systemInstruction: { parts: [{ text: sistema }] },

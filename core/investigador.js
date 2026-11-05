@@ -280,7 +280,14 @@ export async function investigar(avisar = () => {}) {
 
   let contenido;
   if (CFG.apifyToken) {
-    const { lista, errores } = await recolectar(cfg, avisar);
+    // Apify cuesta: si Gemini falla después, el siguiente intento reutiliza lo ya recolectado (hasta 12 h, misma configuración)
+    const F_RECOL = path.join(DIR_INV, "recoleccion.json");
+    const huella = JSON.stringify({ r: cfg.redes, a: cfg.cuentasTiktok, b: cfg.cuentasInstagram, c: cfg.hashtags, d: cfg.busquedas, e: cfg.dias, f: cfg.porFuente });
+    let rec = null;
+    try { const x = JSON.parse(fs.readFileSync(F_RECOL, "utf8")); if (x.huella === huella && Date.now() - new Date(x.fecha) < 12 * 3600e3 && x.lista?.length) rec = x; } catch {}
+    if (rec) avisar({ progreso: 0.65, msg: "Reutilizo las publicaciones que ya traje hace un rato (no vuelvo a gastar Apify)…" });
+    const { lista, errores } = rec || (await recolectar(cfg, avisar));
+    if (!rec && lista.length) fs.writeFileSync(F_RECOL, JSON.stringify({ fecha: new Date().toISOString(), huella, lista, errores }));
     salida.errores = errores;
     if (!lista.length) throw new Error("No encontré publicaciones. " + errores.join(" | "));
     const ranking = lista.map(puntuar).sort((a, b) => b.puntaje - a.puntaje);
