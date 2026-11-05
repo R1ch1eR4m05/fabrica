@@ -1,0 +1,20 @@
+{
+  "nombre": "Mapas · Shorts de geografía",
+  "descripcion": "Mapas animados: historia de un territorio, comparar tamaños reales, fronteras raras y rutas. Satélite, papel antiguo o plano; banderas con ojos.",
+  "orden": 3,
+  "formatos": ["9:16", "16:9"],
+  "duraciones": { "corto": "35 a 60 segundos (entre 100 y 170 palabras)", "largo": "3 a 6 minutos" },
+  "tipos": ["gancho", "narracion", "dato", "cierre"],
+  "visuales": [],
+  "camposAvanzados": ["mapa", "banderas", "pegatinas"],
+  "preparar": "mapas",
+  "opciones": [
+    { "clave": "mapa", "nombre": "Mapa", "valores": { "plano": "Plano (colores)", "satelite": "Satélite", "papel": "Papel antiguo" } }
+  ],
+  "pausaEntreEscenas": 0.25,
+  "colaFinal": 1.2,
+  "sonido": { "ambiente": "suave", "volumenAmbiente": 0.22, "golpesEn": [], "volumenEfectos": 0.55 },
+  "portadaEn": 1.5,
+  "vozSugerida": "Narrador ágil y curioso, ritmo rápido (shorts).",
+  "creditos": "Mapas: Natural Earth (dominio público). Banderas: country-flag-icons (MIT)."
+}

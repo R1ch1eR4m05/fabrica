@@ -1,0 +1,205 @@
+// Agente investigador: mira qué se está haciendo viral en el nicho y propone frases ORIGINALES listas para video.
+//
+// 1. Recolecta publicaciones (Apify: TikTok e Instagram) de cuentas, hashtags y búsquedas del nicho.
+// 2. Las puntúa: vistas, vistas contra seguidores (si rebasó a su audiencia), guardados y compartidos (lo que más pesa en frases).
+// 3. Claude mira las mejores (texto + portada, donde suele ir la frase) y saca los patrones.
+// 4. Propone frases nuevas con su prompt de Flow en 9:16, su búsqueda de Pexels y el texto para publicar.
+// Sin APIFY_TOKEN usa la búsqueda web de Claude (sin métricas reales: lo dice en el resultado).
+import fs from "node:fs";
+import path from "node:path";
+import { CFG, RAIZ } from "./config.js";
+
+export const DIR_INV = path.join(RAIZ, "investigacion");
+fs.mkdirSync(DIR_INV, { recursive: true });
+const F_CONFIG = path.join(DIR_INV, "nicho.json");
+
+const CONFIG_INICIAL = {
+  nombre: "Levania · crianza y familia",
+  descripcion: "Mamás hispanas (México y EE. UU.) con hijos de 3 a 10 años: rutinas, paciencia, culpa de mamá, tiempo de calidad, disciplina con amor.",
+  redes: ["tiktok", "instagram"],
+  cuentasTiktok: [],
+  cuentasInstagram: [],
+  hashtags: ["maternidad", "crianzarespetuosa", "frasesdemama", "mamaprimeriza", "crianzaconamor"],
+  busquedas: ["frases para mamás", "reflexión maternidad"],
+  dias: 45,
+  porFuente: 25,
+  propuestas: 10,
+  marca: "Levania vende rutinas y checklists para familias. Las frases NO venden: conectan. El cierre invita a comentar una palabra (p. ej. RUTINA).",
+};
+
+export function leerConfig() {
+  if (!fs.existsSync(F_CONFIG)) fs.writeFileSync(F_CONFIG, JSON.stringify(CONFIG_INICIAL, null, 2));
+  return { ...CONFIG_INICIAL, ...JSON.parse(fs.readFileSync(F_CONFIG, "utf8")) };
+}
+export function guardarConfig(c) { fs.writeFileSync(F_CONFIG, JSON.stringify({ ...leerConfig(), ...c }, null, 2)); return leerConfig(); }
+
+export function listarInvestigaciones() {
+  return fs.readdirSync(DIR_INV).filter((f) => /^\d{4}-.*\.json$/.test(f)).sort().reverse()
+    .map((f) => { const j = JSON.parse(fs.readFileSync(path.join(DIR_INV, f), "utf8")); return { archivo: f, fecha: j.fecha, modo: j.modo, propuestas: j.propuestas?.length || 0, analizadas: j.publicaciones?.length || 0 }; });
+}
+export const leerInvestigacion = (f) => JSON.parse(fs.readFileSync(path.join(DIR_INV, path.basename(f)), "utf8"));
+
+// ---------------- recolección (Apify) ----------------
+async function apify(actor, entrada) {
+  const url = `https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${encodeURIComponent(CFG.apifyToken)}&timeout=280`;
+  const r = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(entrada), signal: AbortSignal.timeout(300000) });
+  if (!r.ok) throw new Error(`Apify (${actor}) respondió ${r.status}: ${(await r.text()).slice(0, 200)}`);
+  return r.json();
+}
+
+const num = (...v) => { for (const x of v) if (x != null && !isNaN(Number(x))) return Number(x); return 0; };
+
+function normTiktok(x) {
+  return {
+    red: "tiktok", url: x.webVideoUrl || x.url, autor: x.authorMeta?.name || x.author?.uniqueId || "",
+    seguidores: num(x.authorMeta?.fans, x.authorStats?.followerCount), texto: x.text || x.desc || "",
+    vistas: num(x.playCount, x.stats?.playCount), likes: num(x.diggCount, x.stats?.diggCount),
+    comentarios: num(x.commentCount, x.stats?.commentCount), compartidos: num(x.shareCount, x.stats?.shareCount),
+    guardados: num(x.collectCount, x.stats?.collectCount), fecha: x.createTimeISO || (x.createTime ? new Date(x.createTime * 1000).toISOString() : null),
+    portada: x.videoMeta?.coverUrl || x.videoMeta?.originalCoverUrl || x.covers?.default || null, duracion: num(x.videoMeta?.duration),
+  };
+}
+function normInstagram(x) {
+  return {
+    red: "instagram", url: x.url || (x.shortCode ? `https://www.instagram.com/p/${x.shortCode}/` : ""), autor: x.ownerUsername || "",
+    seguidores: num(x.ownerFollowersCount), texto: x.caption || "",
+    vistas: num(x.videoPlayCount, x.videoViewCount, x.igPlayCount), likes: num(x.likesCount), comentarios: num(x.commentsCount),
+    compartidos: num(x.sharesCount), guardados: 0, fecha: x.timestamp || null, portada: x.displayUrl || null, duracion: num(x.videoDuration),
+    esVideo: x.type === "Video" || !!x.videoUrl,
+  };
+}
+
+async function recolectar(cfg, avisar) {
+  const tareas = [];
+  const n = cfg.porFuente;
+  if (cfg.redes.includes("tiktok")) {
+    if (cfg.cuentasTiktok.length) tareas.push(["TikTok · cuentas", () => apify("clockworks~tiktok-scraper", { profiles: cfg.cuentasTiktok.map((c) => c.replace(/^@/, "")), resultsPerPage: n, shouldDownloadVideos: false, shouldDownloadCovers: false }), normTiktok]);
+    if (cfg.hashtags.length) tareas.push(["TikTok · hashtags", () => apify("clockworks~tiktok-scraper", { hashtags: cfg.hashtags.map((h) => h.replace(/^#/, "")), resultsPerPage: n, shouldDownloadVideos: false, shouldDownloadCovers: false }), normTiktok]);
+    if (cfg.busquedas.length) tareas.push(["TikTok · búsquedas", () => apify("clockworks~tiktok-scraper", { searchQueries: cfg.busquedas, resultsPerPage: n, shouldDownloadVideos: false, shouldDownloadCovers: false }), normTiktok]);
+  }
+  if (cfg.redes.includes("instagram")) {
+    if (cfg.cuentasInstagram.length) tareas.push(["Instagram · cuentas", () => apify("apify~instagram-scraper", { directUrls: cfg.cuentasInstagram.map((c) => c.startsWith("http") ? c : `https://www.instagram.com/${c.replace(/^@/, "")}/`), resultsType: "posts", resultsLimit: n }), normInstagram]);
+    if (cfg.hashtags.length) tareas.push(["Instagram · hashtags", () => apify("apify~instagram-hashtag-scraper", { hashtags: cfg.hashtags.map((h) => h.replace(/^#/, "")), resultsLimit: n }), normInstagram]);
+  }
+  const todas = [], errores = [];
+  for (const [k, [nombre, fn, norm]] of tareas.entries()) {
+    avisar({ progreso: k / (tareas.length + 2), msg: `Recolectando ${nombre}…` });
+    try { todas.push(...(await fn()).map(norm)); } catch (e) { errores.push(`${nombre}: ${e.message}`); }
+  }
+  // sin repetidos, recientes, y en IG solo videos
+  const vistos = new Set(), limite = Date.now() - cfg.dias * 864e5;
+  const lista = todas.filter((p) => p.url && !vistos.has(p.url) && vistos.add(p.url))
+    .filter((p) => !p.fecha || new Date(p.fecha).getTime() >= limite)
+    .filter((p) => p.red !== "instagram" || p.esVideo !== false);
+  return { lista, errores };
+}
+
+export function puntuar(p) {
+  const v = Math.max(1, p.vistas);
+  const interaccion = (p.likes + 2 * p.comentarios + 4 * p.compartidos + 4 * p.guardados) / v; // guardar y compartir es lo que mueve una frase
+  const rebase = p.seguidores ? p.vistas / p.seguidores : null; // >1: llegó más allá de sus seguidores
+  const puntaje = Math.log10(v + 1) * (1 + 8 * Math.min(interaccion, 0.5)) * (rebase ? Math.min(3, 1 + Math.log10(1 + rebase)) : 1);
+  return { ...p, interaccion: +interaccion.toFixed(4), rebase: rebase ? +rebase.toFixed(2) : null, puntaje: +puntaje.toFixed(2) };
+}
+
+async function imagenBase64(url) {
+  try {
+    const r = await fetch(url, { signal: AbortSignal.timeout(12000), headers: { "user-agent": "Mozilla/5.0" } });
+    if (!r.ok) return null;
+    const tipo = (r.headers.get("content-type") || "image/jpeg").split(";")[0];
+    if (!/^image\/(jpeg|png|webp|gif)$/.test(tipo)) return null;
+    const b = Buffer.from(await r.arrayBuffer());
+    return b.length > 4.5e6 ? null : { type: "image", source: { type: "base64", media_type: tipo, data: b.toString("base64") } };
+  } catch { return null; }
+}
+
+// ---------------- análisis con Claude ----------------
+const FORMATO = `Devuelve SOLO JSON válido:
+{
+  "patrones": ["5 a 8 hallazgos concretos de lo que funciona: temas, ganchos, estructura de la frase, emoción, largo, tipo de clip de fondo, CTA"],
+  "propuestas": [{
+    "frase": "frase ORIGINAL en español de México, 8 a 28 palabras, con 1-2 palabras clave entre *asteriscos*",
+    "autor": "solo si es una cita real verificada; si no, vacío",
+    "cierre": "llamada a la acción corta (comentar una palabra, guardar, enviar a alguien)",
+    "tema": "1-3 palabras",
+    "porque": "por qué debería funcionar, citando el patrón y las publicaciones que la inspiran",
+    "inspiradaEn": ["url de las publicaciones que la inspiran"],
+    "flowPrompt": "prompt EN INGLÉS para Google Flow/Veo, vertical 9:16, ~8 s: slow motion, shallow depth of field, soft natural light, una sola acción emotiva y simple (ej. a child running into their mother's arms in a sunlit field), cámara suave, cinematic, warm tones, no text, no logos, no subtitles",
+    "pexels": "2-4 palabras en inglés para buscar un clip parecido en Pexels",
+    "tituloPost": "título/gancho para publicar",
+    "descripcion": "1-2 líneas para la descripción",
+    "hashtags": ["#..."]
+  }]
+}`;
+
+export async function investigar(avisar = () => {}) {
+  if (!CFG.anthropicKey) throw new Error("El investigador necesita ANTHROPIC_API_KEY en el .env.");
+  const cfg = leerConfig();
+  const salida = { fecha: new Date().toISOString(), config: cfg, modo: CFG.apifyToken ? "metricas" : "web", errores: [] };
+  const sistema = [
+    "Eres investigador de contenido viral para redes sociales y estratega creativo. Trabajas para esta marca:",
+    `${cfg.nombre}. Audiencia: ${cfg.descripcion}`, cfg.marca,
+    "Formato de los videos: 9:16 vertical, frase en pantalla sobre un clip en cámara lenta desenfocado, 10-25 s.",
+    "REGLAS: no copies frases de otras cuentas (eso es plagio y la plataforma lo castiga): toma el patrón y escribe algo nuevo con la voz de la marca.",
+    "Nunca atribuyas una frase a una persona real si no puedes verificarla. Nada de culpa ni de vergüenza hacia las mamás; sí de reconocimiento y ternura.",
+    `Da exactamente ${cfg.propuestas} propuestas, variadas en tema y emoción.`,
+    FORMATO,
+  ].join("\n\n");
+
+  let contenido;
+  if (CFG.apifyToken) {
+    const { lista, errores } = await recolectar(cfg, avisar);
+    salida.errores = errores;
+    if (!lista.length) throw new Error("No encontré publicaciones. " + errores.join(" | "));
+    const ranking = lista.map(puntuar).sort((a, b) => b.puntaje - a.puntaje);
+    salida.publicaciones = ranking.slice(0, 40);
+    const top = ranking.slice(0, 15);
+    avisar({ progreso: 0.7, msg: `Analizando las ${top.length} mejores de ${lista.length} publicaciones…` });
+    const imagenes = (await Promise.all(top.slice(0, 12).map((p) => (p.portada ? imagenBase64(p.portada) : null))));
+    contenido = [{ type: "text", text: `Estas son las publicaciones con mejor desempeño del nicho (últimos ${cfg.dias} días), ordenadas por puntaje (vistas, interacción ponderando guardados y compartidos, y cuánto rebasaron a sus seguidores):\n` +
+      JSON.stringify(top.map((p, i) => ({ n: i + 1, red: p.red, url: p.url, autor: p.autor, vistas: p.vistas, rebase: p.rebase, interaccion: p.interaccion, guardados: p.guardados, compartidos: p.compartidos, texto: p.texto.slice(0, 400), duracion: p.duracion })), null, 1) +
+      "\n\nA continuación van las portadas (muchas traen la frase escrita). Cada imagen corresponde al número indicado." }];
+    imagenes.forEach((img, i) => { if (img) contenido.push({ type: "text", text: `Portada n=${i + 1}` }, img); });
+    contenido.push({ type: "text", text: "Analiza y propón." });
+  } else {
+    avisar({ progreso: 0.2, msg: "Sin Apify: investigando con búsqueda web (sin métricas exactas)…" });
+    contenido = `Investiga en la web qué videos de frases y reflexiones para este nicho se están haciendo virales ahora en TikTok, Instagram Reels y Facebook (cuentas, temas, formatos, ejemplos con enlace). Usa la búsqueda. Luego analiza y propón. Aclara en "patrones" que no hay métricas exactas.`;
+  }
+
+  avisar({ progreso: 0.8, msg: "Claude está escribiendo las propuestas…" });
+  let mensajes = [{ role: "user", content: contenido }], r;
+  for (let vuelta = 0; vuelta < 4; vuelta++) {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "x-api-key": CFG.anthropicKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+      body: JSON.stringify({ model: CFG.anthropicModelo, max_tokens: 12000, system: sistema, messages: mensajes,
+        tools: [{ type: "web_search_20250305", name: "web_search", max_uses: CFG.apifyToken ? 3 : 8 }] }),
+    });
+    if (!res.ok) throw new Error(`La API de Claude respondió ${res.status}: ${(await res.text()).slice(0, 300)}`);
+    r = await res.json();
+    if (r.stop_reason !== "pause_turn") break;
+    mensajes = [...mensajes, { role: "assistant", content: r.content }];
+  }
+  const texto = r.content.filter((b) => b.type === "text").map((b) => b.text).join("");
+  const a = texto.indexOf("{"), b = texto.lastIndexOf("}");
+  const j = JSON.parse(texto.slice(a, b + 1));
+  salida.patrones = j.patrones || [];
+  salida.propuestas = (j.propuestas || []).map((p, i) => ({ ...p, n: i + 1 }));
+  const archivo = `${salida.fecha.slice(0, 16).replace(/[:T]/g, "-")}.json`;
+  fs.writeFileSync(path.join(DIR_INV, archivo), JSON.stringify(salida, null, 2));
+  return { archivo, propuestas: salida.propuestas.length };
+}
+
+// Convierte una propuesta en el guion del estilo de frases
+export function guionDesdePropuesta(p) {
+  const escenas = [{ tipo: "frase", texto: p.frase }];
+  if (p.autor) escenas.push({ tipo: "autor", texto: p.autor });
+  if (p.cierre) escenas.push({ tipo: "cierre", texto: p.cierre });
+  return {
+    titulo: p.tituloPost || p.tema || "Frase",
+    escenas,
+    fondo: { buscar: p.pexels || "", flowPrompt: p.flowPrompt || "" },
+    inspiracion: p.inspiradaEn || [], // no va en el texto para publicar
+    subir: { titulo: p.tituloPost || "", descripcion: p.descripcion || "", hashtags: p.hashtags || [] },
+  };
+}

@@ -1,0 +1,227 @@
+// Servidor del panel. En la laptop escucha solo en 127.0.0.1.
+// En el VPS: HOST=0.0.0.0 y PANEL_CLAVE=algo en el .env (pide usuario "fabrica" y esa clave).
+import http from "node:http";
+import { CFG, FORMATOS } from "./config.js";
+import { listarEstilos, leerEstilo } from "./estilos.js";
+import * as P from "./proyectos.js";
+import { servirArchivo } from "./estatico.js";
+import { escribirGuion } from "./ia.js";
+import { hacerVoz } from "./voz.js";
+import { render, textoParaSubir } from "./render.js";
+import { EFECTOS } from "./audio.js";
+import fs from "node:fs";
+import path from "node:path";
+import { prepararFondo } from "./fondos.js";
+import * as INV from "./investigador.js";
+import { clipDeFlow, flowDisponible } from "./flow.js";
+
+let investigando = null;
+function correrInvestigacion() {
+  if (investigando) throw new Error("Ya hay una investigación en marcha.");
+  investigando = { inicio: Date.now() };
+  const av = (a) => emitir({ id: "_investigador", paso: "investigar", estado: "trabajando", ...a });
+  av({ progreso: 0, msg: "Empezando…" });
+  INV.investigar(av)
+    .then((r) => emitir({ id: "_investigador", paso: "investigar", estado: "listo", msg: `Listo: ${r.propuestas} propuestas`, resultado: r }))
+    .catch((e) => { console.error(e); emitir({ id: "_investigador", paso: "investigar", estado: "error", msg: e.message }); })
+    .finally(() => (investigando = null));
+}
+
+// ---- trabajos (uno a la vez, en fila) ----
+const fila = [];
+let actual = null;
+const oyentes = new Set();
+const ultimos = {}; // último aviso por proyecto
+
+function emitir(ev) {
+  if (ev.id) ultimos[ev.id] = ev;
+  const linea = `data: ${JSON.stringify(ev)}\n\n`;
+  for (const r of oyentes) r.write(linea);
+}
+
+function encolar(id, paso, fn) {
+  if (actual?.id === id || fila.some((t) => t.id === id && t.paso === paso)) throw new Error("Ese video ya tiene un trabajo en marcha.");
+  fila.push({ id, paso, fn });
+  P.marcar(id, paso, "en-fila");
+  emitir({ id, paso, estado: "en-fila", msg: fila.length > 1 || actual ? "En fila…" : "Empezando…" });
+  siguiente();
+}
+
+async function siguiente() {
+  if (actual || !fila.length) return;
+  actual = fila.shift();
+  const { id, paso, fn } = actual;
+  P.marcar(id, paso, "trabajando");
+  emitir({ id, paso, estado: "trabajando", progreso: 0, msg: "Trabajando…" });
+  try {
+    const r = await fn((a) => emitir({ id, paso, estado: "trabajando", ...a }));
+    P.marcar(id, paso, "listo");
+    emitir({ id, paso, estado: "listo", msg: "Listo", resultado: r });
+  } catch (e) {
+    console.error(`[${id}/${paso}]`, e);
+    P.marcar(id, paso, "error", { error: e.message });
+    emitir({ id, paso, estado: "error", msg: e.message });
+  } finally { actual = null; siguiente(); }
+}
+
+// ---- utilidades http ----
+const json = (res, code, obj) => { res.writeHead(code, { "content-type": "application/json; charset=utf-8" }); res.end(JSON.stringify(obj)); };
+const cuerpo = (req) => new Promise((ok, mal) => { let b = ""; req.on("data", (d) => (b += d)); req.on("end", () => { try { ok(b ? JSON.parse(b) : {}); } catch (e) { mal(e); } }); });
+
+function autorizado(req) {
+  if (!CFG.clave) return true;
+  const h = req.headers.authorization || "";
+  const [, b64] = h.split(" ");
+  const [, clave] = Buffer.from(b64 || "", "base64").toString().split(":");
+  return clave === CFG.clave;
+}
+
+async function api(req, res, partes) {
+  const [, , recurso, id, accion] = partes; // /api/<recurso>/<id>/<accion>
+  const m = req.method;
+
+  if (recurso === "investigacion") {
+    if (!id && m === "GET") return json(res, 200, { config: INV.leerConfig(), lista: INV.listarInvestigaciones(), trabajando: !!investigando, apify: !!CFG.apifyToken, ia: !!CFG.anthropicKey });
+    if (!id && m === "PUT") return json(res, 200, INV.guardarConfig(await cuerpo(req)));
+    if (!id && m === "POST") { correrInvestigacion(); return json(res, 200, { ok: true }); }
+    if (id && !accion && m === "GET") return json(res, 200, INV.leerInvestigacion(id));
+    if (id && accion === "crear" && m === "POST") {
+      const b = await cuerpo(req);
+      const inv = INV.leerInvestigacion(id), prop = inv.propuestas.find((x) => x.n === Number(b.n));
+      if (!prop) return json(res, 404, { error: "No encuentro esa propuesta." });
+      const p = P.crearProyecto({ estilo: "frases-desenfocado", titulo: prop.tituloPost || prop.tema, idea: prop.frase, formato: b.formato || "9:16", duracion: "corto", conVoz: b.conVoz ?? false, opciones: b.opciones || { tema: "noche", letra: "serif" } });
+      p.flowPrompt = prop.flowPrompt; p.fondoBuscar = prop.pexels; p.desdeInvestigacion = { archivo: id, n: prop.n };
+      if (b.canal) p.canal = b.canal;
+      P.guardar(p.id, "proyecto.json", p);
+      P.guardar(p.id, "guion.json", INV.guionDesdePropuesta(prop));
+      P.marcar(p.id, "guion", "listo");
+      return json(res, 200, P.detalle(p.id));
+    }
+    return json(res, 404, { error: "No existe" });
+  }
+
+  if (recurso === "info") return json(res, 200, {
+    flow: await flowDisponible(), apify: !!CFG.apifyToken,
+    estilos: listarEstilos(), formatos: FORMATOS, efectos: EFECTOS,
+    ia: !!CFG.anthropicKey, voz: !!CFG.elevenKey, pexels: !!CFG.pexelsKey, apimart: !!CFG.apimartKey, trabajando: actual ? { id: actual.id, paso: actual.paso } : null,
+  });
+
+  if (recurso === "eventos") {
+    res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-store", connection: "keep-alive" });
+    res.write(": hola\n\n");
+    for (const ev of Object.values(ultimos)) res.write(`data: ${JSON.stringify(ev)}\n\n`);
+    oyentes.add(res);
+    const latido = setInterval(() => res.write(": ·\n\n"), 20000);
+    req.on("close", () => { oyentes.delete(res); clearInterval(latido); });
+    return;
+  }
+
+  if (recurso !== "proyectos") return json(res, 404, { error: "No existe" });
+
+  if (!id && m === "GET") return json(res, 200, P.listarProyectos());
+  if (!id && m === "POST") {
+    const b = await cuerpo(req);
+    if (!leerEstilo(b.estilo)?.listo) return json(res, 400, { error: "Ese estilo todavía no está listo." });
+    return json(res, 200, P.crearProyecto(b));
+  }
+
+  const p = P.leer(id, "proyecto.json");
+  if (!p) return json(res, 404, { error: "No encuentro ese video." });
+
+  if (!accion && m === "GET") return json(res, 200, P.detalle(id));
+  if (!accion && m === "PATCH") { // cambiar título, formato, duración
+    const b = await cuerpo(req);
+    for (const k of ["titulo", "formato", "duracion", "idea", "canal", "vozId", "conVoz", "fondoBuscar", "flowPrompt"]) if (b[k] !== undefined) p[k] = b[k];
+    if (b.opciones) p.opciones = { ...(p.opciones || {}), ...b.opciones };
+    if ((b.formato || b.opciones) && p.estado.render === "listo") p.estado.render = "desactualizado";
+    if (b.conVoz !== undefined && p.estado.voz === "listo") p.estado.voz = "desactualizado";
+    P.guardar(id, "proyecto.json", p);
+    return json(res, 200, P.detalle(id));
+  }
+
+  if (accion === "guion" && m === "PUT") { // guardar guion editado a mano
+    const g = await cuerpo(req);
+    if (!Array.isArray(g.escenas)) return json(res, 400, { error: "El guion necesita escenas." });
+    P.guardar(id, "guion.json", g);
+    P.marcar(id, "guion", "listo");
+    return json(res, 200, P.detalle(id));
+  }
+  if (accion === "guion" && m === "POST") { // escribir con IA
+    const b = await cuerpo(req);
+    encolar(id, "guion", async () => {
+      const g = await escribirGuion(p, { cambios: b.cambios || "", guionActual: b.cambios && P.leer(id, "guion.json") ? P.leer(id, "guion.json") : null });
+      P.guardar(id, "guion.json", g);
+    });
+    return json(res, 200, { ok: true });
+  }
+  if (accion === "fondo" && m === "POST") {
+    const b = await cuerpo(req);
+    if (b.buscar !== undefined) { p.fondoBuscar = b.buscar; P.guardar(id, "proyecto.json", p); }
+    encolar(id, "fondo", (av) => prepararFondo(id, (a) => av({ ...a, paso: "fondo" }), { buscar: b.buscar }));
+    return json(res, 200, { ok: true });
+  }
+  if (accion === "archivo" && (m === "POST" || m === "DELETE")) {
+    // subir o quitar: ?tipo=fondo|musica|imagen   (el archivo va en el cuerpo, el nombre en la cabecera x-nombre)
+    const q = new URL(req.url, "http://x").searchParams, tipo = q.get("tipo");
+    const dir = P.dirProyecto(id);
+    const limpiar = (pref) => fs.readdirSync(dir).filter((n) => n.startsWith(pref + ".")).forEach((n) => fs.rmSync(path.join(dir, n)));
+    const base = { fondo: "fondo-propio", musica: "musica" }[tipo];
+    if (m === "DELETE") {
+      if (base) limpiar(base);
+      if (base === "fondo" && P.existe(id, "tiempos.json")) { try { encolar(id, "fondo", (av) => prepararFondo(id, (a) => av({ ...a, paso: "fondo" }))); } catch {} }
+      return json(res, 200, P.detalle(id));
+    }
+    const nombre = decodeURIComponent(req.headers["x-nombre"] || "archivo.bin");
+    const ext = path.extname(nombre).toLowerCase().replace(/[^.a-z0-9]/g, "");
+    let destino;
+    if (base) { limpiar(base); destino = path.join(dir, base + ext); }
+    else if (tipo === "imagen") { fs.mkdirSync(path.join(dir, "img"), { recursive: true }); destino = path.join(dir, "img", P.slug(path.basename(nombre, ext)) + ext); }
+    else return json(res, 400, { error: "Tipo de archivo no válido." });
+    await new Promise((ok, mal) => { const w = fs.createWriteStream(destino); req.pipe(w); w.on("finish", ok); w.on("error", mal); });
+    if (base && p.estado.render === "listo") { p.estado.render = "desactualizado"; P.guardar(id, "proyecto.json", p); }
+    if (base === "fondo" && P.existe(id, "tiempos.json")) { try { encolar(id, "fondo", (av) => prepararFondo(id, (a) => av({ ...a, paso: "fondo" }))); } catch {} }
+    return json(res, 200, { ...P.detalle(id), subido: path.relative(dir, destino).replace(/\\/g, "/") });
+  }
+  if (accion === "flow" && m === "POST") {
+    const b = await cuerpo(req);
+    const prompt = (b.prompt || p.flowPrompt || P.leer(id, "guion.json")?.fondo?.flowPrompt || "").trim();
+    if (!prompt) return json(res, 400, { error: "Falta el prompt para Flow." });
+    p.flowPrompt = prompt; P.guardar(id, "proyecto.json", p);
+    encolar(id, "fondo", (av) => clipDeFlow(id, prompt, (a) => av({ ...a, paso: "fondo" }), { maxCreditos: Number(b.maxCreditos) || 25 }));
+    return json(res, 200, { ok: true });
+  }
+  if (accion === "todo" && m === "POST") { // voz + video seguidos (para lotes)
+    encolar(id, "voz", (av) => hacerVoz(id, av));
+    fila.push({ id, paso: "render", fn: (av) => render(id, av) }); P.marcar(id, "render", "en-fila");
+    return json(res, 200, { ok: true });
+  }
+  if (accion === "voz" && m === "POST") { encolar(id, "voz", (av) => hacerVoz(id, av)); return json(res, 200, { ok: true }); }
+  if (accion === "render" && m === "POST") { encolar(id, "render", (av) => render(id, av)); return json(res, 200, { ok: true }); }
+  if (accion === "subir" && m === "GET") {
+    const g = P.leer(id, "guion.json");
+    res.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
+    return res.end(g ? textoParaSubir(g, leerEstilo(p.estilo), P.leer(id, "tiempos.json"), P.leer(id, "fondo.json")) : "");
+  }
+  return json(res, 404, { error: "No existe" });
+}
+
+export function arrancar() {
+  const srv = http.createServer(async (req, res) => {
+    if (!autorizado(req)) { res.writeHead(401, { "www-authenticate": 'Basic realm="Fabrica"' }); return res.end("Clave necesaria"); }
+    try {
+      const url = req.url.split("?")[0];
+      if (url === "/" || url === "/index.html") return servirArchivo(req, res, "/panel/index.html");
+      if (url.startsWith("/api/")) return await api(req, res, url.split("/"));
+      if (servirArchivo(req, res, url)) return;
+      res.writeHead(404); res.end("No existe");
+    } catch (e) { console.error(e); json(res, 500, { error: e.message }); }
+  });
+  srv.listen(CFG.puerto, CFG.host, () => {
+    const dir = `http://${CFG.host === "0.0.0.0" ? "TU-IP" : "127.0.0.1"}:${CFG.puerto}/`;
+    console.log(`\n  Fábrica lista → ${dir}\n  (deja esta ventana abierta mientras la usas)\n`);
+    if (!CFG.anthropicKey) console.log("  · Sin ANTHROPIC_API_KEY: el guion lo escribe Claude Code o tú en el panel.");
+    if (!CFG.elevenKey) console.log("  · Sin ELEVENLABS_API_KEY: se usará voz de prueba (muda) para ensayar.");
+    if (CFG.host === "0.0.0.0" && !CFG.clave) console.log("  ⚠ Estás abriendo el panel a internet sin PANEL_CLAVE. Ponle una en el .env.");
+  });
+  return srv;
+}

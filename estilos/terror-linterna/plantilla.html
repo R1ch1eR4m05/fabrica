@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><title>Terror · Linterna</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}canvas{display:block;width:100vw;height:100vh;object-fit:contain}</style>
+</head><body><canvas id="lienzo"></canvas>
+<script src="../_comun/motor.js"></script>
+<script src="visuales.js"></script>
+<script>
+const F = "../_comun/fuentes/";
+const HUESO = "#e9e4d8", ROJO = "#c3262b";
+const T = { imagenes: {} };
+let planos = [], numReglas = [];
+
+Motor.iniciar({
+  fuentes: [["Oswald", F + "oswald-latin-600-normal.woff2", { weight: "600" }], ["Oswald", F + "oswald-latin-700-normal.woff2", { weight: "700" }],
+            ["Oswald", F + "oswald-latin-400-normal.woff2", { weight: "400" }], ["Elite", F + "special-elite-latin-400-normal.woff2"]],
+
+  async preparar(M) {
+    T.grano = M.grano(6, 320);
+    // pared: ruido suave a dos escalas
+    T.pared = M.lienzo(540, 960); { const x = T.pared.getContext("2d"), r = M.rng(11);
+      x.fillStyle = "#3b3833"; x.fillRect(0, 0, 540, 960);
+      for (let k = 0; k < 2600; k++) { const a = r() * 0.08; x.fillStyle = r() > 0.5 ? `rgba(255,250,235,${a})` : `rgba(0,0,0,${a * 1.6})`; const s = 2 + r() * 26; x.beginPath(); x.arc(r() * 540, r() * 960, s, 0, 7); x.fill(); }
+      x.strokeStyle = "rgba(0,0,0,0.35)"; x.lineWidth = 1.5; for (let k = 0; k < 7; k++) { x.beginPath(); let px = r() * 540, py = r() * 960; x.moveTo(px, py); for (let j = 0; j < 8; j++) { px += (r() - 0.5) * 60; py += r() * 50; x.lineTo(px, py); } x.stroke(); } }
+    T.niebla = M.lienzo(1200, 400); { const x = T.niebla.getContext("2d"), r = M.rng(5);
+      for (let k = 0; k < 90; k++) { const cx = r() * 1200, cy = 120 + r() * 200, rad = 60 + r() * 160, g = x.createRadialGradient(cx, cy, 0, cx, cy, rad); g.addColorStop(0, "rgba(180,190,210,0.25)"); g.addColorStop(1, "rgba(180,190,210,0)"); x.fillStyle = g; x.fillRect(cx - rad, cy - rad, rad * 2, rad * 2); } }
+    // líneas de barrido
+    T.lineas = M.lienzo(4, 4); { const x = T.lineas.getContext("2d"); x.fillStyle = "rgba(0,0,0,0.22)"; x.fillRect(0, 0, 4, 1); }
+    T.patronLineas = M.ctx.createPattern(T.lineas, "repeat");
+    // imágenes propias por escena (opcional): "imagen": "img/escena3.jpg" dentro de la carpeta del proyecto
+    for (const e of M.guion.escenas) if (e.imagen && !T.imagenes[e.imagen]) {
+      const im = new Image(); im.src = `/proyectos/${encodeURIComponent(M.proyecto.id)}/${e.imagen}`;
+      await im.decode().catch(() => {}); if (im.naturalWidth) T.imagenes[e.imagen] = im;
+    }
+    // planos: escenas seguidas con el mismo fondo comparten plano (la animación no se reinicia)
+    let n = 0;
+    M.guion.escenas.forEach((e, i) => {
+      const v = (e.visual && VISUALES[e.visual]) ? e.visual : "oscuridad";
+      const prev = planos[i - 1];
+      planos[i] = prev && prev.v === v && !e.corte ? { ...prev } : { v, ini: M.tiempos.escenas[i].ini, i };
+      if (e.tipo === "regla") n++; numReglas[i] = n;
+    });
+    planos.forEach((pl, i) => { let f = i; while (planos[f + 1] && planos[f + 1].i === pl.i) f++; pl.fin = M.tiempos.escenas[f].fin; });
+  },
+
+  dibujar(c, t, M) {
+    const i = M.escenaEn(t), e = M.guion.escenas[i], te = M.tiempos.escenas[i];
+    const pl = planos[i], p = t - pl.ini, d = pl.fin - pl.ini, r = M.hash(pl.i + 1);
+    const golpe = ["regla", "giro", "titulo"].includes(e.tipo) ? M.clamp(1 - (t - te.ini) / 0.45) : 0;
+
+    // ---- fondo con cámara que respira ----
+    c.save();
+    const zoom = 1.03 + 0.025 * Math.sin(t * 0.35) + 0.02 * golpe;
+    c.translate(M.W / 2 + (golpe ? (M.hash(t * 60) - 0.5) * 24 * golpe * M.u : 0), M.H / 2 + (golpe ? (M.hash(t * 61) - 0.5) * 24 * golpe * M.u : 0));
+    c.scale(zoom, zoom); c.translate(-M.W / 2, -M.H / 2);
+    dibujarPlano(c, M, pl, p, d, r, e);
+    // fundido entre planos distintos
+    const prev = planos[pl.i - 1];
+    if (prev && t - pl.ini < 0.6) { c.globalAlpha = 1 - (t - pl.ini) / 0.6; dibujarPlano(c, M, prev, t - prev.ini, prev.fin - prev.ini, M.hash(prev.i + 1), M.guion.escenas[prev.i]); c.globalAlpha = 1; }
+    c.restore();
+
+    polvo(c, M, t);
+    // oscurecer detrás del texto grande
+    const sombraTexto = { regla: 0.22, gancho: 0.3, giro: 0.25, cierre: 0.3, titulo: 0.45, dato: 0.35 }[e.tipo];
+    if (sombraTexto) { c.fillStyle = `rgba(0,0,0,${sombraTexto})`; c.fillRect(0, 0, M.W, M.H); }
+
+    // ---- texto ----
+    textos(c, M, t, i, e, te);
+
+    // ---- acabado: destello rojo, viñeta, grano, barrido, parpadeo ----
+    if (golpe) { c.fillStyle = `rgba(160,10,10,${0.28 * golpe * golpe})`; c.fillRect(0, 0, M.W, M.H); }
+    if (e.tipo === "giro") glitch(c, M, t - te.ini);
+    const vg = c.createRadialGradient(M.W / 2, M.H / 2, Math.min(M.W, M.H) * 0.35, M.W / 2, M.H / 2, Math.max(M.W, M.H) * 0.72);
+    vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0,0.72)"); c.fillStyle = vg; c.fillRect(0, 0, M.W, M.H);
+    c.globalAlpha = 0.05; c.globalCompositeOperation = "screen";
+    const gr = T.grano[Math.floor(t * 12) % 6]; for (let y = 0; y < M.H; y += 640) for (let x = 0; x < M.W; x += 640) c.drawImage(gr, x, y, 640, 640);
+    c.globalCompositeOperation = "source-over"; c.globalAlpha = 1;
+    c.fillStyle = T.patronLineas; c.fillRect(0, 0, M.W, M.H);
+    const fl = M.ruido1(t * 11); if (fl > 0.9) { c.fillStyle = `rgba(0,0,0,${(fl - 0.9) * 2.5})`; c.fillRect(0, 0, M.W, M.H); }
+
+    // marca y barra de avance
+    const marca = M.proyecto.canal || M.guion.canal;
+    if (marca) { c.font = `400 ${28 * M.u}px Elite`; c.textAlign = "right"; c.fillStyle = "rgba(233,228,216,0.35)"; c.fillText(marca, M.W - 40 * M.u, M.H - 40 * M.u); }
+    if (M.vertical) { c.fillStyle = "rgba(195,38,43,0.85)"; c.fillRect(0, 0, M.W * (t / M.duracion), 6 * M.u); }
+
+    // inicio y final a negro
+    const neg = Math.max(M.clamp(1 - t / 0.5), M.clamp((t - (M.duracion - 1.6)) / 1.4));
+    if (neg > 0) { c.fillStyle = `rgba(0,0,0,${neg})`; c.fillRect(0, 0, M.W, M.H); }
+  },
+});
+
+function dibujarPlano(c, M, pl, p, d, r, e) { (VISUALES[pl.v] || VISUALES.oscuridad)(c, M, p, d, r, M.guion.escenas[pl.i] || e, T); }
+
+function polvo(c, M, t) {
+  c.fillStyle = "rgba(233,228,216,0.35)";
+  for (let k = 0; k < 40; k++) {
+    const x = ((M.hash(k) * M.W + t * (8 + 14 * M.hash(k + 9)) * M.u) % M.W), y = ((M.hash(k + 3) * M.H + t * (5 + 10 * M.hash(k + 4)) * M.u) % M.H);
+    const a = 0.3 + 0.7 * M.ruido1(t * 0.8 + k);
+    c.globalAlpha = a * 0.6; c.beginPath(); c.arc(x, y, (1 + 2.5 * M.hash(k + 5)) * M.u, 0, 7); c.fill();
+  }
+  c.globalAlpha = 1;
+}
+
+function glitch(c, M, p) {
+  if (p > 1.2) return;
+  const src = M.lienzoPrincipal;
+  for (let k = 0; k < 7; k++) {
+    if (M.hash(Math.floor(p * 20) * 13 + k) < 0.5) continue;
+    const y = M.hash(k * 7 + Math.floor(p * 20)) * M.H, h = (10 + 60 * M.hash(k + 2)) * M.u, dx = (M.hash(k * 3 + Math.floor(p * 20)) - 0.5) * 80 * M.u;
+    c.drawImage(src, 0, y, M.W, h, dx, y, M.W, h);
+  }
+}
+
+// ---------- texto ----------
+function palabrasConEstado(M, frase, t) { return frase.map((p) => ({ ...p, a: M.clamp((t - p.t0 + 0.08) / 0.16) })); }
+
+function bloque(c, M, frase, t, { y, ancho, tam, peso = 600, mayus = false, alinear = "center", base = HUESO, actual = "#ffffff", sombra = true }) {
+  c.font = `${peso} ${tam}px Oswald`; c.textBaseline = "alphabetic"; c.textAlign = "left";
+  const pal = palabrasConEstado(M, frase, t).map((p) => ({ ...p, txt: mayus ? p.w.toUpperCase() : p.w }));
+  const esp = c.measureText(" ").width, lineas = []; let l = [], w = 0;
+  for (const p of pal) { const pw = c.measureText(p.txt).width; if (l.length && w + esp + pw > ancho) { lineas.push({ l, w }); l = []; w = 0; } w += (l.length ? esp : 0) + pw; l.push({ ...p, pw }); }
+  if (l.length) lineas.push({ l, w });
+  const alto = tam * 1.12, y0 = y - (lineas.length - 1) * alto / 2;
+  if (arguments[4].medir) return { arriba: y0 - tam * 0.8, abajo: y0 + (lineas.length - 1) * alto };
+  lineas.forEach((ln, k) => {
+    let x = alinear === "center" ? (M.W - ln.w) / 2 : (M.W - ancho) / 2;
+    for (const p of ln.l) {
+      {
+        c.globalAlpha = 0.22 + 0.78 * p.a;
+        if (sombra) { c.shadowColor = "rgba(0,0,0,0.95)"; c.shadowBlur = 18 * M.u; }
+        const esAhora = t >= p.t0 && t < p.t1 + 0.05;
+        c.fillStyle = esAhora ? actual : (p.a < 1 ? "#9a968c" : base);
+        c.fillText(p.txt, x, y0 + k * alto + (1 - p.a) * 10 * M.u);
+        c.shadowBlur = 0;
+      }
+      x += p.pw + esp;
+    }
+  });
+  c.globalAlpha = 1;
+  return lineas.length * alto;
+}
+
+function fraseActual(M, te, t, max) {
+  const fr = M.frases(te.palabras, max); let cur = null;
+  for (const f of fr) if (t >= f[0].t0 - 0.1) cur = f;
+  // la última frase se queda hasta que termina la escena
+  return cur;
+}
+
+function textos(c, M, t, i, e, te) {
+  const V = M.vertical, W = M.W;
+  const cuerpo = V ? 74 * M.u : 66 * M.u, ancho = V ? W * 0.84 : W * 0.7;
+  const salida = M.clamp((te.fin + 0.05 - t) / 0.25); // se apaga al final de la escena
+  c.save(); c.globalAlpha = salida;
+  const yMedio = V ? M.H * 0.44 : M.H * 0.5, ySub = V ? M.H * 0.72 : M.H * 0.83;
+  if (!te.palabras.length) { c.restore(); return; }
+
+  switch (e.tipo) {
+    case "gancho": case "giro": case "cierre": {
+      const fr = fraseActual(M, te, t, 9);
+      if (fr) bloque(c, M, fr, t, { y: yMedio, ancho, tam: (V ? 104 : 96) * M.u, peso: 700, mayus: true, actual: e.tipo === "giro" ? "#ff4d4d" : "#ffffff" });
+      break;
+    }
+    case "titulo": {
+      const yT = V ? M.H * 0.57 : M.H * 0.62, opT = { y: yT, ancho, tam: (V ? 118 : 110) * M.u, peso: 700, mayus: true };
+      const caja = bloque(c, M, te.palabras, t, { ...opT, medir: true });
+      c.font = `400 ${40 * M.u}px Elite`; c.textAlign = "center"; c.fillStyle = ROJO;
+      c.globalAlpha = salida * M.clamp((t - te.ini) / 0.3);
+      c.fillText(e.etiqueta || "RELATO", W / 2, caja.arriba - 36 * M.u);
+      c.globalAlpha = salida;
+      bloque(c, M, te.palabras, t, { y: yT, ancho, tam: (V ? 118 : 110) * M.u, peso: 700, mayus: true });
+      break;
+    }
+    case "regla": {
+      const n = numReglasDe(i), a = M.clamp((t - te.ini) / 0.25);
+      c.textAlign = "center"; c.font = `700 ${(V ? 120 : 110) * M.u}px Oswald`;
+      const yH = V ? M.H * 0.3 : M.H * 0.3;
+      c.globalAlpha = salida * a; c.shadowColor = "rgba(200,20,20,0.8)"; c.shadowBlur = 40 * M.u;
+      c.fillStyle = M.ruido1(t * 13) > 0.85 ? "#7a1515" : ROJO;
+      c.fillText(`${e.etiqueta || "REGLA"} ${n}`, W / 2, yH); c.shadowBlur = 0;
+      c.fillStyle = ROJO; const lw = W * (V ? 0.3 : 0.18) * M.salida((t - te.ini) / 0.5); c.fillRect(W / 2 - lw / 2, yH + 34 * M.u, lw, 5 * M.u);
+      c.globalAlpha = salida;
+      const fr = fraseActual(M, te, t, V ? 12 : 16);
+      if (fr) bloque(c, M, fr, t, { y: V ? M.H * 0.47 : M.H * 0.58, ancho, tam: cuerpo * 1.05, peso: 600 });
+      break;
+    }
+    case "dato": {
+      const cifra = e.cifra || ((e.texto || "").match(/\d[\d.,]*\s?%?/) || [""])[0];
+      if (cifra) {
+        const a = M.salida((t - te.ini) / 0.6);
+        c.textAlign = "center"; c.font = `700 ${(V ? 250 : 240) * M.u}px Oswald`;
+        c.globalAlpha = salida * a; c.shadowColor = "rgba(200,30,30,0.7)"; c.shadowBlur = 50 * M.u; c.fillStyle = HUESO;
+        c.fillText(cifra.trim(), W / 2, (V ? M.H * 0.36 : M.H * 0.42) + (1 - a) * 30 * M.u); c.shadowBlur = 0;
+        if (e.fuente) { c.font = `400 ${28 * M.u}px Elite`; c.fillStyle = "rgba(233,228,216,0.55)"; c.fillText(`Fuente: ${e.fuente}`, W / 2, V ? M.H * 0.9 : M.H * 0.94); }
+        c.globalAlpha = salida;
+      }
+      const fr = fraseActual(M, te, t, 8);
+      if (fr) bloque(c, M, fr, t, { y: ySub - (V ? 0 : 20 * M.u), ancho, tam: cuerpo });
+      break;
+    }
+    default: { // narracion
+      const fr = fraseActual(M, te, t, V ? 7 : 9);
+      if (fr) bloque(c, M, fr, t, { y: ySub, ancho, tam: cuerpo });
+    }
+  }
+  c.restore();
+}
+function numReglasDe(i) { return numReglas[i] || 1; }
+</script>
+</body></html>

@@ -1,0 +1,17 @@
+{
+  "name": "fabrica-richie",
+  "private": true,
+  "description": "Fábrica de videos con estilos enchufables (terror, frases, render, 3D…)",
+  "type": "module",
+  "scripts": {
+    "panel": "node fabrica.js panel",
+    "instalar-navegador": "playwright install chromium"
+  },
+  "dependencies": {
+    "playwright": "1.48.2"
+  },
+  "optionalDependencies": {
+    "ffmpeg-static": "5.2.0",
+    "ffprobe-static": "3.1.0"
+  }
+}

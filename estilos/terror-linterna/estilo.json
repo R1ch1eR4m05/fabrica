@@ -1,0 +1,15 @@
+{
+  "nombre": "Terror · Linterna",
+  "descripcion": "Relatos y reglas de terror en la oscuridad: haz de linterna, siluetas, texto que aparece al decirlo, golpes de sonido.",
+  "orden": 1,
+  "formatos": ["9:16", "16:9"],
+  "duraciones": { "corto": "45 a 90 segundos (entre 130 y 230 palabras en total)", "largo": "6 a 10 minutos (entre 900 y 1500 palabras en total)" },
+  "tipos": ["gancho", "titulo", "narracion", "regla", "dato", "giro", "cierre"],
+  "visuales": ["oscuridad", "linterna", "puerta", "pasillo", "ojos", "ventana", "reloj", "estatica", "escalera", "telefono", "bosque", "cama", "espejo", "imagen"],
+  "pausaEntreEscenas": 0.45,
+  "colaFinal": 2,
+  "sonido": { "ambiente": "oscuro", "volumenAmbiente": 0.45, "golpesEn": ["regla", "giro", "titulo"], "volumenEfectos": 0.6 },
+  "portadaEn": 1.2,
+  "vozSugerida": "Masculina, grave, lenta y cercana (en la biblioteca de ElevenLabs busca 'horror narrator' o 'deep storyteller' en español).",
+  "creditos": ""
+}

@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><title>Mapas</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}canvas{display:block;width:100vw;height:100vh;object-fit:contain}</style>
+</head><body><canvas id="lienzo"></canvas>
+<script src="lib/d3-array.min.js"></script>
+<script src="lib/d3-geo.min.js"></script>
+<script src="lib/topojson-client.min.js"></script>
+<script src="../_comun/motor.js"></script>
+<script src="mapa.js"></script>
+<script>
+const F = "../_comun/fuentes/";
+const AMARILLO = "#ffd84d";
+
+Motor.iniciar({
+  fuentes: [["Montserrat", F + "montserrat-latin-800-normal.woff2", { weight: "800" }], ["Montserrat", F + "montserrat-latin-600-normal.woff2", { weight: "600" }],
+            ["Cormorant", F + "cormorant-garamond-latin-600-normal.woff2", { weight: "600" }], ["Cormorant", F + "cormorant-garamond-latin-600-italic.woff2", { weight: "600", style: "italic" }]],
+  async preparar(M) {
+    await MAPA.cargar(M);
+    M.antesDeDibujar = (t) => MAPA.cargarTeselas(MAPA.camaraEn(t));
+    window.__teselas = () => MAPA.teselasNecesarias(); // la fábrica descarga estas antes del render
+  },
+
+  dibujar(c, t, M) {
+    const i = M.escenaEn(t), e = M.guion.escenas[i], te = M.tiempos.escenas[i];
+    const cam = MAPA.camaraEn(t);
+    const proj = MAPA.dibujarMapa(c, t, cam, i, te);
+    MAPA.dibujarComparar(c, t, proj, i, te);
+    const ruta = MAPA.dibujarRuta(c, t, proj, i);
+    MAPA.etiquetas(c, t, proj, i, te);
+    MAPA.dibujarPegatinas(c, t, proj, i, te);
+    MAPA.dibujarBanderas(c, t, proj, i, te);
+
+    // acabado por look
+    const W = M.W, H = M.H, u = M.u, LOOK = MAPA.LOOK();
+    if (LOOK === "papel") { c.save(); c.globalCompositeOperation = "multiply"; c.globalAlpha = 0.8; c.drawImage(MAPA.textura(), 0, 0, W, H); c.restore(); }
+    const vg = c.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.75);
+    vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, LOOK === "papel" ? "rgba(90,60,25,0.35)" : LOOK === "satelite" ? "rgba(0,0,0,0.55)" : "rgba(0,30,60,0.22)");
+    c.fillStyle = vg; c.fillRect(0, 0, W, H);
+
+    if (ruta) contador(c, M, `${ruta.km.toLocaleString("es-MX")} km`, ruta.k);
+    if (e.tipo === "dato") tarjetaDato(c, M, t, e, te);
+    cabecera(c, M, t);
+    subtitulos(c, M, t, e, te);
+    const marca = M.proyecto.canal || M.guion.canal;
+    if (marca) { c.font = `600 ${30 * u}px Montserrat`; c.textAlign = "center"; c.fillStyle = "rgba(255,255,255,0.75)"; c.strokeStyle = "rgba(0,0,0,0.5)"; c.lineWidth = 6 * u; c.strokeText(marca, W / 2, H - (M.vertical ? 120 : 50) * u); c.fillText(marca, W / 2, H - (M.vertical ? 120 : 50) * u); }
+    if (MAPA.LOOK() === "satelite" && t < M.duracion) { c.font = `600 ${17 * u}px Montserrat`; c.textAlign = "right"; c.fillStyle = "rgba(255,255,255,0.45)"; c.fillText("Sentinel-2 cloudless 2016 · EOX", W - 24 * u, H - 22 * u); }
+    const neg = Math.max(M.clamp(1 - t / 0.4), M.clamp((t - (M.duracion - 1.0)) / 0.9));
+    if (neg > 0) { c.fillStyle = `rgba(0,0,0,${neg})`; c.fillRect(0, 0, W, H); }
+  },
+});
+
+function caja(c, x, y, w, h, r, fondo) { c.fillStyle = fondo; c.beginPath(); c.roundRect(x, y, w, h, r); c.fill(); }
+
+function cabecera(c, M, t) {
+  const tit = (M.guion.titulo || "").toUpperCase(); if (!tit) return;
+  const u = M.u, W = M.W, V = M.vertical;
+  const tam = (V ? 58 : 50) * u;
+  c.font = `800 ${tam}px Montserrat`;
+  const lineas = M.lineas(c, tit, W * (V ? 0.84 : 0.6));
+  const alto = tam * 1.18, h = lineas.length * alto + 34 * u, y0 = (V ? 120 : 40) * u;
+  const pop = M.salida(M.clamp((t - 0.15) / 0.45));
+  const w = Math.max(...lineas.map((l) => c.measureText(l).width)) + 60 * u;
+  c.save(); c.translate(W / 2, y0 + h / 2); c.scale(0.9 + 0.1 * pop, 0.9 + 0.1 * pop); c.globalAlpha = pop;
+  c.shadowColor = "rgba(0,0,0,0.35)"; c.shadowBlur = 24 * u; caja(c, -w / 2, -h / 2, w, h, 22 * u, "#ffffff"); c.shadowBlur = 0;
+  c.fillStyle = "#14181f"; c.textAlign = "center"; c.textBaseline = "middle";
+  lineas.forEach((l, k) => c.fillText(l, 0, -h / 2 + 17 * u + alto * (k + 0.5)));
+  c.restore();
+}
+
+function subtitulos(c, M, t, e, te) {
+  if (!te.palabras.length) return;
+  const u = M.u, V = M.vertical;
+  const fr = M.frases(te.palabras, V ? 4 : 6); let cur = null;
+  for (const f of fr) if (t >= f[0].t0 - 0.05) cur = f;
+  if (!cur || t > te.finVoz + 0.35) return;
+  const tam = (V ? 84 : 70) * u, y = V ? M.H * 0.74 : M.H * 0.86;
+  c.font = `800 ${tam}px Montserrat`; c.textBaseline = "middle"; c.textAlign = "left"; c.lineJoin = "round";
+  const pal = cur.map((p) => ({ ...p, txt: p.w.toUpperCase(), w2: c.measureText(p.w.toUpperCase()).width }));
+  const esp = c.measureText(" ").width * 1.25, ancho = M.W * 0.88;
+  const lineas = []; let l = [], w = 0;
+  for (const p of pal) { if (l.length && w + esp + p.w2 > ancho) { lineas.push({ l, w }); l = []; w = 0; } w += (l.length ? esp : 0) + p.w2; l.push(p); }
+  if (l.length) lineas.push({ l, w });
+  const pop = M.salida(M.clamp((t - cur[0].t0 + 0.05) / 0.18));
+  lineas.forEach((ln, k) => {
+    let x = (M.W - ln.w) / 2; const yy = y + (k - (lineas.length - 1) / 2) * tam * 1.12;
+    for (const p of ln.l) {
+      const ahora = t >= p.t0 && t < p.t1 + 0.08;
+      c.save(); c.translate(x + p.w2 / 2, yy); const s = 0.88 + 0.12 * pop; c.scale(s, s);
+      c.strokeStyle = "#000"; c.lineWidth = 11 * u; c.strokeText(p.txt, -p.w2 / 2, 0);
+      c.fillStyle = ahora ? AMARILLO : "#fff"; c.fillText(p.txt, -p.w2 / 2, 0); c.restore();
+      x += p.w2 + esp;
+    }
+  });
+}
+
+function contador(c, M, texto, k) {
+  const u = M.u, y = M.vertical ? M.H * 0.62 : M.H * 0.7;
+  c.font = `800 ${70 * u}px Montserrat`; const w = c.measureText(texto).width + 60 * u;
+  c.save(); c.globalAlpha = M.clamp(k * 8);
+  caja(c, M.W / 2 - w / 2, y - 55 * u, w, 110 * u, 26 * u, "rgba(20,24,31,0.85)");
+  c.fillStyle = AMARILLO; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(texto, M.W / 2, y + 2 * u); c.restore();
+}
+
+// tarjeta de dato: la cifra cuenta desde cero (los años no)
+function tarjetaDato(c, M, t, e, te) {
+  const u = M.u, V = M.vertical;
+  const txt = String(e.cifra || ((e.texto || "").match(/\d[\d.,]*\s?(%|km²|km|millones|mil)?/) || [""])[0]).trim();
+  if (!txt) return;
+  const m = txt.match(/^([\d.,]+)(.*)$/);
+  let mostrar = txt;
+  if (m) {
+    const limpio = Number(m[1].replace(/,/g, ""));
+    const esAnio = /^\d{4}$/.test(m[1]) && limpio > 1000 && limpio < 2100;
+    if (!esAnio && isFinite(limpio)) {
+      const k = M.salida(M.clamp((t - te.ini - 0.2) / 1.1));
+      const dec = (m[1].split(".")[1] || "").length;
+      mostrar = (limpio * k).toLocaleString("es-MX", { minimumFractionDigits: dec, maximumFractionDigits: dec }) + m[2];
+    }
+  }
+  const tam = (V ? 150 : 130) * u, y = V ? M.H * 0.36 : M.H * 0.42;
+  c.font = `800 ${tam}px Montserrat`; const w = c.measureText(mostrar).width + 80 * u;
+  const pop = M.salida(M.clamp((t - te.ini) / 0.35));
+  c.save(); c.translate(M.W / 2, y); c.scale(0.8 + 0.2 * pop, 0.8 + 0.2 * pop); c.globalAlpha = pop;
+  c.shadowColor = "rgba(0,0,0,0.4)"; c.shadowBlur = 30 * u; caja(c, -w / 2, -tam * 0.75, w, tam * 1.5, 30 * u, "#e5484d"); c.shadowBlur = 0;
+  c.fillStyle = "#fff"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(mostrar, 0, 4 * u);
+  if (e.fuente) { c.font = `600 ${26 * u}px Montserrat`; c.fillStyle = "rgba(255,255,255,0.95)"; c.strokeStyle = "rgba(0,0,0,0.6)"; c.lineWidth = 6 * u; c.strokeText(`Fuente: ${e.fuente}`, 0, tam * 0.95); c.fillText(`Fuente: ${e.fuente}`, 0, tam * 0.95); }
+  c.restore();
+}
+</script>
+</body></html>
