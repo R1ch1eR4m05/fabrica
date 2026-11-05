@@ -47,6 +47,16 @@
   "creditos": "Mapas: Natural Earth (dominio público). Banderas: country-flag-icons (MIT).",
   "musicaIA": {
     "prompt": "Engaging documentary-style instrumental for a geography short: driving light percussion, plucked strings and subtle synth, curious and energetic around 110 bpm, low in the mix under narration.",
-    "reusar": false
+    "reusar": false,
+    "parametros": {
+      "animo": "inspirador",
+      "ritmo": "medio",
+      "energia": "media",
+      "instrumentos": [
+        "percusion",
+        "cuerdas",
+        "pads"
+      ]
+    }
   }
 }

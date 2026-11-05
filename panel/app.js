@@ -210,15 +210,6 @@ function pintarProyecto() {
           ${p.conVoz !== false && !S.info.voz ? `<div class="nota">Sin llave de ElevenLabs se genera una <b>voz de prueba muda</b> con tiempos estimados, para ensayar el video. Pon <code>ELEVENLABS_API_KEY</code> y <code>ELEVENLABS_VOICE_ID</code> en el <code>.env</code> para la voz real.${est?.vozSugerida ? "<br>Voz sugerida: " + h(est.vozSugerida) : ""}</div>` : ""}
           <div class="barra oculto" id="bar-voz"><div></div></div>
           ${est?.fondo ? panelFondo(p) : ""}
-          ${est?.musicaIA ? `<div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--b)">
-            <div class="estado" id="est-musica">Música: ${p.archivos?.some((n) => n.startsWith("musica.")) ? (p.musicaIA?.reusada ? "reutilizada de tu biblioteca" : p.musicaIA ? "a la medida (ElevenLabs)" : "la tuya") : "de tu biblioteca musica/ (o el ambiente del estilo si está vacía)"}</div>
-            <div class="barra oculto" id="bar-musica"><div></div></div>
-            ${S.info.voz ? `<details style="margin-top:6px"><summary class="estado" style="cursor:pointer">Música a la medida con ElevenLabs</summary>
-              <textarea id="mPrompt" style="min-height:58px;font-size:13px" placeholder="Cargando la descripción sugerida…"></textarea>
-              <div class="fila" style="margin-top:6px"><button class="btn peq" id="mIA" ${p.tiempos ? "" : "disabled title='Primero la voz: la música se hace del largo exacto'"}>Generar música (gasta créditos)</button>
-              ${est.musicaIA.reusar ? `<label class="estado" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="mReusar" style="width:auto" checked> reutilizar la del mismo tema si ya existe</label>` : ""}</div>
-            </details>` : ""}
-          </div>` : ""}
           ${p.tieneVoz ? `<audio id="vAudio" controls src="/proyectos/${h(p.id)}/voz.mp3?v=${Date.now()}" style="width:100%"></audio><div class="estado">${p.tiempos ? `${p.tiempos.duracion.toFixed(1)} s${p.tiempos.sinVoz ? " · sin voz, solo música" : p.tiempos.prueba ? " · voz de prueba" : ""}` : ""}</div>` : `<div class="estado">Primero el guion.</div>`}
         </div></section>
 
@@ -241,6 +232,7 @@ function pintarProyecto() {
             </div>
           </div>
         </div></section>
+      ${est?.musicaIA ? panelMusica(p, est) : ""}
     </div>`;
 
   pintarEscenas();
@@ -270,10 +262,7 @@ function pintarProyecto() {
     for (const b of document.querySelectorAll("[data-quitar]")) b.onclick = async () => { await api(`/api/proyectos/${p.id}/archivo?tipo=${b.dataset.quitar}`, "DELETE"); abrir(p.id, { mantener: true }); };
   }
   $("#vHacer").onclick = () => api(`/api/proyectos/${p.id}/voz`, "POST").catch((e) => avisar(e.message, true));
-  if ($("#mPrompt")) {
-    api(`/api/proyectos/${p.id}/musica`).then((r) => { if (!$("#mPrompt").value) $("#mPrompt").value = r.prompt; }).catch(() => {});
-    $("#mIA").onclick = () => api(`/api/proyectos/${p.id}/musica`, "POST", { prompt: $("#mPrompt").value, reusar: $("#mReusar") ? $("#mReusar").checked : false }).catch((e) => avisar(e.message, true));
-  }
+  if ($("#muGenerar")) eventosMusica(p, est);
   $("#rTodo").onclick = () => api(`/api/proyectos/${p.id}/todo`, "POST").catch((e) => avisar(e.message, true));
   $("#rHacer").onclick = () => api(`/api/proyectos/${p.id}/render`, "POST").catch((e) => avisar(e.message, true));
   if ($("#copiar")) {
@@ -363,6 +352,56 @@ function pintarMotion(p, est, ocupado) {
   $("#pTitulo").onchange = async (e) => { await api(`/api/proyectos/${p.id}`, "PATCH", { titulo: e.target.value }); S.proyectos = await api("/api/proyectos"); pintarLista(); };
   for (const bt of document.querySelectorAll("#pFormato button")) bt.onclick = async () => { await api(`/api/proyectos/${p.id}`, "PATCH", { formato: bt.dataset.v }); abrir(p.id, { mantener: true }); };
   if (S.progreso[p.id]?.render) mostrarProgreso("render", S.progreso[p.id].render);
+}
+
+// ---------- música a la medida (ElevenLabs Music) ----------
+const MU = {
+  animo: { tierno: "tender, loving", esperanzador: "hopeful, uplifting", calmado: "calm, peaceful", alegre: "joyful, playful", nostalgico: "nostalgic, bittersweet", inspirador: "inspiring, cinematic build", curioso: "curious, light", epico: "epic, grand", misterioso: "mysterious, suspenseful", oscuro: "dark, unsettling" },
+  instrumentos: { piano: "warm felt piano", cuerdas: "soft strings", guitarra: "acoustic guitar", marimba: "marimba and plucks", pads: "ambient synth pads", percusion: "light percussion", ukulele: "ukulele and claps", cello: "solo cello", drones: "low drones and textures", cajita: "music box" },
+  ritmo: { lento: "slow tempo around 65-75 bpm", medio: "medium tempo around 90-100 bpm", rapido: "upbeat tempo around 115-125 bpm" },
+  energia: { baja: "low energy, minimal and spacious", media: "moderate energy", alta: "high energy, rising build" },
+};
+const NOMBRES_MU = { animo: "Ánimo", instrumentos: "Instrumentos", ritmo: "Ritmo", energia: "Energía" };
+function promptDeParametros(par, tema, conVoz) {
+  const inst = (par.instrumentos || []).map((k) => MU.instrumentos[k]).filter(Boolean).join(", ") || "piano and soft strings";
+  return `${MU.animo[par.animo] || "warm"} instrumental background music: ${inst}, ${MU.ritmo[par.ritmo] || ""}, ${MU.energia[par.energia] || ""}. For a short vertical social media video${tema ? ` about "${tema}"` : ""}.${conVoz ? " Sits low in the mix under a spoken voice, no busy melodies." : " Carries the video on its own (no voice), with a gentle arc."}${par.extra ? " " + par.extra + "." : ""} Instrumental only, no vocals, no lyrics. Clean ending.`;
+}
+function panelMusica(p, est) {
+  const par = { ...(est.musicaIA.parametros || {}), ...(p.musicaParametros || {}) };
+  const tiene = p.archivos?.find((n) => n.startsWith("musica."));
+  const sel = (k) => `<div><label>${NOMBRES_MU[k]}</label><select data-mu="${k}">${Object.keys(MU[k]).map((v) => `<option value="${v}" ${par[k] === v ? "selected" : ""}>${v[0].toUpperCase() + v.slice(1).replace("nostalgico", "nostálgico").replace("epico", "épico")}</option>`).join("")}</select></div>`;
+  return `<section class="paso">${pasoCab(4, "musica", "Música a la medida (ElevenLabs)", `<button class="btn peq primario" id="muGenerar" ${!S.info.voz ? "disabled title='Pon ELEVENLABS_API_KEY en el .env'" : !p.tiempos ? "disabled title='Primero la voz: la música se hace del largo exacto'" : ""}>Generar e insertar</button>`)}
+    <div class="cont">
+      <div class="estado" id="est-musica">Ahora: ${tiene ? (p.musicaIA?.reusada ? "reutilizada de tu biblioteca" : p.musicaIA ? `a la medida (${p.musicaIA.segundos} s)` : "la que subiste") : "la de tu biblioteca musica/ (o el ambiente del estilo)"}</div>
+      <div class="barra oculto" id="bar-musica"><div></div></div>
+      ${tiene ? `<div class="fila" style="margin:8px 0"><audio controls src="/proyectos/${h(p.id)}/${h(tiene)}?v=${Date.now()}" style="flex:1"></audio><button class="mini" id="muQuitar">Quitar</button></div>` : ""}
+      <div class="fila">${sel("animo")}${sel("ritmo")}${sel("energia")}</div>
+      <label>Instrumentos</label>
+      <div class="fila" id="muInst">${Object.keys(MU.instrumentos).map((k) => `<label class="estado" style="display:flex;gap:5px;align-items:center"><input type="checkbox" value="${k}" style="width:auto" ${(par.instrumentos || []).includes(k) ? "checked" : ""}>${{ cajita: "caja de música", percusion: "percusión" }[k] || k}</label>`).join("")}</div>
+      <label>Algo más (opcional)</label><input id="muExtra" value="${h(par.extra || "")}" placeholder="p. ej. que termine en un acorde brillante, estilo lo-fi…">
+      <label>Lo que se le pide a ElevenLabs (se arma solo con lo de arriba; puedes editarlo)</label>
+      <textarea id="muPrompt" style="min-height:70px;font-size:13px"></textarea>
+      <div class="fila" style="margin-top:6px">
+        ${est.musicaIA.reusar ? `<label class="estado" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="muReusar" style="width:auto" checked> si ya hay una de este mismo tema, reutilizarla (no gasta)</label>` : ""}
+        <span class="estado">Se hace del largo exacto${p.tiempos ? ` (${Math.ceil(p.tiempos.duracion)} s)` : ""} y luego se vuelve a sacar el video con ella.</span>
+      </div>
+    </div></section>`;
+}
+function eventosMusica(p, est) {
+  const leer = () => ({ ...Object.fromEntries([...document.querySelectorAll("[data-mu]")].map((x) => [x.dataset.mu, x.value])),
+    instrumentos: [...document.querySelectorAll("#muInst input:checked")].map((x) => x.value), extra: $("#muExtra").value.trim() });
+  let editado = false;
+  const armar = () => { if (!editado) $("#muPrompt").value = promptDeParametros(leer(), p.tema || p.titulo, p.conVoz !== false); };
+  for (const x of document.querySelectorAll("[data-mu], #muInst input, #muExtra")) x.oninput = x.onchange = armar;
+  $("#muPrompt").oninput = () => (editado = true);
+  armar();
+  $("#muGenerar").onclick = async () => {
+    const parametros = leer();
+    await api(`/api/proyectos/${p.id}`, "PATCH", { musicaParametros: parametros });
+    const reusar = $("#muReusar") ? $("#muReusar").checked && !editado : false;
+    api(`/api/proyectos/${p.id}/musica`, "POST", { prompt: $("#muPrompt").value, reusar, insertar: true }).then(() => avisar("Componiendo la música… luego se vuelve a sacar el video.")).catch((e) => avisar(e.message, true));
+  };
+  if ($("#muQuitar")) $("#muQuitar").onclick = async () => { await api(`/api/proyectos/${p.id}/archivo?tipo=musica`, "DELETE"); abrir(p.id, { mantener: true }); };
 }
 
 function panelFondo(p) {

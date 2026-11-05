@@ -65,6 +65,16 @@
   "creditos": "",
   "musicaIA": {
     "prompt": "Soft, emotional cinematic instrumental: warm felt piano, gentle strings and light pads, tender and hopeful, slow tempo around 70 bpm, spacious mix that leaves room for text on screen.",
-    "reusar": true
+    "reusar": true,
+    "parametros": {
+      "animo": "tierno",
+      "ritmo": "lento",
+      "energia": "baja",
+      "instrumentos": [
+        "piano",
+        "cuerdas",
+        "pads"
+      ]
+    }
   }
 }

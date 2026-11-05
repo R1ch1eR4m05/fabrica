@@ -16,7 +16,7 @@ export function promptMusica(id) {
   return `${base}${tema ? ` Theme and mood of this video: ${tema}.` : ""} Instrumental only, no vocals, no lyrics. Clean ending.`;
 }
 
-export async function musicaIA(id, avisar = () => {}, { prompt, reusar } = {}) {
+export async function musicaIA(id, avisar = () => {}, { prompt, reusar, desdePanel = false } = {}) {
   const p = leer(id, "proyecto.json"), est = leerEstilo(p.estilo) || {};
   const t = leer(id, "tiempos.json");
   const necesito = Math.ceil((t?.duracion || 30) + 0.5);
@@ -27,7 +27,8 @@ export async function musicaIA(id, avisar = () => {}, { prompt, reusar } = {}) {
   const destino = path.join(dirProyecto(id), "musica.mp3");
   for (const n of fs.readdirSync(dirProyecto(id))) if (n.startsWith("musica.")) fs.rmSync(path.join(dirProyecto(id), n));
 
-  const propio = prompt && prompt.trim() !== promptMusica(id); // si cambiaste la descripción, se compone una nueva
+  // desde el panel, "reusar" ya viene decidido (si editaste el texto, no se reutiliza); en automático, solo si el prompt es el sugerido
+  const propio = !desdePanel && prompt && prompt.trim() !== promptMusica(id);
   if (reusar && !propio && fs.existsSync(enLib)) {
     const m = fs.existsSync(meta) ? JSON.parse(fs.readFileSync(meta, "utf8")) : {};
     if ((m.segundos || 0) >= necesito) {

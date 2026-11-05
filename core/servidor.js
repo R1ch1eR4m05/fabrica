@@ -212,7 +212,7 @@ async function api(req, res, partes) {
   }
   if (!accion && m === "PATCH") { // cambiar título, formato, duración
     const b = await cuerpo(req);
-    for (const k of ["titulo", "formato", "duracion", "idea", "canal", "vozId", "conVoz", "fondoBuscar", "flowPrompt"]) if (b[k] !== undefined) p[k] = b[k];
+    for (const k of ["titulo", "formato", "duracion", "idea", "canal", "vozId", "conVoz", "fondoBuscar", "flowPrompt", "musicaParametros"]) if (b[k] !== undefined) p[k] = b[k];
     if (b.opciones) p.opciones = { ...(p.opciones || {}), ...b.opciones };
     if ((b.formato || b.opciones) && p.estado.render === "listo") p.estado.render = "desactualizado";
     if (b.conVoz !== undefined && p.estado.voz === "listo") p.estado.voz = "desactualizado";
@@ -293,7 +293,8 @@ async function api(req, res, partes) {
   if (accion === "musica" && m === "POST") {
     const b = await cuerpo(req);
     if (!P.leer(id, "tiempos.json")) return json(res, 400, { error: "Primero haz la voz: la música se hace del largo exacto del video." });
-    encolar(id, "musica", (av) => musicaIA(id, av, { prompt: (b.prompt || "").trim() || undefined, reusar: b.reusar }));
+    encolar(id, "musica", (av) => musicaIA(id, av, { prompt: (b.prompt || "").trim() || undefined, reusar: b.reusar, desdePanel: true }));
+    if (b.insertar) { fila.push({ id, paso: "render", fn: (av) => render(id, av) }); P.marcar(id, "render", "en-fila"); } // y se vuelve a sacar el video con la música nueva
     return json(res, 200, { ok: true });
   }
   if (accion === "voz" && m === "POST") { encolar(id, "voz", (av) => hacerVoz(id, av)); return json(res, 200, { ok: true }); }

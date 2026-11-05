@@ -67,6 +67,16 @@
   "creditos": "Contenido creado con apoyo de IA.",
   "musicaIA": {
     "prompt": "Light, warm and curious instrumental for an educational parenting video: soft plucked strings, marimba and gentle percussion, steady pulse around 100 bpm, friendly and calm, low in the mix under a female voice.",
-    "reusar": false
+    "reusar": false,
+    "parametros": {
+      "animo": "curioso",
+      "ritmo": "medio",
+      "energia": "media",
+      "instrumentos": [
+        "marimba",
+        "percusion",
+        "guitarra"
+      ]
+    }
   }
 }

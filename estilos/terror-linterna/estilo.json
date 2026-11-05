@@ -52,6 +52,15 @@
   "creditos": "",
   "musicaIA": {
     "prompt": "Dark ambient horror underscore: low drones, distant creaking textures, sparse detuned piano notes, slow unsettling pulse, no melody, low in the mix under a whispered narration.",
-    "reusar": false
+    "reusar": false,
+    "parametros": {
+      "animo": "oscuro",
+      "ritmo": "lento",
+      "energia": "baja",
+      "instrumentos": [
+        "drones",
+        "piano"
+      ]
+    }
   }
 }
