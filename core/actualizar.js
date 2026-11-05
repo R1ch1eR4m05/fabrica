@@ -29,7 +29,7 @@ export async function hayNovedad({ forzar = false } = {}) {
 export async function aplicar() {
   await correr("git", ["fetch", "--quiet", "origin", "main"]);
   const sucio = (await correr("git", ["diff", "--quiet", "HEAD"], { ok: [0, 1] })).codigo === 1;
-  if (sucio) await correr("git", ["stash", "push", "-m", "antes de actualizar"]);
+  if (sucio) await correr("git", ["stash", "push", "-m", "antes-de-actualizar"]); // sin espacios: en Windows (shell) se partiría en varias palabras
   await correr("git", ["reset", "--hard", "origin/main"]);
   await correr(win ? "npm.cmd" : "npm", ["install", "--no-audit", "--no-fund"]);
   cache = { t: 0, r: null };
