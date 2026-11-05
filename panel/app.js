@@ -37,7 +37,8 @@ async function cargar() {
 async function revisarActualizacion() {
   const r = await api("/api/actualizacion").catch(() => null);
   const el = $("#chipAct"); if (!el) return;
-  el.innerHTML = r?.nueva ? `<button class="chip am" id="btnAct" style="cursor:pointer" title="${h(r.cambios.slice(0, 8).join("\n"))}">Hay versión nueva · Actualizar ↻</button>` : "";
+  el.innerHTML = r?.nueva ? `<button class="chip am" id="btnAct" style="cursor:pointer" title="${h(r.cambios.slice(0, 8).join("\n"))}">Hay versión nueva · Actualizar ↻</button>`
+    : r && !r.error ? `<span class="chip ok" title="Revisa GitHub al abrir y cada 30 min">Al día ✓</span>` : r?.error ? `<span class="chip" title="${h(r.error)}">No pude revisar versión</span>` : "";
   if (!r?.nueva) return;
   $("#btnAct").onclick = async () => {
     if (!confirm(`Novedades:\n• ${r.cambios.slice(0, 8).join("\n• ")}\n\nTus videos, proyectos y el .env no se tocan. ¿Actualizar ahora?`)) return;
