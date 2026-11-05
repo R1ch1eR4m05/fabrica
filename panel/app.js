@@ -63,6 +63,11 @@ function pintarLista() {
 
 const estiloNombre = (id) => S.info.estilos.find((e) => e.id === id)?.nombre || id;
 const estiloDe = (id) => S.info.estilos.find((e) => e.id === id);
+// nombre del estilo de una propuesta del investigador ("motion:<id>" es un estilo del catálogo de motion graphics)
+function nombreEstiloProp(id) {
+  if (String(id || "").startsWith("motion:")) { const c = (estiloDe("motion")?.catalogo || []).find((x) => x.id === id.slice(7)); return `Motion graphics · ${c?.nombre || id.slice(7)}`; }
+  return estiloDe(id)?.nombre || "Frases · Fondo desenfocado";
+}
 
 // ---------- inicio: estilos ----------
 function inicio() {
@@ -551,7 +556,7 @@ async function investigador(archivo) {
       <div class="card" style="margin:16px 0"><h2>Lo que está funcionando</h2><ul style="margin:8px 0 0;padding-left:18px;color:var(--t2)">${(inv.patrones || []).map((x) => `<li>${h(x)}</li>`).join("")}</ul></div>
       <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(330px,1fr))">${inv.propuestas.map((p) => `
         <div class="card">
-          <div class="estado"><b style="color:var(--t)" title="${h(p.porQueEstilo || "")}">${h(estiloDe(p.estilo)?.nombre || "Frases · Fondo desenfocado")}</b> · ${h(p.tema || "")}${p.origen === "en" ? ` · <span title="Tendencia en inglés">🇺🇸→🇲🇽</span>` : ""}${p.llegada ? ` · <b style="color:${p.llegada === "aún no llega" ? "var(--ok)" : p.llegada === "poco en español" ? "var(--am)" : "var(--t2)"}">${h(p.llegada)}</b>` : ""}</div>
+          <div class="estado"><b style="color:var(--t)" title="${h(p.porQueEstilo || "")}">${h(nombreEstiloProp(p.estilo))}</b> · ${h(p.tema || "")}${p.origen === "en" ? ` · <span title="Tendencia en inglés">🇺🇸→🇲🇽</span>` : ""}${p.llegada ? ` · <b style="color:${p.llegada === "aún no llega" ? "var(--ok)" : p.llegada === "poco en español" ? "var(--am)" : "var(--t2)"}">${h(p.llegada)}</b>` : ""}</div>
           <div style="font-size:19px;line-height:1.35;margin:6px 0 8px;font-family:Georgia,serif">${marcarAcento(p.frase)}</div>
           ${p.autor ? `<div class="estado">— ${h(p.autor)}</div>` : ""}
           ${p.cierre ? `<div class="estado" style="margin-top:4px">Cierre: ${h(p.cierre)}</div>` : ""}
