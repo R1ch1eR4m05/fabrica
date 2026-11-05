@@ -24,7 +24,9 @@ Mientras no tenga `plantilla.html`, o si tiene `"estado": "pronto"`, sale en el 
   "tipos": ["frase", "autor", "cierre"],
   "visuales": ["clip", "foto", "degradado"],
   "pausaEntreEscenas": 0.6,
-  "sonido": { "ambiente": "oscuro" | "musica/archivo.mp3", "volumenAmbiente": 0.3, "golpesEn": [], "volumenEfectos": 0.6 },
+  "inicioVoz": 0.4,         // segundos de silencio antes de la voz (Levania: 0)
+  "sonido": { "ambiente": "oscuro" | "musica/archivo.mp3", "volumenAmbiente": 0.3, "golpesEn": [], "volumenEfectos": 0.6,
+             "efectosPorTipo": { "contador": "pop", "rango": "tic" } },   // efecto automático por tipo de escena (pop, tic, tac, barrido, whoosh, golpe…)
   "fondo": true,            // usa fondo de video/foto (Pexels, propio o degradado) → la plantilla lee fondo.json y fondo/00001.jpg…
   "vozOpcional": true,      // el panel ofrece "Con voz / Solo música"
   "lectura": { "porSegundo": 2.0, "extra": 1.8 },   // ritmo de lectura cuando va sin voz
@@ -42,6 +44,7 @@ Mientras no tenga `plantilla.html`, o si tiene `"estado": "pronto"`, sale en el 
 { "titulo": "…", "escenas": [ { "tipo": "…", "texto": "lo que dice la voz", "visual": "…", "sfx": "golpe" } ],
   "fuentes": [ { "dato": "…", "url": "…" } ], "subir": { "titulo": "…", "descripcion": "…", "hashtags": ["#…"] } }
 ```
+Una escena con `vozTT` usa ese texto cuando el proyecto tiene la opción `cierre: "tt"`.
 Cada escena puede llevar los campos extra que su estilo entienda (`cifra`, `hora`, `imagen`, `etiqueta`, `pausa`, `capitulo`…).
 Si una escena lleva `"voz"`, eso es lo que se dice y `"texto"` lo que se ve.
 

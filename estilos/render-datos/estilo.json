@@ -1,1 +1,24 @@
-{ "nombre": "Render · Gráficas y 3D", "descripcion": "Datos con gráficas animadas y explicaciones 3D en código (las de Levania).", "orden": 3, "estado": "pronto", "formatos": ["9:16", "16:9"] }
+{
+  "nombre": "Levania · Datos",
+  "descripcion": "Gráficas con datos reales en la paleta de Levania: reloj que avanza, barra de rango recomendado, contador, comparación y tarjetas \"en vez de / di\". Voz desde el primer cuadro, cortes secos y subtítulos palabra por palabra.",
+  "orden": 3,
+  "formatos": ["9:16", "16:9"],
+  "duraciones": { "corto": "24 a 28 segundos (entre 60 y 75 palabras)", "largo": "45 a 60 segundos" },
+  "tipos": ["gancho", "reloj", "rango", "contador", "comparar", "palabras", "tarjeta", "frase", "cierre"],
+  "visuales": [],
+  "inicioVoz": 0,
+  "pausaEntreEscenas": 0.15,
+  "colaFinal": 1.5,
+  "lectura": { "porSegundo": 2.7, "extra": 0.3 },
+  "opciones": [
+    { "clave": "tema", "nombre": "Tema", "valores": { "oscuro": "Oscuro (gráficas)", "claro": "Claro (crema)" } },
+    { "clave": "cierre", "nombre": "Cierre", "valores": { "meta": "Instagram/Facebook: Comenta RUTINA", "tt": "TikTok/YouTube: link en mi perfil" } }
+  ],
+  "sonido": {
+    "ambiente": "suave", "volumenAmbiente": 0.18, "golpesEn": [],
+    "efectosPorTipo": { "gancho": "pop", "reloj": "barrido", "rango": "tic", "contador": "pop", "comparar": "tic", "palabras": "pop", "tarjeta": "tac", "cierre": "pop" }
+  },
+  "portadaEn": 1.2,
+  "vozSugerida": "Mamá mexicana cálida, no locutora (Levania usa Monica Mendez: pon su Voice ID en VOZ_RENDER_DATOS del .env).",
+  "creditos": "Contenido creado con apoyo de IA."
+}

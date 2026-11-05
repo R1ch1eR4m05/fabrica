@@ -7,7 +7,7 @@ Una sola interfaz para hacer videos de varios estilos. Cada estilo es una carpet
 - ✅ **Frases · Fondo desenfocado**: clip de Pexels o tuyo, desenfocado, letra elegante palabra por palabra, con voz o solo música. Temas Noche, Cálido, Levania y Claro.
 - ✅ **Mapas · Shorts de geografía**: historia de un territorio, comparar tamaños reales, fronteras raras y rutas con kilómetros. Looks Plano, Satélite y Papel antiguo. Banderas con ojos y caras, estados de cada país, ciudades. Ver `estilos/mapas/CREDITOS.md`.
 - ✅ **Motion graphics · 21 estilos** (de la skill claude-video, MIT): eliges el estilo en una galería, llenas el brief en el panel y Claude Code construye la pieza; se renderiza con HyperFrames.
-- ⏳ Render: gráficas y 3D (los de Levania)
+- ✅ **Levania · Datos**: gráficas con datos reales en la paleta de Levania (reloj que avanza, barra de rango recomendado, contador, comparación, tarjetas "en vez de / di"). Voz desde el primer cuadro, cortes secos, fuente en pantalla y versión Instagram (Comenta RUTINA) o TikTok (link en mi perfil).
 - ⏳ Animación 3D tipo película (Kling vía APIMart)
 
 ## Investigador de virales

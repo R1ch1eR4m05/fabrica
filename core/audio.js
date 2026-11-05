@@ -30,6 +30,9 @@ const SINTE = {
   susurro: () => ["-f", "lavfi", "-i", `anoisesrc=c=pink:a=0.25:r=${SR}:d=1.6`, "-af", "bandpass=f=3000:w=1800,tremolo=f=7:d=0.6,afade=t=in:d=0.4,afade=t=out:st=0.9:d=0.7"],
   whoosh: () => ["-f", "lavfi", "-i", `anoisesrc=c=pink:a=0.5:r=${SR}:d=0.9`, "-af", "bandpass=f=900:w=1400,afade=t=in:d=0.35:curve=exp,afade=t=out:st=0.35:d=0.55"],
   pop: () => ["-f", "lavfi", "-i", `aevalsrc='0.8*sin(2*PI*(520+900*exp(-30*t))*t)*exp(-14*t)':s=${SR}:d=0.35`],
+  tic: () => ["-f", "lavfi", "-i", `aevalsrc='0.5*sin(2*PI*2400*t)*exp(-t*90)':s=${SR}:d=0.06`],
+  tac: () => ["-f", "lavfi", "-i", `aevalsrc='0.45*sin(2*PI*1700*t)*exp(-t*90)':s=${SR}:d=0.06`],
+  barrido: () => ["-f", "lavfi", "-i", `aevalsrc='0.4*sin(2*PI*(180*t+260*t*t))*sin(PI*t/1.2)':s=${SR}:d=1.2`],
   campana: () => ["-f", "lavfi", "-i", `aevalsrc='0.5*sin(2*PI*392*t)*exp(-1.4*t)+0.25*sin(2*PI*587.3*t)*exp(-2*t)+0.12*sin(2*PI*1046*t)*exp(-3*t)':s=${SR}:d=3.5`],
 };
 export const AMBIENTES = ["oscuro", "suave"];
@@ -75,6 +78,7 @@ export async function mezclar({ estilo, guion, tiempos, voz, salida, tmp, dirPro
     if (!t) continue;
     const lista = [].concat(e.sfx || []);
     if (golpesEn.has(e.tipo) && !lista.length) lista.push("golpe");
+    if (s.efectosPorTipo?.[e.tipo] && !lista.length) lista.push(s.efectosPorTipo[e.tipo]);
     for (const fx of lista) {
       if (!SINTE[fx] || AMBIENTES.includes(fx)) continue;
       const f = await sintetizar(tmp, fx);

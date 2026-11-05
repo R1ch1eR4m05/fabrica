@@ -21,6 +21,11 @@ Sigue ESTILOS.md: carpeta nueva con `estilo.json`, `GUION.md`, `plantilla.html` 
 Pruébalo con un proyecto de prueba y `node fabrica.js fotos`, en 9:16 y 16:9. Mira las imágenes y corrige lo que se encime o se salga del cuadro.
 Si el estilo ya existía como "pronto", quítale `"estado": "pronto"`.
 
+## Levania · Datos (`render-datos`)
+- Antes de escribir un guion lee `estilos/render-datos/referencia/LEVANIA-REGLAS.md` (reglas duras de ritmo, embudo, reglas fijas) y `estilos/render-datos/GUION.md`.
+- Las dos versiones de un video (Instagram/Facebook y TikTok/YouTube) son el mismo proyecto con la opción Cierre distinta; la voz del cierre de TikTok va en `vozTT`.
+- Piezas 3D literales a la medida (Three.js) no caben en el estilo: hazlas aparte con el patrón de `referencia/video-3d_*.html` (`renderAt(t)`) y storyboard aprobado antes.
+
 ## Motion graphics ("construye el motion de <id>")
 La skill vive en `motion/` (claude-video, MIT, textos en portugués; tú hablas en español con Richie). `$SKILL` = `<raíz de la fábrica>/motion`.
 1. Lee `proyectos/<id>/BRIEF.md` y `proyectos/<id>/proyecto.json` (campo `motion`). Las etapas A y B ya están hechas: no vuelvas a preguntar lo que ya dice el brief.

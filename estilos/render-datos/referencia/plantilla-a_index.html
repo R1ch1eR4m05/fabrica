@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="es" data-resolution="portrait">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="assets/gsap.min.js"></script>
+    <script src="data.js"></script>
+    <style>
+      @font-face { font-family: "Cormorant"; src: url(assets/fonts/cormorant-garamond-latin-600-normal.woff2) format("woff2"); font-weight: 600; }
+      @font-face { font-family: "Cormorant"; src: url(assets/fonts/cormorant-garamond-latin-500-italic.woff2) format("woff2"); font-weight: 500; font-style: italic; }
+      @font-face { font-family: "Jost"; src: url(assets/fonts/jost-latin-400-normal.woff2) format("woff2"); font-weight: 400; }
+      @font-face { font-family: "Jost"; src: url(assets/fonts/jost-latin-500-normal.woff2) format("woff2"); font-weight: 500; }
+      :root {
+        --crema: #f6eee4;
+        --rosa: #c4837a;
+        --salvia: #8fa58a;
+        --tinta: #3d3230;
+        --blanco: #fffaf5;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--crema); }
+      #root { position: relative; width: 100%; height: 100%; font-family: "Jost", sans-serif; color: var(--tinta); }
+      .blob { position: absolute; border-radius: 50%; filter: blur(2px); }
+      #b1 { width: 760px; height: 760px; background: var(--rosa); opacity: .13; left: -260px; top: -200px; }
+      #b2 { width: 680px; height: 680px; background: var(--salvia); opacity: .16; right: -240px; bottom: -160px; }
+      #logo { position: absolute; top: 150px; left: 50%; width: 300px; transform: translateX(-50%); }
+      .clip { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 90px; }
+      #gancho h1 { font-family: "Cormorant", serif; font-weight: 600; font-size: 118px; line-height: 1.02; text-align: center; white-space: pre-line; }
+      .card { width: 100%; background: var(--blanco); border-radius: 44px; padding: 70px 64px 76px; box-shadow: 0 24px 60px rgba(61, 50, 48, .10); }
+      .etiqueta { display: inline-block; font-weight: 500; font-size: 40px; letter-spacing: .14em; color: var(--blanco); padding: 10px 34px; border-radius: 999px; margin-bottom: 34px; }
+      .no .etiqueta { background: var(--rosa); }
+      .card.no .frase { display: inline; }
+      .si .etiqueta { background: var(--salvia); }
+      .frase { position: relative; display: inline; font-family: "Cormorant", serif; font-weight: 600; font-size: 88px; line-height: 1.12; }
+      .si .frase { color: #5d7558; }
+      .wrap-no { position: relative; }
+      #tache { position: absolute; left: 0; top: 0; color: transparent; text-decoration: line-through; text-decoration-color: var(--rosa); text-decoration-thickness: 9px; }
+      #comparar { gap: 56px; }
+      #porque p { font-family: "Cormorant", serif; font-style: italic; font-weight: 500; font-size: 92px; line-height: 1.1; text-align: center; }
+      #cta .pre { font-size: 50px; margin-bottom: 30px; text-align: center; }
+      #cta .pill { font-weight: 500; font-size: 96px; letter-spacing: .04em; background: var(--rosa); color: var(--blanco); padding: 28px 70px; border-radius: 999px; }
+      #cta .post { font-size: 50px; margin-top: 34px; text-align: center; line-height: 1.3; }
+      #cta .marca { position: absolute; bottom: 210px; font-size: 36px; letter-spacing: .3em; color: var(--rosa); }
+      #ia { position: absolute; bottom: 70px; left: 0; right: 0; text-align: center; font-size: 26px; color: rgba(61, 50, 48, .45); }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="18" data-width="1080" data-height="1920">
+      <div class="blob" id="b1"></div>
+      <div class="blob" id="b2"></div>
+      <img id="logo" src="assets/levania_logo.png" alt="Levania" />
+
+      <section id="gancho" class="clip" data-start="0" data-duration="3" data-track-index="0"><h1></h1></section>
+
+      <section id="comparar" class="clip" data-start="3" data-duration="8" data-track-index="0">
+        <div class="card no"><span class="etiqueta">EN VEZ DE</span><div class="wrap-no"><span class="frase" id="txt-no"></span><span class="frase" id="tache"></span></div></div>
+        <div class="card si"><span class="etiqueta">DI</span><div><span class="frase" id="txt-si"></span></div></div>
+      </section>
+
+      <section id="porque" class="clip" data-start="11" data-duration="3" data-track-index="0"><p></p></section>
+
+      <section id="cta" class="clip" data-start="14" data-duration="4" data-track-index="0">
+        <p class="pre"></p>
+        <div class="pill"></div>
+        <p class="post"></p>
+      </section>
+
+      <p id="ia">Contenido creado con apoyo de IA</p>
+    </div>
+    <script>
+      const V = window.VIDEO;
+      const q = (s) => document.querySelector(s);
+      q("#gancho h1").textContent = V.gancho;
+      q("#txt-no").textContent = V.no;
+      q("#tache").textContent = V.no;
+      q("#txt-si").textContent = V.si;
+      q("#porque p").textContent = V.porque;
+      if (V.version === "meta") {
+        q("#cta .pre").textContent = "Comenta";
+        q("#cta .pill").textContent = V.palabra;
+        q("#cta .post").textContent = "y te mando gratis tu checklist";
+      } else {
+        q("#cta .pre").textContent = "Tu checklist gratis";
+        q("#cta .pill").textContent = "en mi perfil";
+        q("#cta .post").textContent = "link en la bio";
+      }
+
+      const tl = gsap.timeline({ paused: true });
+      const ease = "power3.out";
+      // fondo vivo
+      tl.fromTo("#b1", { x: 0, y: 0 }, { x: 60, y: 40, duration: 18, ease: "none" }, 0);
+      tl.fromTo("#b2", { x: 0, y: 0 }, { x: -50, y: -60, duration: 18, ease: "none" }, 0);
+      tl.fromTo("#logo", { opacity: 0, y: -20 }, { opacity: 1, y: 0, duration: 0.6, ease }, 0);
+      // gancho
+      tl.fromTo("#gancho h1", { opacity: 0, y: 40, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: 0.7, ease }, 0.15);
+      tl.to("#gancho h1", { opacity: 0, y: -30, duration: 0.35 }, 2.65);
+      // en vez de / di
+      tl.fromTo(".card.no", { opacity: 0, y: 60 }, { opacity: 1, y: 0, duration: 0.6, ease }, 3.0);
+      tl.fromTo("#tache", { opacity: 0 }, { opacity: 1, duration: 0.35 }, 4.6);
+      tl.to(".card.no", { opacity: 0.55, scale: 0.97, duration: 0.4 }, 5.3);
+      tl.fromTo(".card.si", { opacity: 0, y: 60 }, { opacity: 1, y: 0, duration: 0.6, ease }, 5.6);
+      tl.fromTo(".card.si", { scale: 1 }, { scale: 1.03, duration: 0.5, yoyo: true, repeat: 1, ease: "sine.inOut" }, 7.0);
+      tl.to("#comparar", { opacity: 0, duration: 0.35 }, 10.65);
+      // porqué
+      tl.fromTo("#porque p", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.7, ease }, 11.0);
+      tl.to("#porque p", { opacity: 0, duration: 0.35 }, 13.65);
+      // cierre
+      tl.fromTo("#cta .pre", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5, ease }, 14.0);
+      tl.fromTo("#cta .pill", { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 0.6, ease: "back.out(1.7)" }, 14.25);
+      tl.fromTo("#cta .post", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5, ease }, 14.6);
+      tl.fromTo("#cta .pill", { scale: 1 }, { scale: 1.05, duration: 0.45, yoyo: true, repeat: 3, ease: "sine.inOut" }, 15.4);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

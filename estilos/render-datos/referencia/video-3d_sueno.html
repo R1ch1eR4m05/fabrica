@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<!--
+  Sueño v2 · sigue STORYBOARD_sueno_v2.md. Todo se sincroniza con voz/<v>.words.json.
+  Video:    sueno.html?v=montaje/sueno_v2_meta  (cierre "Comenta RUTINA")
+            sueno.html?v=montaje/sueno_v2_tt    (cierre "Link en mi perfil")
+  Portada:  sueno.html?v=montaje/sueno_v2_meta&portada=1   (render.js --png portada.png)
+  window.SFX expone los efectos (tic, pop, barrido) para que render.js los sintetice con FFmpeg.
+-->
+<style>
+  @font-face { font-family: "Cormorant"; src: url(fonts/cormorant-garamond-latin-600-normal.woff2); font-weight: 600; }
+  @font-face { font-family: "Jost"; src: url(fonts/jost-latin-400-normal.woff2); font-weight: 400; }
+  @font-face { font-family: "Jost"; src: url(fonts/jost-latin-500-normal.woff2); font-weight: 500; }
+  :root { --fondo: #2a211f; --crema: #f6eee4; --muted: rgba(246, 238, 228, .6); --salvia: #5f735c; --rosa: #e8a095; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1080px; height: 1920px; overflow: hidden; }
+  body { background: radial-gradient(ellipse at 50% 35%, #3a2d2a 0%, var(--fondo) 60%, #1f1817 100%); color: var(--crema); font-family: "Jost", sans-serif; }
+  .abs { position: absolute; }
+  .serif { font-family: "Cormorant", serif; font-weight: 600; font-variant-numeric: lining-nums; }
+  .sombra { text-shadow: 0 6px 24px rgba(0, 0, 0, .6); }
+  .oculto { display: none !important; }
+  #tres { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; }
+  #logo { top: 90px; left: 50%; width: 230px; transform: translateX(-50%); }
+
+  /* títulos grandes de las escenas 3D */
+  .titulo { top: 225px; left: 40px; right: 40px; text-align: center; font-weight: 500; font-size: 118px; line-height: 1.0; text-transform: uppercase; letter-spacing: .01em; }
+  .titulo span { display: inline-block; margin: 0 .12em; }
+  .titulo .r { color: var(--rosa); }
+  #t1 span.dicha { color: var(--rosa); }
+  .chip { font-weight: 500; border-radius: 999px; white-space: nowrap; }
+  #chipEdad { top: 72px; right: 44px; font-size: 36px; padding: 10px 26px; background: var(--rosa); color: var(--fondo); }
+  #rotulo { top: 380px; left: 50%; font-size: 50px; padding: 14px 38px; background: rgba(31, 24, 23, .85); border: 3px solid var(--rosa); color: var(--crema); }
+  #contador { top: 1110px; left: 0; right: 0; text-align: center; font-weight: 500; font-size: 124px; font-variant-numeric: tabular-nums; }
+
+  /* escena de la barra */
+  #escE { position: absolute; inset: 0; }
+  #barraStage { position: absolute; inset: 0; transform-origin: 540px 880px; }
+  #necesita { top: 380px; left: 0; right: 0; text-align: center; font-weight: 500; font-size: 100px; line-height: 1.05; }
+  #necesita span { display: inline-block; }
+  #r912 { color: var(--rosa); }
+  #edadE { top: 560px; left: 90px; font-size: 80px; font-weight: 500; color: var(--rosa); }
+  svg { position: absolute; left: 0; top: 0; overflow: visible; }
+  .tick { font-size: 45px; fill: var(--muted); }
+  .mk { font-size: 62px; fill: var(--crema); font-weight: 500; }
+  #menos30 { top: 1065px; left: 0; right: 0; text-align: center; font-weight: 500; font-size: 86px; color: var(--rosa); }
+  #dormirTxt { top: 225px; left: 0; right: 0; text-align: center; font-size: 46px; color: var(--muted); }
+  .grande { left: 0; right: 0; text-align: center; font-weight: 500; font-size: 112px; letter-spacing: .03em; }
+  #atencion { top: 290px; }
+  #conducta { top: 405px; color: var(--rosa); }
+
+  /* cierre (cierre.html) */
+  #cierre { position: absolute; inset: 0; }
+  #cierre h1 { position: absolute; top: 205px; left: 0; right: 0; text-align: center; font-family: "Cormorant", serif; font-weight: 600; font-size: 76px; font-variant-numeric: lining-nums; }
+  #paper { position: absolute; left: 50%; top: 330px; width: 420px; margin-left: -210px; box-shadow: 0 30px 70px rgba(0,0,0,.55); border-radius: 10px; overflow: hidden; background: #fff; }
+  #paper img { display: block; width: 100%; }
+  .badge { position: absolute; font-weight: 500; letter-spacing: .05em; border-radius: 999px; }
+  #gratis { right: 150px; top: 300px; background: #e8a095; color: #2a211f; font-size: 40px; padding: 14px 38px; }
+  #pdf { right: 130px; top: 875px; background: #f6eee4; color: #2a211f; font-size: 34px; padding: 12px 32px; }
+  #lista { position: absolute; top: 955px; left: 0; right: 0; list-style: none; text-align: center; font-size: 44px; line-height: 1.5; }
+  #lista li { display: block; }
+  #lista li b { color: #e8a095; font-weight: 500; margin-right: 14px; }
+  #pill { position: absolute; top: 1172px; left: 50%; white-space: nowrap; font-weight: 500; font-size: 70px; letter-spacing: .04em; color: #2a211f; background: #e8a095; border-radius: 999px; padding: 16px 54px; }
+  #pillSub { position: absolute; top: 1505px; left: 0; right: 0; text-align: center; font-size: 38px; color: rgba(246,238,228,.7); }
+
+  /* portada */
+  #portada { position: absolute; inset: 0; }
+  #portada .t { position: absolute; top: 270px; left: 30px; right: 30px; text-align: center; font-weight: 500; font-size: 158px; line-height: 1.0; text-transform: uppercase; }
+  #portada .t em { font-style: normal; color: var(--rosa); }
+  #portada .chip { position: absolute; top: 625px; left: 50%; transform: translateX(-50%); font-size: 54px; padding: 16px 44px; background: var(--rosa); color: var(--fondo); }
+  #portada .ia { position: absolute; top: 1630px; left: 0; right: 0; text-align: center; font-size: 22px; color: rgba(246, 238, 228, .5); }
+
+  /* capa fija */
+  #subs { left: 40px; right: 40px; top: 1325px; height: 170px; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 0 22px; text-align: center; }
+  #subs span { font-size: 78px; font-weight: 500; line-height: 1.05; color: var(--crema); text-shadow: 0 4px 18px rgba(0, 0, 0, .7); display: inline-block; }
+  #subs span.on { color: var(--rosa); }
+  #fuente { bottom: 100px; left: 80px; right: 80px; text-align: center; font-size: 26px; color: var(--muted); line-height: 1.35; }
+  #ia { bottom: 52px; left: 0; right: 0; text-align: center; font-size: 22px; color: rgba(246, 238, 228, .45); }
+</style>
+</head>
+<body>
+  <canvas id="tres" width="1080" height="1920"></canvas>
+
+  <!-- A · B · C · D: escenas 3D -->
+  <div id="t1" class="abs titulo sombra"><span>¿Se</span><span>duerme</span><br /><span>a las</span><span>10?</span></div>
+  <div id="t2" class="abs titulo sombra"><span>Haz</span><span>la</span><span class="r">cuenta</span></div>
+  <div id="chipEdad" class="abs chip">6–12 años</div>
+  <div id="rotulo" class="abs chip">10:00 pm → 6:30 am</div>
+  <div id="contador" class="abs sombra">0 h 00 min</div>
+
+  <!-- E · F: una sola barra -->
+  <div id="escE">
+    <div id="barraStage">
+      <div id="necesita" class="abs"><span id="nec">NECESITA</span> <span id="r912">9–12 h</span></div>
+      <div id="edadE" class="abs">6–12 años</div>
+      <svg id="chart" width="1080" height="1920"></svg>
+      <div id="menos30" class="abs">−30 min cada noche</div>
+    </div>
+    <div id="dormirTxt" class="abs">Dormir menos se asocia con</div>
+    <div id="atencion" class="abs grande">ATENCIÓN</div>
+    <div id="conducta" class="abs grande">CONDUCTA</div>
+  </div>
+
+  <!-- G: cierre -->
+  <div id="cierre">
+    <h1 id="llega">Para que siga su rutina solo</h1>
+    <div id="paper"><img src="checklist_prev.png" /></div>
+    <div class="badge" id="gratis">GRATIS</div>
+    <div class="badge" id="pdf">PDF para imprimir</div>
+    <ul id="lista"><li><b>✓</b>Antes de la escuela</li><li><b>✓</b>Después de la escuela</li><li><b>✓</b>Antes de dormir</li></ul>
+    <div id="pill"></div>
+    <div id="pillSub"></div>
+  </div>
+
+  <!-- portada -->
+  <div id="portada" class="oculto">
+    <div class="t sombra">¿Le falta<br /><em>sueño?</em></div>
+    <div class="chip">10 pm → 6:30 am = 8 h 30</div>
+    <div class="ia">Animación creada con apoyo de IA</div>
+  </div>
+
+  <img id="logo" class="abs" src="levania_logo_blanco.png" />
+  <div id="subs" class="abs"></div>
+  <div id="fuente" class="abs">Fuente: AASM 2016 (J Clin Sleep Med 12(6)), avalado por la AAP.</div>
+  <div id="ia" class="abs">Animación creada con apoyo de IA</div>
+<script>
+window.TRES = new Promise((ok) => (window.TRES_OK = ok));
+const Q = new URLSearchParams(location.search);
+const VERSION = Q.get("v") || "montaje/sueno_v2_meta";
+const TT = VERSION.endsWith("_tt");
+const PORTADA = Q.get("portada") === "1";
+const CIERRE = TT
+  ? { pill: "Link en mi perfil", sub: "descárgalo gratis e imprímelo" }
+  : { pill: "Comenta RUTINA", sub: "y te lo mando por mensaje privado" };
+
+// ---------- utilidades ----------
+const clamp = (x) => Math.min(1, Math.max(0, x));
+const ease = (x) => 1 - Math.pow(1 - x, 3);
+const back = (x) => { const c = 1.7; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+const ramp = (t, a, len = 0.15) => clamp((t - a) / len);
+const $ = (id) => document.getElementById(id);
+const norm = (w) => w.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9ñ]/g, "");
+const ver = (id, on) => { $(id).style.visibility = on ? "visible" : "hidden"; };
+// aparición seca con pequeño rebote (0.15 s)
+const pop = (el, t, t0, extra = "") => {
+  const p = ramp(t, t0 - 0.03, 0.16);
+  el.style.opacity = p > 0 ? 1 : 0;
+  el.style.transform = `${extra} scale(${p > 0 ? 0.7 + 0.3 * back(p) : 0.7})`;
+};
+
+// ---------- tiempos de la voz ----------
+let W = [], T = {}, SUBS = [], SFX = [];
+function find(seq, from = 0) {
+  const s = seq.split(" ");
+  for (let i = from; i <= W.length - s.length; i++) if (s.every((x, k) => W[i + k].n === x)) return i;
+  return -1;
+}
+function prepara(words) {
+  W = words.map((x) => ({ ...x, n: norm(x.w) }));
+  const at = (seq, from = 0) => { const i = find(seq, from); if (i < 0) throw new Error("No encontré en la voz: " + seq); return i; };
+  const st = (i) => W[i].start, en = (i) => W[i].end;
+  const se = at("se duerme"), a = at("a las", se), d1 = at("diez", a);
+  const haz = at("haz"), cuenta = at("cuenta", haz);
+  const de1 = at("de diez de la noche"), man = at("manana", de1);
+  const son = at("son ocho"), de2 = at("de seis a doce anos");
+  const nec = at("necesita", de2), nue = at("nueve", nec), doce = at("doce", nue);
+  const dor = at("dormir menos"), ate = at("atencion", dor), con = at("conducta", ate);
+  let ci = find("comenta", con); if (ci < 0) ci = find("descarga", con);
+  if (ci < 0) throw new Error("No encontré el cierre");
+  const c = (seq, campo = "start") => { const i = at(seq, ci); return W[i][campo]; };
+  T = {
+    A: 0, se: st(se), duerme: st(se + 1), alas: st(a), diez1: st(d1),
+    B: st(haz), esta: st(haz + 1), cuenta: st(cuenta), cuentaFin: en(cuenta),
+    C: st(de1), diezC: st(de1 + 1), mananaFin: en(man),
+    D: st(son), ocho: st(son + 1),
+    E: st(de2), seis2: st(de2 + 1), nec: st(nec), nueve: st(nue), doce: st(doce), doceFin: en(doce),
+    F: st(dor), atencion: st(ate), conducta: st(con),
+    G: st(ci), gratis: c("gratis"),
+    imprimir: c("imprimir"), imprimirFin: c("imprimir", "end"), vozFin: W[W.length - 1].end,
+  };
+  // los 3 puntos de la lista ya no se dicen: entran en tiempos fijos del cierre
+  Object.assign(T, { p1: T.G + 3.2, p2: T.G + 4.2, p3: T.G + 5.2 });
+  // subtítulos: grupos de hasta 3 palabras
+  SUBS = []; let g = [];
+  W.forEach((w, i) => {
+    g.push(i);
+    if (/[.,:;?!…]$/.test(w.w) || g.length === 3 || i === W.length - 1 || (W[i + 1] && W[i + 1].start - w.end > 0.35)) { SUBS.push(g); g = []; }
+  });
+  // efectos de sonido (render.js los sintetiza)
+  for (let x = 0; x < T.B; x += 0.5) SFX.push({ tipo: (x / 0.5) % 2 ? "tac" : "tic", t: x });
+  for (let x = T.B; x < T.C; x += 0.25) SFX.push({ tipo: ((x - T.B) / 0.25) % 2 ? "tac" : "tic", t: x });
+  SFX.push({ tipo: "barrido", t: T.diezC, d: T.D - T.diezC });
+  SFX.push({ tipo: "pop", t: T.ocho }, { tipo: "tic", t: T.nec }, { tipo: "pop", t: T.doce }, { tipo: "pop", t: T.atencion }, { tipo: "pop", t: T.conducta });
+  SFX.push({ tipo: "barrido", t: T.G, d: 0.5 });
+  [T.G + 0.05, T.gratis, T.p1, T.p2, T.p3, T.imprimir].forEach((x) => SFX.push({ tipo: "pop", t: x }));
+  window.TIEMPOS = T; window.SFX = SFX;
+}
+const limpia = (w) => w.replace(/^[¿¡"«]+|[.,:;?!…"»]+$/g, "");
+
+// ---------- subtítulos ----------
+const subsEl = $("subs");
+let grupoActual = -1;
+function subtitulos(t) {
+  let gi = -1;
+  for (let k = 0; k < SUBS.length; k++) if (t >= W[SUBS[k][0]].start - 0.05) gi = k;
+  const ultimo = SUBS[SUBS.length - 1];
+  if (gi < 0 || t > W[ultimo[ultimo.length - 1]].end + 0.3) { subsEl.innerHTML = ""; grupoActual = -1; return; }
+  if (gi !== grupoActual) { subsEl.innerHTML = SUBS[gi].map((i) => `<span data-i="${i}">${limpia(W[i].w)}</span>`).join(""); grupoActual = gi; }
+  for (const sp of subsEl.children) {
+    const i = +sp.dataset.i, w = W[i];
+    const fin = W[i + 1] ? Math.min(W[i + 1].start, w.end + 0.25) : w.end + 0.3;
+    const on = t >= w.start - 0.03 && t < fin;
+    sp.className = on ? "on" : "";
+    sp.style.opacity = t >= w.start - 0.03 ? 1 : 0.4;
+    sp.style.transform = `scale(${on ? 1.06 : 1})`;
+  }
+}
+
+// ---------- barra única (6 a 13 h) ----------
+const ns = "http://www.w3.org/2000/svg", svg = $("chart");
+const el = (tag, a, txt) => { const e = document.createElementNS(ns, tag); for (const k in a) e.setAttribute(k, a[k]); if (txt != null) e.textContent = txt; svg.appendChild(e); return e; };
+// 1.4× más grande que la v2 (de 8 a 13 h, barra de 98 px)
+const X = (h) => 90 + (h - 8) / 5 * 900, BY = 880, BH = 98;
+for (let h = 8; h <= 13; h++) {
+  el("line", { x1: X(h), x2: X(h), y1: BY - 95, y2: BY + 75, stroke: "rgba(246,238,228,.12)", "stroke-width": 3 });
+  el("text", { x: X(h), y: BY + 135, "text-anchor": "middle", class: "tick" }, h + " h");
+}
+el("rect", { x: X(8), y: BY - BH / 2, width: X(13) - X(8), height: BH, rx: BH / 2, fill: "rgba(246,238,228,.07)" });
+const barra = el("rect", { x: X(9), y: BY - BH / 2, height: BH, width: 0, rx: BH / 2, fill: "#e8a095" });
+const gap = el("rect", { x: X(8.5), y: BY - BH / 2, height: BH, width: X(9) - X(8.5), fill: "url(#rayas)", opacity: 0 });
+const defs = document.createElementNS(ns, "defs");
+defs.innerHTML = `<pattern id="rayas" width="16" height="16" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="8" height="16" fill="rgba(232,160,149,.55)"/></pattern>`;
+svg.insertBefore(defs, svg.firstChild);
+const mk = document.createElementNS(ns, "g"); svg.appendChild(mk);
+mk.innerHTML = `<line x1="0" x2="0" y1="${BY - 115}" y2="${BY + 80}" stroke="#f6eee4" stroke-width="7" stroke-dasharray="16 12"/><circle cx="0" cy="${BY}" r="28" fill="#f6eee4" stroke="#2a211f" stroke-width="7"/><text x="0" y="${BY - 140}" text-anchor="middle" class="mk">8.5 h</text>`;
+
+// ---------- render ----------
+window.renderAt = (t) => {
+  if (PORTADA) { window.render3D && window.render3D(t, T, true); return; }
+  const esc = t < T.E ? (t < T.B ? "A" : t < T.C ? "B" : t < T.D ? "C" : "D") : t < T.G ? (t < T.F ? "E" : "F") : "G";
+  const es3D = "ABCD".includes(esc), esBarra = esc === "E" || esc === "F";
+  ver("tres", es3D);
+  if (es3D && window.render3D) window.render3D(t, T, false);
+  subtitulos(t);
+
+  // A: "¿SE DUERME A LAS 10?" palabra por palabra (la primera ya en el cuadro 0)
+  ver("t1", esc === "A");
+  const s1 = $("t1").querySelectorAll("span");
+  const cortes1 = [T.A, T.duerme, T.alas, T.diez1, T.B];
+  s1.forEach((sp, k) => {
+    const on = t >= cortes1[k] - 0.03 && t < cortes1[k + 1] - 0.03;
+    sp.className = on ? "dicha" : "";
+    sp.style.opacity = 1;
+    sp.style.transform = `scale(${on ? 1.08 : 1})`;
+  });
+  ver("chipEdad", es3D);
+  // B: "HAZ LA CUENTA" + rótulo
+  ver("t2", esc === "B");
+  const s2 = $("t2").querySelectorAll("span");
+  [T.B, T.esta, T.cuenta].forEach((x, k) => pop(s2[k], t, x));
+  ver("rotulo", "BCD".includes(esc));
+  $("rotulo").style.top = esc === "B" ? "380px" : "225px";
+  pop($("rotulo"), t, T.cuentaFin - 0.15, "translateX(-50%)");
+  // C: contador que sube con el reloj · D: salta a "8 h 30 min" gigante en rosa
+  ver("contador", esc === "C" || esc === "D");
+  const p = clamp((t - T.diezC) / (T.mananaFin - T.diezC));
+  const min = Math.round(510 * p);
+  $("contador").textContent = `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, "0")} min`;
+  const salto = ramp(t, T.ocho - 0.03, 0.25);
+  $("contador").style.color = salto > 0 ? "#e8a095" : "#f6eee4";
+  $("contador").style.fontSize = (salto > 0 ? 170 : 124) + "px";
+  $("contador").style.transform = `scale(${salto > 0 ? 1.3 - 0.3 * ease(salto) : 1})`;
+
+  // E/F: una sola barra
+  ver("escE", esBarra);
+  pop($("edadE"), t, T.E);
+  pop($("nec"), t, T.nec);
+  ver("necesita", esc === "E");
+  pop($("r912"), t, T.nueve);
+  barra.setAttribute("width", Math.max(0.01, (X(12) - X(9)) * ease(clamp((t - T.nueve) / Math.max(0.3, T.doce + 0.15 - T.nueve)))));
+  const m = ease(ramp(t, T.nec - 0.03, 0.35));
+  mk.setAttribute("transform", `translate(${-60 + (X(8.5) + 60) * m}, 0)`);
+  mk.setAttribute("opacity", m > 0 ? 1 : 0);
+  gap.setAttribute("opacity", ramp(t, T.doce, 0.2));
+  const m30 = ramp(t, T.doce - 0.03, 0.2);
+  $("menos30").style.opacity = m30 > 0 ? 1 : 0;
+  $("menos30").style.transform = `scale(${(m30 > 0 ? 0.7 + 0.3 * back(m30) : 0.7) + (t > T.doce + 0.3 ? 0.06 * Math.max(0, Math.sin((t - T.doce) * 6)) : 0)})`;
+  // F: empuje hacia la barra + ATENCIÓN / CONDUCTA
+  const f = clamp((t - T.F) / (T.G - T.F));
+  $("barraStage").style.transform = `scale(${1 + 0.04 * ease(ramp(t, T.F, 0.3)) + 0.05 * f})`;
+  pop($("dormirTxt"), t, T.F);
+  pop($("atencion"), t, T.atencion);
+  pop($("conducta"), t, T.conducta);
+
+  // G: cierre (corte seco)
+  ver("cierre", esc === "G");
+  const quieto = t > T.vozFin;
+  const pa = ramp(t, T.G - 0.02, 0.45);
+  const flota = quieto ? 0 : Math.sin((t - T.G) * 1.6) * 6 * pa;
+  $("paper").style.transform = `translateY(${(1 - ease(pa)) * 300 + flota}px) rotate(${-3 - 14 * (1 - ease(pa))}deg) scale(${0.8 + 0.2 * ease(pa)})`;
+  pop($("gratis"), t, T.gratis, "rotate(6deg)");
+  pop($("pdf"), t, T.imprimir, "rotate(-5deg)");
+  [T.p1, T.p2, T.p3].forEach((x, k) => pop($("lista").children[k], t, x));
+  pop($("pill"), t, T.G, "translateX(-50%)");
+  pop($("pillSub"), t, T.G + 0.6);
+
+  // fuente: desde la barra hasta el final
+  ver("fuente", t >= T.E);
+};
+
+async function inicio() {
+  $("pill").textContent = CIERRE.pill; $("pillSub").textContent = CIERRE.sub;
+  const r = await fetch(`voz/${VERSION}.words.json`);
+  if (!r.ok) throw new Error("Falta voz/" + VERSION + ".words.json");
+  prepara(await r.json());
+  if (PORTADA) {
+    ["t1", "t2", "chipEdad", "rotulo", "contador", "escE", "cierre", "subs", "fuente", "ia"].forEach((id) => $(id).classList.add("oculto"));
+    $("portada").classList.remove("oculto");
+  }
+  await document.fonts.ready;
+  await new Promise((ok) => { const im = document.querySelector("#paper img"); im.complete ? ok() : (im.onload = ok, im.onerror = ok); });
+  window.render3D = await window.TRES;
+  window.renderAt(0);
+  window.DURACION = T.vozFin;
+  window.READY = true;
+}
+inicio().catch((e) => console.error(e.message || e));
+</script>
+<script type="importmap">{ "imports": { "three": "./node_modules/three/build/three.module.js", "three/addons/": "./node_modules/three/examples/jsm/" } }</script>
+<script type="module">
+// Cuarto de noche y muñeco de juguete (cápsula, cabeza redonda, bracitos, ojos de punto). Todo depende de t y de los tiempos T.
+import * as THREE from "three";
+import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
+const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById("tres"), antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1); renderer.setSize(1080, 1920, false);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const scene = new THREE.Scene(); scene.background = new THREE.Color("#2a211f");
+const cam = new THREE.PerspectiveCamera(46, 1080 / 1920, 0.1, 50);
+const M = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, ...o });
+const add = (geo, mat, x, y, z, parent = scene) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; parent.add(m); return m; };
+const box = (w, h, d, r = 0.04) => new RoundedBoxGeometry(w, h, d, 3, r);
+const basic = (c) => new THREE.MeshBasicMaterial({ color: c, transparent: true });
+
+// cuarto
+const piso = add(new THREE.PlaneGeometry(14, 14), M("#4a3b38"), 0, 0, 0); piso.rotation.x = -Math.PI / 2;
+add(new THREE.PlaneGeometry(14, 8), M("#3d3230"), 0, 4, -1.3);
+const izq = add(new THREE.PlaneGeometry(14, 8), M("#362b29"), -2.4, 4, 0); izq.rotation.y = Math.PI / 2;
+// cama
+add(box(2.4, 0.4, 1.3), M("#5f735c"), 0, 0.22, -0.62);
+add(box(2.3, 0.22, 1.2, 0.08), M("#f6eee4"), 0, 0.52, -0.62);
+add(box(0.14, 1.05, 1.32), M("#5f735c"), -1.2, 0.72, -0.62);
+const cobija = add(box(1.45, 0.42, 1.26, 0.12), M("#c4837a"), 0.48, 0.82, -0.62);
+const almohada = add(new THREE.SphereGeometry(1, 24, 16), M("#e9ddd0"), -0.8, 0.72, -0.62);
+// buró y lámpara
+add(box(0.55, 0.62, 0.5), M("#5f735c"), -1.75, 0.31, -0.8);
+add(new THREE.CylinderGeometry(0.03, 0.08, 0.38, 12), M("#f6eee4"), -1.75, 0.81, -0.8);
+const pantalla = add(new THREE.CylinderGeometry(0.13, 0.24, 0.28, 24, 1, true), M("#e8a095", { emissive: "#e8a095", emissiveIntensity: 0.9, side: THREE.DoubleSide }), -1.75, 1.08, -0.8);
+const foco = new THREE.PointLight("#ffc9a8", 6, 6, 1.6); foco.position.set(-1.75, 1.05, -0.6); foco.castShadow = true; scene.add(foco);
+// ventana (a la derecha, a la altura de la cabeza) con luna llena y sol
+const VX = 1.2, VY = 1.7;
+add(box(1.0, 1.0, 0.08), M("#5f735c"), VX, VY, -1.27);
+const cielo = new THREE.Mesh(new THREE.PlaneGeometry(0.86, 0.86), basic("#1c2236")); cielo.position.set(VX, VY, -1.22); scene.add(cielo);
+const luna = new THREE.Mesh(new THREE.CircleGeometry(0.15, 32), basic("#f6eee4")); scene.add(luna);
+const sol = new THREE.Mesh(new THREE.CircleGeometry(0.16, 32), basic("#f6c9a0")); scene.add(sol);
+add(box(0.05, 0.86, 0.04, 0.01), M("#5f735c"), VX, VY, -1.19);
+add(box(0.86, 0.05, 0.04, 0.01), M("#5f735c"), VX, VY, -1.19);
+// reloj digital gigante arriba de la cama
+const lienzo = document.createElement("canvas"); lienzo.width = 640; lienzo.height = 256;
+const tex = new THREE.CanvasTexture(lienzo); tex.colorSpace = THREE.SRGBColorSpace;
+const relojG = new THREE.Group(); relojG.position.set(0.3, 2.45, -0.9); scene.add(relojG);
+add(box(1.3, 0.56, 0.06), M("#1f1817"), 0, 0, -0.02, relojG);
+const pr = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.48), new THREE.MeshBasicMaterial({ map: tex })); pr.position.z = 0.02; relojG.add(pr);
+let ultimo = "";
+function reloj(min) {
+  const h24 = Math.floor(min / 60) % 24, m = Math.floor(min % 60);
+  const txt = `${((h24 + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${h24 < 12 ? "am" : "pm"}`;
+  if (txt === ultimo) return; ultimo = txt;
+  const c = lienzo.getContext("2d");
+  c.fillStyle = "#1f1817"; c.fillRect(0, 0, 640, 256);
+  c.fillStyle = "#e8a095"; c.font = "500 150px Jost"; c.textAlign = "center"; c.textBaseline = "middle";
+  c.fillText(txt, 320, 134); tex.needsUpdate = true;
+}
+// luces
+scene.add(new THREE.HemisphereLight("#8d9cc4", "#5a4542", 1.2));
+const lunaLuz = new THREE.DirectionalLight("#b8c4e0", 1.5); lunaLuz.position.set(2.5, 4, 3); lunaLuz.castShadow = true; scene.add(lunaLuz);
+scene.add(new THREE.AmbientLight("#ffffff", 0.35));
+
+// muñeco de juguete
+const cadera = new THREE.Group(); scene.add(cadera);
+const verde = M("#8fa58a", { roughness: 0.6 });
+add(new THREE.CapsuleGeometry(0.2, 0.42, 8, 20), verde, 0, 0.41, 0, cadera);
+const cabeza = add(new THREE.SphereGeometry(0.25, 32, 20), M("#f0d9cc", { roughness: 0.6 }), 0, 1.04, 0, cadera);
+const ojos = [-0.09, 0.09].map((x) => {
+  const g = new THREE.Group(); g.position.set(x, 0.05, 0.2); cabeza.add(g);
+  add(new THREE.SphereGeometry(0.065, 16, 12), M("#ffffff", { roughness: 0.4 }), 0, 0, 0, g);
+  add(new THREE.SphereGeometry(0.036, 12, 8), M("#2a211f", { roughness: 0.3 }), 0, 0, 0.05, g);
+  return g;
+});
+const ojeras = [-0.09, 0.09].map((x) => { const o = add(new THREE.SphereGeometry(1, 12, 8), M("#7a5a63"), x, -0.035, 0.215, cabeza); o.scale.set(0.07, 0.024, 0.03); return o; });
+const boca = add(new THREE.SphereGeometry(0.05, 16, 10), M("#2a211f", { roughness: 0.3 }), 0, -0.09, 0.235, cabeza);
+const brazos = [-1, 1].map((l) => {
+  const hombro = new THREE.Group(); hombro.position.set(0.21 * l, 0.68, 0); cadera.add(hombro);
+  add(new THREE.CapsuleGeometry(0.06, 0.16, 6, 12), verde, 0, -0.14, 0, hombro);
+  return { hombro, l };
+});
+
+const clamp = (x) => Math.min(1, Math.max(0, x));
+const io = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+const L = (a, b, p) => a + (b - a) * p;
+const V = (x, y, z) => new THREE.Vector3(x, y, z);
+const noche = new THREE.Color("#1c2236"), alba = new THREE.Color("#e3a48f");
+// posiciones de la almohada: [pos, rot.x, escala]
+const ALM = {
+  abrazo: [V(0.3, 0.98, -0.34), 1.35, V(0.26, 0.09, 0.34)],
+  cabeza: [V(0.3, 1.93, -0.5), 0.35, V(0.3, 0.13, 0.42)],
+  bajo: [V(-0.8, 0.72, -0.62), 0, V(0.3, 0.1, 0.42)],
+};
+function almohadaEn(a, b, p) {
+  almohada.position.copy(a[0]).lerp(b[0], p);
+  almohada.rotation.set(L(a[1], b[1], p), 0, 0);
+  almohada.scale.copy(a[2]).lerp(b[2], p);
+}
+// cámara: mira a "o", desde la dirección "dir", a distancia "d"
+function camara(o, dir, d) { cam.position.copy(dir.clone().normalize().multiplyScalar(d).add(o)); cam.lookAt(o); }
+
+window.TRES_OK((t, T, portada) => {
+  let sienta = 1, rollo = 0, brazoX = 0, brazoZ = 0.25, ojosY = 1, ojosS = 1, yawn = 0, conOjeras = false, pasa = 0;
+  if (portada) t = T.D + 0.55;
+  if (t < T.B) {                                   // A: sentado, abraza la almohada, ojos grandes
+    almohadaEn(ALM.abrazo, ALM.abrazo, 0); brazoX = -1.25; brazoZ = 0.3; ojosS = 1.35;
+    camara(V(0.35, 1.77, -0.62), V(0.18, 0.05, 1), L(4.8, 4.1, io(clamp(t / T.B))));
+  } else if (t < T.C) {                            // B: se tapa, se destapa y se da vuelta
+    const u = (t - T.B) / (T.C - T.B);
+    const tapa = io(clamp(u / 0.25)), destapa = io(clamp((u - 0.35) / 0.2)), vuelta = io(clamp((u - 0.55) / 0.3));
+    if (u < 0.35) { almohadaEn(ALM.abrazo, ALM.cabeza, tapa); brazoZ = L(0.3, 2.6, tapa); brazoX = L(-1.25, 0, tapa); }
+    else { almohadaEn(ALM.cabeza, ALM.bajo, destapa); brazoZ = L(2.6, 0.3, destapa); }
+    sienta = 1 - vuelta; rollo = vuelta * Math.sin(t * 9) * 0.4;
+    camara(V(0, 1.45, -0.6), V(0.45, 0.15, 1), L(6.6, 6.2, u));
+  } else if (t < T.D) {                            // C: time-lapse, 3 cambios de postura, cámara orbita
+    pasa = clamp((t - T.diezC) / (T.mananaFin - T.diezC));
+    const k = Math.min(3, Math.floor(clamp((t - T.C) / (T.D - T.C)) * 4));
+    almohadaEn(ALM.bajo, ALM.bajo, 0);
+    sienta = k === 3 ? 1 : 0; rollo = [0, 0.95, -0.95, 0][k];
+    if (k === 3) { brazoX = -0.9; brazoZ = 0.5; ojosY = 0.5; }
+    const th = [-0.3, 0.2, 0.65, 0.05][k] + 0.1 * pasa; // entre -0.3 y 0.75 rad: nunca detrás del reloj ni de la pared
+    camara(V(0.1, 1.35, -0.6), V(Math.sin(th), 0.32, Math.cos(th)), 5.6);
+  } else {                                         // D: congelado a las 6:30 am, bosteza con ojeras
+    pasa = 1; conOjeras = true;
+    almohadaEn(ALM.bajo, ALM.bajo, 0);
+    const b = io(clamp((t - T.D) / 0.3)) * (1 - io(clamp((t - T.D - 1.2) / 0.4)));
+    yawn = b; brazoZ = L(0.25, 2.85, b); ojosY = L(0.55, 0.12, b);
+    if (portada) { yawn = 1; brazoZ = 2.85; ojosY = 0.12; }
+    camara(portada ? V(0.32, 1.6, -0.62) : V(0.3, 1.62, -0.62), V(0.22, 0.05, 1), portada ? 3.6 : L(4.1, 3.8, clamp((t - T.D) / 1.8)));
+  }
+  // muñeco
+  cadera.position.set(0.3, L(0.82, 0.62, sienta), -0.62);
+  cadera.rotation.set(rollo, 0, L(Math.PI / 2, 0, sienta));
+  cobija.scale.y = L(1, 0.55, sienta); cobija.position.y = L(0.82, 0.73, sienta);
+  brazos.forEach(({ hombro, l }) => { hombro.rotation.set(brazoX, 0, l * brazoZ); });
+  ojos.forEach((o) => o.scale.set(ojosS, ojosS * ojosY, ojosS));
+  ojeras.forEach((o) => (o.visible = conOjeras));
+  boca.scale.set(L(1, 1.3, yawn), L(0.3, 1.6, yawn), 0.5);
+  cabeza.rotation.x = -0.25 * yawn;
+  // reloj, luna, sol, cielo, lámpara
+  relojG.visible = !portada;
+  relojG.rotation.set(0, Math.max(-0.6, Math.min(0.6, Math.atan2(cam.position.x - relojG.position.x, cam.position.z - relojG.position.z))), 0);
+  reloj(22 * 60 + 510 * pasa);
+  luna.position.set(VX - 0.18 + 0.3 * pasa, VY + 0.2 - 0.55 * pasa, -1.2);
+  luna.material.opacity = 1 - clamp((pasa - 0.45) / 0.25);
+  sol.position.set(VX + 0.12, VY - 0.25 + 0.45 * clamp((pasa - 0.4) / 0.6), -1.2);
+  sol.material.opacity = clamp((pasa - 0.4) / 0.2);
+  cielo.material.color.copy(noche).lerp(alba, pasa);
+  foco.intensity = L(6, 1.2, pasa); pantalla.material.emissiveIntensity = L(0.9, 0.2, pasa);
+  lunaLuz.color.set("#b8c4e0").lerp(new THREE.Color("#ffd2bf"), pasa);
+  renderer.render(scene, cam);
+});
+</script>
+</body>
+</html>

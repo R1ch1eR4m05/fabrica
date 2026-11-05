@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><title>Levania · Datos</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}canvas{display:block;width:100vw;height:100vh;object-fit:contain}</style>
+</head><body><canvas id="lienzo"></canvas>
+<script src="../_comun/motor.js"></script>
+<script>
+// Estilo de datos de Levania (reglas en referencia/LEVANIA-REGLAS.md):
+// la voz entra en 0 s, el primer cuadro ya tiene texto grande, cortes secos entre escenas, cada cosa aparece
+// en la palabra que la nombra, subtítulos palabra por palabra y la fuente visible desde el primer dato.
+const F = "../_comun/fuentes/";
+const TEMAS = {
+  oscuro: { fondo: "#2A211F", fondo2: "#3a2d2a", texto: "#F6EEE4", suave: "rgba(246,238,228,0.55)", rosa: "#E8A095", salvia: "#8FA58A", salviaOsc: "#5F735C", tarjeta: "rgba(246,238,228,0.06)", linea: "rgba(246,238,228,0.18)" },
+  claro:  { fondo: "#F6EEE4", fondo2: "#efe3d6", texto: "#3D3230", suave: "rgba(61,50,48,0.55)", rosa: "#C4837A", salvia: "#8FA58A", salviaOsc: "#6f8a6b", tarjeta: "#fffaf4", linea: "rgba(61,50,48,0.15)" },
+};
+let C, logo, imgs = {}, primerDato = Infinity;
+
+Motor.inicioVoz = 0;
+Motor.iniciar({
+  fuentes: [
+    ["Cormorant", F + "cormorant-garamond-latin-500-normal.woff2", { weight: "500" }], ["Cormorant", F + "cormorant-garamond-latin-600-normal.woff2", { weight: "600" }],
+    ["Cormorant", F + "cormorant-garamond-latin-500-italic.woff2", { weight: "500", style: "italic" }],
+    ["Jost", F + "jost-latin-400-normal.woff2", { weight: "400" }], ["Jost", F + "jost-latin-500-normal.woff2", { weight: "500" }],
+  ],
+  async preparar(M) {
+    C = TEMAS[(M.proyecto.opciones || {}).tema] || TEMAS.oscuro;
+    logo = new Image(); logo.src = C === TEMAS.oscuro ? "marca/levania_logo_blanco.png" : "marca/levania_logo.png"; await logo.decode().catch(() => {});
+    for (const e of M.guion.escenas) if (e.imagen && !imgs[e.imagen]) { const im = new Image(); im.src = `/proyectos/${encodeURIComponent(M.proyecto.id)}/${e.imagen}`; await im.decode().catch(() => {}); if (im.naturalWidth) imgs[e.imagen] = im; }
+    M.guion.escenas.forEach((e, i) => { if (["rango", "contador", "reloj", "comparar"].includes(e.tipo) && primerDato === Infinity) primerDato = M.tiempos.escenas[i].ini; });
+    if (M.guion.fuenteDesde === 0) primerDato = 0;
+  },
+
+  dibujar(c, t, M) {
+    const W = M.W, H = M.H, u = M.u;
+    const i = M.escenaEn(t), e = M.guion.escenas[i], te = M.tiempos.escenas[i], p = t - te.ini, d = te.fin - te.ini;
+    // fondo con un respiro leve
+    const g = c.createRadialGradient(W * 0.5, H * 0.35, 0, W * 0.5, H * 0.35, H * 0.8);
+    g.addColorStop(0, C.fondo2); g.addColorStop(1, C.fondo); c.fillStyle = g; c.fillRect(0, 0, W, H);
+    if (C === TEMAS.claro) { blob(c, W * 0.1, H * 0.12, W * 0.45, "rgba(196,131,122,0.12)"); blob(c, W * 0.95, H * 0.9, W * 0.5, "rgba(143,165,138,0.14)"); }
+
+    // empuje de cámara por escena (cada corte arranca de nuevo = corte seco)
+    c.save();
+    const z = 1 + 0.045 * M.suave(p / Math.max(d, 0.5));
+    c.translate(W / 2, H * 0.45); c.scale(z, z); c.translate(-W / 2, -H * 0.45);
+    escena(c, M, t, i, e, te, p, d);
+    c.restore();
+
+    // capa fija: marca, chip, fuente, aviso de IA, subtítulos
+    c.textAlign = "center"; c.textBaseline = "middle";
+    c.font = `500 ${30 * u}px Jost`; c.fillStyle = C.suave; if (c.letterSpacing !== undefined) c.letterSpacing = `${8 * u}px`;
+    c.fillText("LEVANIA", W / 2, 70 * u); if (c.letterSpacing !== undefined) c.letterSpacing = "0px";
+    const chip = e.chip || M.guion.chip;
+    if (chip) pastilla(c, chip, W - 60 * u, 70 * u, { tam: 26, fondo: C.rosa, color: "#2A211F", derecha: true });
+    if (M.guion.fuente && t >= primerDato) { c.font = `400 ${22 * u}px Jost`; c.fillStyle = C.suave; c.fillText(`Fuente: ${M.guion.fuente}`, W / 2, H - 92 * u); }
+    c.font = `400 ${18 * u}px Jost`; c.fillStyle = C.suave; c.globalAlpha = 0.7; c.fillText("Contenido creado con apoyo de IA", W / 2, H - 56 * u); c.globalAlpha = 1;
+    subtitulos(c, M, t, te);
+  },
+});
+
+// ---------- utilidades de dibujo ----------
+function blob(c, x, y, r, col) { const g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, col); g.addColorStop(1, "rgba(0,0,0,0)"); c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2); }
+const pop = (M, x) => { x = M.clamp(x); return x < 1 ? 0.88 + 0.12 * x + 0.12 * Math.sin(x * Math.PI) : 1; };
+const aparece = (M, t, t0, dur = 0.18) => M.clamp((t - t0) / dur);
+
+function pastilla(c, txt, x, y, { tam = 30, fondo, color, derecha = false, izquierda = false, borde = null } = {}) {
+  const u = Motor.u; c.font = `500 ${tam * u}px Jost`; const w = c.measureText(txt).width + tam * 1.3 * u, h = tam * 1.7 * u;
+  const x0 = derecha ? x - w : izquierda ? x : x - w / 2;
+  c.fillStyle = fondo; c.beginPath(); c.roundRect(x0, y - h / 2, w, h, h / 2); c.fill();
+  if (borde) { c.strokeStyle = borde; c.lineWidth = 2 * u; c.stroke(); }
+  c.fillStyle = color; c.textAlign = "center"; c.fillText(txt, x0 + w / 2, y + 1 * u);
+}
+
+// texto con *palabras* en rosa, centrado, varias líneas
+function texto(c, M, txt, y, { tam = 96, fuente = "Cormorant", peso = 600, mayus = false, ancho = 0.86, color = C.texto, acento = C.rosa, italic = false, alfa = 1 } = {}) {
+  const u = M.u, W = M.W;
+  const tok = String(txt).split(/\s+/).filter(Boolean); let dentro = false;
+  const pal = tok.map((w) => { const ini = w.startsWith("*"), fin = /\*[.,;:!?…»”)]*$/.test(w); const a = dentro || ini; if (ini) dentro = true; if (fin) dentro = false; const s = w.replace(/\*/g, ""); return { s: mayus ? s.toUpperCase() : s, a }; });
+  let tamR = tam * u, lineas;
+  for (; tamR > 30 * u; tamR -= 4 * u) {
+    c.font = `${italic ? "italic " : ""}${peso} ${tamR}px ${fuente}`;
+    const esp = c.measureText(" ").width; lineas = []; let l = [], w = 0;
+    for (const p of pal) { const pw = c.measureText(p.s).width; if (l.length && w + esp + pw > W * ancho) { lineas.push({ l, w }); l = []; w = 0; } w += (l.length ? esp : 0) + pw; l.push({ ...p, pw }); }
+    if (l.length) lineas.push({ l, w });
+    if (lineas.length <= 3) break;
+  }
+  const esp = c.measureText(" ").width, alto = tamR * 1.08, y0 = y - ((lineas.length - 1) * alto) / 2;
+  c.textAlign = "left"; c.textBaseline = "middle"; c.globalAlpha = alfa;
+  lineas.forEach((ln, k) => { let x = (W - ln.w) / 2; for (const p of ln.l) { c.fillStyle = p.a ? acento : color; c.fillText(p.s, x, y0 + k * alto); x += p.pw + esp; } });
+  c.globalAlpha = 1; c.textAlign = "center";
+  return { arriba: y0 - tamR / 2, abajo: y0 + (lineas.length - 1) * alto + tamR / 2 };
+}
+
+// momento en que la voz dice una palabra (para que cada cosa aparezca al nombrarla)
+const norm = (s) => String(s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9ñ]/g, "");
+function cuandoDice(te, palabra, def) {
+  const n = norm(palabra).slice(0, 6); if (!n) return def;
+  const w = te.palabras.find((x) => norm(x.w).startsWith(n));
+  return w ? w.t0 : def;
+}
+
+function subtitulos(c, M, t, te) {
+  const u = M.u, fr = M.frases(te.palabras, 4); let cur = null;
+  for (const f of fr) if (t >= f[0].t0 - 0.02) cur = f;
+  if (!cur || t > te.finVoz + 0.2) return;
+  const y = M.vertical ? M.H * 0.74 : M.H * 0.86, tam = 58 * u;
+  c.font = `500 ${tam}px Jost`; c.textBaseline = "middle"; c.textAlign = "left";
+  const esp = c.measureText(" ").width, ws = cur.map((p) => ({ ...p, pw: c.measureText(p.w).width }));
+  let x = (M.W - ws.reduce((a, p) => a + p.pw, 0) - esp * (ws.length - 1)) / 2;
+  c.shadowColor = C === TEMAS.oscuro ? "rgba(0,0,0,0.6)" : "rgba(255,255,255,0.8)"; c.shadowBlur = 16 * u;
+  for (const p of ws) { c.fillStyle = t >= p.t0 && t < p.t1 + 0.06 ? C.rosa : C.texto; c.fillText(p.w, x, y); x += p.pw + esp; }
+  c.shadowBlur = 0; c.textAlign = "center";
+}
+
+// ---------- escenas ----------
+function escena(c, M, t, i, e, te, p, d) {
+  const W = M.W, H = M.H, u = M.u;
+  c.textAlign = "center"; c.textBaseline = "middle";
+  const titulo = e.titulo;
+  const yT = e.tipo === "gancho" && !e.reloj && !e.imagen ? H * 0.4 : H * 0.19;
+  if (titulo) { const a = aparece(M, t, te.ini, 0.12); c.save(); c.translate(W / 2, yT); const s = pop(M, a); c.scale(s, s); c.translate(-W / 2, -yT); texto(c, M, titulo, yT, { tam: e.tipo === "gancho" ? 112 : 92, mayus: e.mayus !== false }); c.restore(); }
+
+  switch (e.tipo) {
+    case "gancho": case "frase": {
+      if (e.reloj) relojDigital(c, M, e.reloj, W / 2, H * 0.38, t, te.ini);
+      if (e.tipo === "frase" && !titulo) texto(c, M, e.texto, H * 0.42, { tam: 84, italic: true, peso: 500, mayus: false, ancho: 0.8 });
+      if (e.imagen && imgs[e.imagen]) imagenPop(c, M, imgs[e.imagen], W / 2, H * 0.47, W * 0.62, t, te.ini + 0.1);
+      break;
+    }
+    case "reloj": {
+      const r = e.reloj || {};
+      const yR = M.vertical ? H * 0.4 : H * 0.47;
+      pastilla(c, `${r.de} → ${r.a}`, W / 2, yR - 210 * u, { tam: 30, fondo: "rgba(0,0,0,0)", color: C.texto, borde: C.linea });
+      const k = M.suave(M.clamp((p - 0.2) / Math.max(1, (te.finVoz - te.ini) * 0.75)));
+      const m0 = minutos(r.de), m1 = minutos(r.a) <= m0 ? minutos(r.a) + 1440 : minutos(r.a);
+      const ahora = m0 + (m1 - m0) * k;
+      relojDigital(c, M, aHora(ahora), W / 2, yR, t, te.ini, true);
+      const dur = Math.round(ahora - m0), hh = Math.floor(dur / 60), mm = dur % 60;
+      const final = k >= 0.999, s = final ? pop(M, aparece(M, t, te.ini + 0.2 + Math.max(1, (te.finVoz - te.ini) * 0.75), 0.25)) : 1;
+      c.save(); c.translate(W / 2, yR + 200 * u); c.scale(s, s); c.font = `600 ${130 * u}px Cormorant`; c.fillStyle = final ? C.rosa : C.texto;
+      c.fillText(`${hh} h ${String(mm).padStart(2, "0")} min`, 0, 0); c.restore();
+      break;
+    }
+    case "rango": {
+      const r = e.rango || {}, x0 = W * 0.12, x1 = W * 0.88, y = M.vertical ? H * 0.44 : H * 0.52, min = r.min ?? 0, max = r.max ?? 10;
+      const X = (v) => x0 + ((v - min) / (max - min)) * (x1 - x0);
+      c.font = `500 ${48 * u}px Jost`; c.textAlign = "left"; c.fillStyle = C.rosa; if (r.etiqueta) c.fillText(r.etiqueta, x0, y - 210 * u);
+      c.fillStyle = C.linea; c.beginPath(); c.roundRect(x0, y - 16 * u, x1 - x0, 32 * u, 16 * u); c.fill();
+      c.font = `400 ${26 * u}px Jost`; c.fillStyle = C.suave; c.textAlign = "center";
+      for (let v = Math.ceil(min); v <= max; v++) c.fillText(`${v}${r.unidad || ""}`, X(v), y + 60 * u);
+      const tR = cuandoDice(te, r.dice || String(r.desde), te.ini + 0.4);
+      const kR = M.salida(M.clamp((t - tR) / 0.45));
+      if (r.desde != null) { c.fillStyle = C.rosa; c.beginPath(); c.roundRect(X(r.desde), y - 16 * u, (X(r.hasta) - X(r.desde)) * kR, 32 * u, 16 * u); c.fill(); }
+      if (r.marcador != null) {
+        const xm = X(min) + (X(r.marcador) - X(min)) * M.salida(M.clamp((p - 0.1) / 0.6));
+        c.strokeStyle = C.texto; c.setLineDash([6 * u, 6 * u]); c.lineWidth = 3 * u; c.beginPath(); c.moveTo(xm, y - 80 * u); c.lineTo(xm, y); c.stroke(); c.setLineDash([]);
+        c.fillStyle = C.texto; c.beginPath(); c.arc(xm, y, 16 * u, 0, 7); c.fill(); c.font = `500 ${36 * u}px Jost`; c.fillText(`${r.marcador}${r.unidad || ""}`, xm, y - 105 * u);
+        if (r.desde != null && r.marcador < r.desde && kR > 0.5) { c.fillStyle = "rgba(232,160,149,0.35)"; for (let k = 0; k < 6; k++) { const xx = xm + ((X(r.desde) - xm) * k) / 6; c.fillRect(xx, y - 14 * u, (X(r.desde) - xm) / 12, 28 * u); } }
+      }
+      if (r.diferencia) { const tD = cuandoDice(te, r.diferenciaDice || r.diferencia.split(/\s+/)[0].replace(/[−-]/, ""), te.ini + d * 0.55); const a = aparece(M, t, tD, 0.2); c.save(); c.translate(W / 2, y + 170 * u); const s = pop(M, a) * (1 + 0.04 * Math.sin(t * 6)); c.scale(s, s); c.globalAlpha = a; c.font = `600 ${74 * u}px Cormorant`; c.fillStyle = C.rosa; c.fillText(r.diferencia, 0, 0); c.restore(); }
+      break;
+    }
+    case "contador": {
+      const txt = String(e.cifra || ""), m = txt.match(/^([^\d]*)([\d.,]+)(.*)$/);
+      let mostrar = txt;
+      if (m) { const n = Number(m[2].replace(/,/g, "")), anio = /^\d{4}$/.test(m[2]); if (!anio && isFinite(n)) { const k = M.salida(M.clamp((p - 0.05) / 0.9)); const dec = (m[2].split(".")[1] || "").length; mostrar = m[1] + (n * k).toLocaleString("es-MX", { minimumFractionDigits: dec, maximumFractionDigits: dec }) + m[3]; } }
+      const s = pop(M, aparece(M, t, te.ini + 0.9, 0.25));
+      c.save(); c.translate(W / 2, H * 0.43); c.scale(s, s); c.font = `600 ${230 * u}px Cormorant`; c.fillStyle = C.rosa; c.fillText(mostrar, 0, 0); c.restore();
+      if (e.detalle) texto(c, M, e.detalle, H * 0.56, { tam: 52, fuente: "Jost", peso: 400, color: C.suave, mayus: false });
+      break;
+    }
+    case "comparar": {
+      const [A, B] = e.comparar || [];
+      [A, B].forEach((x, k) => { if (!x) return; const tx = cuandoDice(te, x.dice || x.valor, te.ini + 0.2 + k * 0.8); const a = aparece(M, t, tx, 0.2); const cx = W * (k ? 0.72 : 0.28), cy = H * 0.43;
+        c.save(); c.globalAlpha = a; c.translate(cx, cy); const s = pop(M, a); c.scale(s, s);
+        c.fillStyle = C.tarjeta; c.beginPath(); c.roundRect(-W * 0.2, -H * 0.11, W * 0.4, H * 0.22, 30 * u); c.fill();
+        c.font = `600 ${120 * u}px Cormorant`; c.fillStyle = k ? C.rosa : C.salvia; c.fillText(x.valor, 0, -20 * u);
+        c.font = `400 ${34 * u}px Jost`; c.fillStyle = C.texto; c.fillText(x.etiqueta || "", 0, 80 * u); c.restore(); });
+      break;
+    }
+    case "palabras": {
+      const lista = e.palabras || [];
+      lista.forEach((w, k) => { const tw = cuandoDice(te, w, te.ini + 0.3 + k * 0.7); const a = aparece(M, t, tw, 0.16); if (a <= 0) return;
+        const y = H * (0.36 + k * (0.3 / Math.max(1, lista.length - 1 || 1)));
+        c.save(); c.translate(W / 2, lista.length === 1 ? H * 0.42 : y); const s = pop(M, a); c.scale(s, s); c.globalAlpha = a;
+        c.font = `600 ${120 * u}px Cormorant`; c.fillStyle = k === lista.length - 1 ? C.rosa : C.texto; c.fillText(String(w).toUpperCase(), 0, 0); c.restore(); });
+      break;
+    }
+    case "tarjeta": {
+      const ts = e.tarjetas || [];
+      ts.forEach((tj, k) => { const tk = cuandoDice(te, tj.dice || tj.texto.split(/\s+/)[0], te.ini + 0.1 + k * 1.2); const a = aparece(M, t, tk, 0.2); if (a <= 0) return;
+        const w = Math.min(W * 0.84, 1100 * u), h = 250 * u, x = (W - w) / 2, y = (M.vertical ? H * 0.3 : H * 0.3) + k * (h + 40 * u);
+        c.save(); c.globalAlpha = a; c.translate(0, (1 - a) * 30 * u);
+        c.fillStyle = C === TEMAS.claro ? "#fffaf4" : "rgba(246,238,228,0.08)"; c.shadowColor = "rgba(0,0,0,0.15)"; c.shadowBlur = 30 * u; c.beginPath(); c.roundRect(x, y, w, h, 28 * u); c.fill(); c.shadowBlur = 0;
+        pastilla(c, tj.etiqueta || "", x + 40 * u, y + 58 * u, { tam: 28, fondo: k ? C.salviaOsc : C.rosa, color: "#fff", izquierda: true });
+        c.font = `500 ${64 * u}px Cormorant`; c.fillStyle = C.texto; c.textAlign = "left"; c.fillText(tj.texto, x + 40 * u, y + h * 0.64);
+        const tachar = tj.tachar && ts[k + 1] && t >= cuandoDice(te, ts[k + 1].dice || ts[k + 1].texto.split(/\s+/)[0], te.ini + 1.3);
+        if (tachar) { const mw = c.measureText(tj.texto).width; c.strokeStyle = C.rosa; c.lineWidth = 4 * u; c.beginPath(); c.moveTo(x + 36 * u, y + h * 0.64); c.lineTo(x + 44 * u + mw, y + h * 0.64); c.stroke(); }
+        c.textAlign = "center"; c.restore(); });
+      break;
+    }
+    case "cierre": {
+      if (e.imagen && imgs[e.imagen]) imagenPop(c, M, imgs[e.imagen], W / 2, H * 0.4, W * 0.5, t, te.ini + 0.05, -3);
+      else if (logo.naturalWidth) { const w = W * 0.42, h = w * (logo.height / logo.width), a = aparece(M, t, te.ini, 0.3); c.globalAlpha = a; c.drawImage(logo, (W - w) / 2, H * 0.36 - h / 2, w, h); c.globalAlpha = 1; }
+      const tt = (M.proyecto.opciones || {}).cierre === "tt";
+      const boton = (tt ? e.botonTT : e.boton) || (tt ? "Link en mi perfil" : "Comenta RUTINA");
+      const tb = cuandoDice(te, e.botonDice || boton.split(/\s+/).pop(), te.ini + d * 0.4), a = aparece(M, t, tb, 0.2);
+      if (a > 0) { c.save(); c.translate(W / 2, H * 0.58); const s = pop(M, a) * (1 + 0.025 * Math.sin(t * 5)); c.scale(s, s); pastilla(c, boton, 0, 0, { tam: 46, fondo: C.rosa, color: "#fff" }); c.restore(); }
+      if (e.sub) { c.font = `400 ${30 * u}px Jost`; c.fillStyle = C.suave; c.globalAlpha = a; c.fillText(e.sub, W / 2, H * 0.63); c.globalAlpha = 1; }
+      break;
+    }
+  }
+}
+
+function imagenPop(c, M, img, x, y, w, t, t0, rot = 0) {
+  const a = aparece(M, t, t0, 0.3); if (a <= 0) return;
+  const h = w * (img.height / img.width), s = pop(M, a);
+  c.save(); c.translate(x, y); c.rotate(((rot * (1 - a) - 2) * Math.PI) / 180); c.scale(s, s); c.globalAlpha = a;
+  c.shadowColor = "rgba(0,0,0,0.35)"; c.shadowBlur = 40 * M.u; c.drawImage(img, -w / 2, -h / 2, w, h); c.restore();
+}
+
+function minutos(h) { const m = String(h).match(/(\d{1,2}):(\d{2})\s*(am|pm|a\.?\s?m\.?|p\.?\s?m\.?)?/i); if (!m) return 0; let hh = Number(m[1]) % 12; const pm = /p/i.test(m[3] || ""); if (pm) hh += 12; if (!m[3] && Number(m[1]) === 12) hh = 12; return hh * 60 + Number(m[2]); }
+function aHora(min) { min = Math.round(min) % 1440; const h = Math.floor(min / 60), m = min % 60, pm = h >= 12, h12 = h % 12 || 12; return `${h12}:${String(m).padStart(2, "0")} ${pm ? "pm" : "am"}`; }
+
+function relojDigital(c, M, hora, x, y, t, t0, sinPop = false) {
+  const u = M.u, s = sinPop ? 1 : pop(M, aparece(M, t, t0, 0.15));
+  c.save(); c.translate(x, y); c.scale(s, s);
+  c.font = `500 ${120 * u}px Jost`; const w = c.measureText(hora).width + 90 * u, h = 190 * u;
+  c.fillStyle = "rgba(0,0,0,0.35)"; c.beginPath(); c.roundRect(-w / 2, -h / 2, w, h, 26 * u); c.fill();
+  c.fillStyle = C.rosa; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(hora, 0, 6 * u); c.restore();
+}
+</script>
+</body></html>

@@ -46,7 +46,7 @@
 
   // tiempos estimados si todavía no hay voz (para la vista previa del guion)
   function estimar(guion) {
-    let t = 0.4; const escenas = [];
+    let t = M.inicioVoz ?? 0.4; const escenas = [];
     for (const e of guion.escenas) {
       const pal = (e.voz ?? e.texto ?? "").split(/\s+/).filter(Boolean);
       const d = pal.length ? Math.max(1.2, pal.length / 2.6 + 0.3) : (e.duracion ?? 2.5);

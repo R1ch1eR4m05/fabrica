@@ -44,12 +44,14 @@ export async function hacerVoz(id, avisar = () => {}) {
   const sinVoz = proyecto.conVoz === false;          // el usuario eligió video sin voz (solo música)
   const prueba = sinVoz || !(CFG.elevenKey && vozId);
   const lect = sinVoz ? (estilo.lectura || { porSegundo: 2.2, extra: 1.4 }) : { porSegundo: 2.6, extra: 0.3 };
-  const escenas = guion.escenas;
+  // versión TikTok/YouTube: las escenas con vozTT usan ese texto (el cierre cambia según la red)
+  const tt = (proyecto.opciones || {}).cierre === "tt";
+  const escenas = guion.escenas.map((e) => (tt && e.vozTT ? { ...e, voz: e.vozTT } : e));
 
   const piezas = [];   // wavs en orden
   const tiempos = [];  // por escena
-  let t = 0.4;         // un respiro al principio
-  piezas.push(await silencio(tmp, "ini", t));
+  let t = estilo.inicioVoz ?? 0.4; // un respiro al principio (Levania: 0, la voz entra en el primer cuadro)
+  if (t > 0) piezas.push(await silencio(tmp, "ini", t));
 
   for (let k = 0; k < escenas.length; k++) {
     const e = escenas[k];
