@@ -188,6 +188,7 @@ function sistemaDe(cfg) {
     "Nunca atribuyas una frase a una persona real si no puedes verificarla. Nada de culpa ni de vergüenza hacia las mamás; sí de reconocimiento y ternura.",
     "ADAPTACIÓN AL PÚBLICO HISPANO: muchas fuentes son cuentas en inglés de EE. UU. a propósito, porque ahí aparecen primero las tendencias. Trátalas como señal temprana de lo que viene. No traduzcas literal: adapta la idea a mamás hispanas de México y EE. UU. (familia extendida y abuelas, la escuela y las tareas, las mañanas con prisa, el trabajo y la culpa, la fe cuando venga al caso, la comida, el 'mijo/mija'), con español natural de México. Para EE. UU. se vale un toque bilingüe solo si suena natural.",
     "Prioriza las tendencias que ya funcionan en inglés y todavía casi no existen en español: ahí está la ventaja. Márcalo en cada propuesta.",
+    "LO MÁS IMPORTANTE: cada propuesta tiene que nacer de una publicación concreta que YA fue viral o rindió muy por encima de lo normal (vistas, guardados, compartidos, rebase de seguidores). Pon su url exacta en \"inspiradaEn\", copiada de los datos o del informe. Una propuesta sin publicación viral detrás no sirve: no la incluyas. En \"porque\" di qué cifra o señal la hace viral.",
     (cfg.cierres || []).length
       ? `CIERRES: en "cierre" usa EXACTAMENTE uno de estos (cópialo tal cual, elige el que mejor le quede), o déjalo vacío. Nunca inventes otra palabra para comentar:\n${cfg.cierres.map((c) => "- " + c).join("\n")}`
       : `CIERRES: deja "cierre" vacío. No inventes llamados a "comenta una palabra": la marca no ha autorizado ninguno.`,
@@ -199,9 +200,23 @@ function sistemaDe(cfg) {
 import { hayIA as _hayIA, pedir, jsonDe as _jsonDe } from "./llm.js";
 export const hayIA = _hayIA;
 async function pedirIA(sistema, texto) { return (await pedir(sistema, texto)).texto; }
-function guardarResultado(salida, j) {
+// Solo valen enlaces que de verdad estaban en los datos (publicaciones recolectadas) o en el informe: la IA no puede inventarlos.
+const normUrl = (u) => String(u || "").trim().replace(/[?#].*$/, "").replace(/\/+$/, "").replace(/^http:/, "https:").replace("://m.", "://www.").toLowerCase();
+function enlacesConocidos(salida, texto = "") {
+  const set = new Set((salida.publicaciones || []).map((p) => normUrl(p.url)).filter(Boolean));
+  for (const m of String(texto).matchAll(/https?:\/\/[^\s)\]>"'`]+/g)) set.add(normUrl(m[0].replace(/[.,;:]+$/, "")));
+  return set;
+}
+function guardarResultado(salida, j, texto = "") {
   salida.patrones = j.patrones || [];
-  salida.propuestas = (j.propuestas || []).map((p, i) => ({ ...p, n: i + 1 }));
+  const conocidos = enlacesConocidos(salida, texto);
+  salida.propuestas = (j.propuestas || []).map((p, i) => {
+    const pedidos = (p.inspiradaEn || []).filter(Boolean);
+    const buenos = conocidos.size ? pedidos.filter((u) => conocidos.has(normUrl(u))) : [];
+    return { ...p, n: i + 1, inspiradaEn: buenos, viral: buenos.length > 0, ...(pedidos.length > buenos.length ? { enlacesDescartados: pedidos.length - buenos.length } : {}) };
+  });
+  // primero las que sí tienen una publicación viral detrás
+  salida.propuestas.sort((a, b) => Number(b.viral) - Number(a.viral)).forEach((p, i) => (p.n = i + 1));
   const archivo = `${salida.fecha.slice(0, 16).replace(/[:T]/g, "-")}.json`;
   fs.writeFileSync(path.join(DIR_INV, archivo), JSON.stringify(salida, null, 2));
   return { archivo, propuestas: salida.propuestas.length };
@@ -254,7 +269,7 @@ async function convertirConCandado(nombre, fuente, avisar, fecha, texto) {
   avisar({ progreso: 0.5, msg: `Convirtiendo el informe en propuestas (${CFG.geminiKey ? "Gemini" : "Claude"})…` });
   const cfg = leerConfig();
   const j = jsonDe(await pedirIA(sistemaDe(cfg), `Este es un informe de investigación de tendencias (${fuente}). Úsalo como base: saca los patrones y propón.\n\n${texto.slice(0, 120000)}`));
-  const r = guardarResultado({ fecha, config: cfg, modo: "informe", fuente, informe: nombre, errores: [] }, j);
+  const r = guardarResultado({ fecha, config: cfg, modo: "informe", fuente, informe: nombre, errores: [] }, j, texto);
   const f = path.join(DIR_INFORMES, nombre); if (fs.existsSync(f)) fs.renameSync(f, f.replace(/\.md$/, ".hecho.md"));
   return r;
 }
@@ -378,7 +393,7 @@ export async function reproponer(archivo, avisar = () => {}) {
   avisar({ progreso: 0.4, msg: "Volviendo a proponer con los estilos y cierres de hoy…" });
   const j = jsonDe(await pedirIA(sistemaDe(cfg), `Esta es la base de una investigación anterior. Saca los patrones y propón de nuevo.\n\n${base.slice(0, 120000)}`));
   const { propuestas, publicaciones, patrones, ...resto } = inv;
-  return guardarResultado({ ...resto, fecha: new Date().toISOString(), config: cfg, publicaciones, rehechaDe: archivo }, j);
+  return guardarResultado({ ...resto, fecha: new Date().toISOString(), config: cfg, publicaciones, rehechaDe: archivo }, j, base);
 }
 
 // Convierte una propuesta en el guion del estilo de frases

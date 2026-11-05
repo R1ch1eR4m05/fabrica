@@ -76,6 +76,7 @@ function pintarLista() {
 const estiloNombre = (id) => S.info.estilos.find((e) => e.id === id)?.nombre || id;
 const estiloDe = (id) => S.info.estilos.find((e) => e.id === id);
 // nombre del estilo de una propuesta del investigador ("motion:<id>" es un estilo del catálogo de motion graphics)
+const esViral = (p) => p.viral ?? (p.inspiradaEn || []).length > 0;
 function nombreEstiloProp(id) {
   if (String(id || "").startsWith("motion:")) { const c = (estiloDe("motion")?.catalogo || []).find((x) => x.id === id.slice(7)); return `Motion graphics · ${c?.nombre || id.slice(7)}`; }
   return estiloDe(id)?.nombre || "Frases · Fondo desenfocado";
@@ -587,7 +588,7 @@ async function investigador(archivo) {
       <div class="card" style="margin:16px 0"><h2>Lo que está funcionando</h2><ul style="margin:8px 0 0;padding-left:18px;color:var(--t2)">${(inv.patrones || []).map((x) => `<li>${h(x)}</li>`).join("")}</ul></div>
       <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(330px,1fr))">${inv.propuestas.map((p) => `
         <div class="card">
-          <div class="estado"><b style="color:var(--t)" title="${h(p.porQueEstilo || "")}">${h(nombreEstiloProp(p.estilo))}</b> · ${h(p.tema || "")}${p.origen === "en" ? ` · <span title="Tendencia en inglés">🇺🇸→🇲🇽</span>` : ""}${p.llegada ? ` · <b style="color:${p.llegada === "aún no llega" ? "var(--ok)" : p.llegada === "poco en español" ? "var(--am)" : "var(--t2)"}">${h(p.llegada)}</b>` : ""}</div>
+          <div class="estado">${esViral(p) ? `<b style="color:var(--ok)" title="Nace de una publicación que ya funcionó">● Viral</b>` : `<b style="color:var(--a)" title="No trae enlace a una publicación viral real: es solo una hipótesis">● Sin referencia viral</b>`} · <b style="color:var(--t)" title="${h(p.porQueEstilo || "")}">${h(nombreEstiloProp(p.estilo))}</b> · ${h(p.tema || "")}${p.origen === "en" ? ` · <span title="Tendencia en inglés">🇺🇸→🇲🇽</span>` : ""}${p.llegada ? ` · <b style="color:${p.llegada === "aún no llega" ? "var(--ok)" : p.llegada === "poco en español" ? "var(--am)" : "var(--t2)"}">${h(p.llegada)}</b>` : ""}</div>
           <div style="font-size:19px;line-height:1.35;margin:6px 0 8px;font-family:Georgia,serif">${marcarAcento(p.frase)}</div>
           ${p.autor ? `<div class="estado">— ${h(p.autor)}</div>` : ""}
           ${p.cierre ? `<div class="estado" style="margin-top:4px">Cierre: ${h(p.cierre)}</div>` : ""}
@@ -623,14 +624,16 @@ async function investigador(archivo) {
   const hacerTodo = async (pid) => { const r = await api(`/api/proyectos/${pid}/todo`, "POST", { flow: conFlow(), musica: conMusica() }); return !r.motionPendiente; };
   if ($("#iTodas")) $("#iTodas").onclick = async () => {
     const f = conFlow();
-    if (!confirm(`Se crearán ${inv.propuestas.length} videos 9:16, cada uno en el estilo que el investigador eligió, y se harán completos uno tras otro.${f ? ` Los fondos se harán con Google Flow (gasta créditos, tope ${f.maxCreditos} por clip).` : " Los fondos salen de Pexels."} Los motion graphics quedan listos para que Claude Code los construya. ¿Seguir?`)) return;
+    const virales = inv.propuestas.filter(esViral), sinRef = inv.propuestas.length - virales.length;
+    if (!virales.length) return avisar("Ninguna propuesta trae una publicación viral real detrás. Investiga de nuevo (con Apify o un informe con enlaces) antes de hacer videos.", true);
+    if (!confirm(`Se crearán ${virales.length} videos 9:16${sinRef ? ` (se saltan ${sinRef} sin referencia viral)` : ""}, cada uno en el estilo que el investigador eligió, y se harán completos uno tras otro.${f ? ` Los fondos se harán con Google Flow (gasta créditos, tope ${f.maxCreditos} por clip).` : " Los fondos salen de Pexels."} Los motion graphics quedan listos para que Claude Code los construya. ¿Seguir?`)) return;
     let ok = 0, motion = 0, sinGuion = 0; const fallos = [];
-    for (const pr of inv.propuestas) {
+    for (const pr of virales) {
       try { const p = await api(`/api/investigacion/${archivo}/crear`, "POST", { n: pr.n, formato: "9:16", canal: localStorage.getItem("canal") || "" }); if (p.guionPendiente) sinGuion++; else if (await hacerTodo(p.id)) ok++; else motion++; }
       catch (e) { fallos.push(`#${pr.n}: ${e.message}`); }
     }
     S.proyectos = await api("/api/proyectos"); pintarLista();
-    avisar(`Quedaron en fila ${ok} de ${inv.propuestas.length}. Míralos en la lista de la izquierda.${motion ? ` ${motion} motion graphics esperan a Claude Code: dile "construye los motion pendientes".` : ""}${sinGuion ? ` ${sinGuion} quedaron creados sin guion (Gemini no respondió): dile a Claude Code "escribe los guiones pendientes".` : ""}${fallos.length ? " No se pudo: " + fallos.join(" | ") : ""}`, !!fallos.length);
+    avisar(`Quedaron en fila ${ok} de ${virales.length}. Míralos en la lista de la izquierda.${motion ? ` ${motion} motion graphics esperan a Claude Code: dile "construye los motion pendientes".` : ""}${sinGuion ? ` ${sinGuion} quedaron creados sin guion (Gemini no respondió): dile a Claude Code "escribe los guiones pendientes".` : ""}${fallos.length ? " No se pudo: " + fallos.join(" | ") : ""}`, !!fallos.length);
   };
   if ($("#iRehacer")) $("#iRehacer").onclick = async () => { await $("#iGuardar").onclick(); api(`/api/investigacion/${archivo}/reproponer`, "POST").then(() => avisar("Volviendo a proponer… (aparecen aquí solas)")).catch((e) => avisar(e.message, true)); };
   if ($("#iHist")) $("#iHist").onchange = (e) => investigador(e.target.value);
