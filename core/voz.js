@@ -37,13 +37,16 @@ export async function hacerVoz(id, avisar = () => {}) {
   const guion = leer(id, "guion.json");
   if (!guion) throw new Error("Primero hace falta el guion.");
   const estilo = leerEstilo(proyecto.estilo);
-  const pausaBase = estilo.pausaEntreEscenas ?? 0.5;
+  const pausaBase = (estilo.pausaEntreEscenas ?? 0.5) / ({ rapido: 1.35, pausado: 0.78 }[(proyecto.opciones || {}).ritmo] || 1);
   const dir = dirProyecto(id);
   const tmp = path.join(dir, "_voz"); fs.rmSync(tmp, { recursive: true, force: true }); fs.mkdirSync(tmp);
   const vozId = proyecto.vozId || vozDeEstilo(estilo.id);
   const sinVoz = proyecto.conVoz === false;          // el usuario eligió video sin voz (solo música)
   const prueba = sinVoz || !(CFG.elevenKey && vozId);
-  const lect = sinVoz ? (estilo.lectura || { porSegundo: 2.2, extra: 1.4 }) : { porSegundo: 2.6, extra: 0.3 };
+  // ritmo del texto cuando va sin voz: Normal / Rápido / Pausado (opción del proyecto)
+  const vel = { rapido: 1.35, pausado: 0.78 }[(proyecto.opciones || {}).ritmo] || 1;
+  const base = estilo.lectura || { porSegundo: 2.2, extra: 1.4 };
+  const lect = sinVoz ? { porSegundo: base.porSegundo * vel, extra: base.extra / vel } : { porSegundo: 2.6, extra: 0.3 };
   // versión TikTok/YouTube: las escenas con vozTT usan ese texto (el cierre cambia según la red)
   const tt = (proyecto.opciones || {}).cierre === "tt";
   const escenas = guion.escenas.map((e) => (tt && e.vozTT ? { ...e, voz: e.vozTT } : e));

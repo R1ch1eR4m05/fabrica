@@ -15,6 +15,7 @@ import { prepararFondo } from "./fondos.js";
 import * as INV from "./investigador.js";
 import { clipDeFlow, flowDisponible } from "./flow.js";
 import * as MOT from "./motion.js";
+import * as ACT from "./actualizar.js";
 
 let investigando = null;
 function correrInvestigacion() {
@@ -81,6 +82,16 @@ async function api(req, res, partes) {
   const [, , recurso, id, accion] = partes; // /api/<recurso>/<id>/<accion>
   const m = req.method;
 
+  if (recurso === "actualizacion") {
+    if (m === "GET") return json(res, 200, await ACT.hayNovedad({ forzar: id === "revisar" }));
+    if (m === "POST") {
+      if (actual || fila.length) return json(res, 409, { error: "Hay videos haciéndose. Espera a que terminen y vuelve a actualizar." });
+      try { await ACT.aplicar(); } catch (e) { return json(res, 500, { error: e.message }); }
+      json(res, 200, { ok: true });
+      setTimeout(() => process.exit(3), 400); // el vigilante la vuelve a levantar con la versión nueva
+      return;
+    }
+  }
   if (recurso === "investigacion") {
     if (!id && m === "GET") return json(res, 200, { config: INV.leerConfig(), lista: INV.listarInvestigaciones(), trabajando: !!investigando, apify: !!CFG.apifyToken, ia: INV.hayIA(), motor: CFG.geminiKey ? "Gemini" : CFG.anthropicKey ? "Claude" : null, pendientes: INV.informesPendientes() });
     if (id === "prompt" && m === "GET") { res.writeHead(200, { "content-type": "text/plain; charset=utf-8" }); return res.end(INV.promptDeepResearch()); }

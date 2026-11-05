@@ -27,6 +27,16 @@ const avisar = (a) => process.stdout.write(`\r  ${a.msg}`.padEnd(80));
 async function main() {
   switch (orden) {
     case "panel": case undefined: {
+      // vigilante: corre el panel como proceso hijo y lo vuelve a levantar cuando se actualiza desde el panel (sale con código 3)
+      if (!process.env.FABRICA_HIJO) {
+        const { spawn } = await import("node:child_process");
+        let extra = [];
+        const lanzar = () => {
+          const h = spawn(process.execPath, [process.argv[1], ...process.argv.slice(2), ...extra], { stdio: "inherit", env: { ...process.env, FABRICA_HIJO: "1" } });
+          h.on("exit", (c) => { if (c === 3) { console.log("\n  Fábrica actualizada. Reiniciando…\n"); extra = ["--sin-abrir"]; lanzar(); } else process.exit(c ?? 0); });
+        };
+        lanzar(); return;
+      }
       const { arrancar } = await import("./core/servidor.js");
       arrancar();
       if (!args.includes("--sin-abrir") && CFG.host === "127.0.0.1") {

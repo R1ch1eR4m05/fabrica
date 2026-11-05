@@ -27,9 +27,29 @@ async function cargar() {
     `<span class="chip ${S.info.pexels ? "ok" : ""}">${S.info.pexels ? "Pexels ✓" : "Sin Pexels"}</span>`,
     `<span class="chip ${S.info.apify ? "ok" : ""}">${S.info.apify ? "Apify ✓" : "Sin Apify"}</span>`,
     `<span class="chip ${S.info.flow ? "ok" : ""}" title="flow-mcp en ${location.hostname}:8787">${S.info.flow ? "Flow conectado ✓" : "Flow cerrado"}</span>`,
+    `<span id="chipAct"></span>`,
   ].join("");
   pintarLista();
+  revisarActualizacion();
 }
+
+// botón de actualizar: aparece solo cuando hay versión nueva en GitHub
+async function revisarActualizacion() {
+  const r = await api("/api/actualizacion").catch(() => null);
+  const el = $("#chipAct"); if (!el) return;
+  el.innerHTML = r?.nueva ? `<button class="chip am" id="btnAct" style="cursor:pointer" title="${h(r.cambios.slice(0, 8).join("\n"))}">Hay versión nueva · Actualizar ↻</button>` : "";
+  if (!r?.nueva) return;
+  $("#btnAct").onclick = async () => {
+    if (!confirm(`Novedades:\n• ${r.cambios.slice(0, 8).join("\n• ")}\n\nTus videos, proyectos y el .env no se tocan. ¿Actualizar ahora?`)) return;
+    $("#btnAct").textContent = "Actualizando…"; $("#btnAct").disabled = true;
+    try { await api("/api/actualizacion", "POST"); } catch (e) { avisar(e.message, true); return revisarActualizacion(); }
+    avisar("Actualizado. Reiniciando la fábrica…");
+    await new Promise((ok) => setTimeout(ok, 2500));
+    for (let i = 0; i < 60; i++) { try { const x = await fetch("/api/info"); if (x.ok) break; } catch {} await new Promise((ok) => setTimeout(ok, 1000)); }
+    location.reload();
+  };
+}
+setInterval(() => revisarActualizacion(), 30 * 60000);
 
 function pintarLista() {
   $("#lista").innerHTML = S.proyectos.map((p) => `
