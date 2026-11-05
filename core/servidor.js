@@ -239,7 +239,7 @@ export function arrancar() {
     catch (e) { console.error(e); } finally { investigando = null; }
   }, 60000);
   srv.listen(CFG.puerto, CFG.host, () => {
-    const dir = `http://${CFG.host === "0.0.0.0" ? "TU-IP" : "127.0.0.1"}:${CFG.puerto}/`;
+    const dir = `http://${CFG.host === "0.0.0.0" ? "TU-IP" : CFG.host}:${CFG.puerto}/`;
     console.log(`\n  Fábrica lista → ${dir}\n  (deja esta ventana abierta mientras la usas)\n`);
     if (!CFG.anthropicKey) console.log("  · Sin ANTHROPIC_API_KEY: el guion lo escribe Claude Code o tú en el panel.");
     if (!CFG.elevenKey) console.log("  · Sin ELEVENLABS_API_KEY: se usará voz de prueba (muda) para ensayar.");
