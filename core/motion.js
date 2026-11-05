@@ -6,7 +6,7 @@ import { spawn } from "node:child_process";
 import { RAIZ, DIR_LISTOS } from "./config.js";
 import { dirProyecto, leer, guardar } from "./proyectos.js";
 import { leerEstilo } from "./estilos.js";
-import { ffmpeg } from "./ff.js";
+import { ffmpeg, duracion } from "./ff.js";
 import { CFG } from "./config.js";
 import { chromium } from "playwright";
 
@@ -90,6 +90,17 @@ export async function terminar(id) {
     const out = path.join(dirTrabajo(id), "out", "final.mp4");
     if (fs.existsSync(out)) fs.copyFileSync(out, final); else throw new Error("No encuentro el video final.");
   }
+  // música (si la hay): se mezcla sobre el render limpio, que se guarda aparte para poder cambiarla o quitarla
+  const limpio = path.join(dir, "final-sin-musica.mp4");
+  const mt = fs.statSync(final).mtimeMs;
+  if (!fs.existsSync(limpio) || p.motionMezcla !== mt) fs.copyFileSync(final, limpio); // render nuevo (de aquí o de Claude Code)
+  const musica = fs.readdirSync(dir).find((n) => /^musica\.(mp3|m4a|wav)$/i.test(n));
+  if (musica) {
+    const D = await duracion(limpio);
+    await ffmpeg(["-i", limpio, "-i", path.join(dir, musica), "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
+      "-af", `atrim=0:${D.toFixed(2)},volume=0.9,afade=t=out:st=${Math.max(0, D - 1.5).toFixed(2)}:d=1.5`, "-t", D.toFixed(2), final]);
+  } else fs.copyFileSync(limpio, final);
+  p.motionMezcla = fs.statSync(final).mtimeMs;
   await ffmpeg(["-ss", "1.5", "-i", final, "-frames:v", "1", "-q:v", "2", path.join(dir, "portada.jpg")]).catch(() => {});
   const nombre = `${id}-${(p.formato || "9:16").replace(":", "x")}`;
   fs.copyFileSync(final, path.join(DIR_LISTOS, `${nombre}.mp4`));

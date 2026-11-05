@@ -254,12 +254,15 @@ async function api(req, res, partes) {
     fila.push({ id, paso: "render", fn: (av) => render(id, av) }); P.marcar(id, "render", "en-fila");
     return json(res, 200, { ok: true });
   }
+  if (accion === "remezclar" && m === "POST") { encolar(id, "render", () => MOT.terminar(id)); return json(res, 200, { ok: true }); } // motion: vuelve a mezclar la música (o la quita)
   if (accion === "musica" && m === "GET") return json(res, 200, { prompt: promptMusica(id) });
   if (accion === "musica" && m === "POST") {
     const b = await cuerpo(req);
-    if (!P.leer(id, "tiempos.json")) return json(res, 400, { error: "Primero haz la voz: la música se hace del largo exacto del video." });
+    const esMot = leerEstilo(p.estilo)?.tipo === "motion";
+    if (!esMot && !P.leer(id, "tiempos.json")) return json(res, 400, { error: "Primero haz la voz: la música se hace del largo exacto del video." });
+    if (esMot && !fs.existsSync(path.join(P.dirProyecto(id), "final.mp4"))) return json(res, 400, { error: "Primero renderiza el motion: la música se hace del largo exacto del video." });
     encolar(id, "musica", (av) => musicaIA(id, av, { prompt: (b.prompt || "").trim() || undefined, reusar: b.reusar, desdePanel: true }));
-    if (b.insertar) { fila.push({ id, paso: "render", fn: (av) => render(id, av) }); P.marcar(id, "render", "en-fila"); } // y se vuelve a sacar el video con la música nueva
+    if (b.insertar) { fila.push({ id, paso: "render", fn: (av) => (esMot ? MOT.terminar(id) : render(id, av)) }); P.marcar(id, "render", "en-fila"); } // y se vuelve a sacar el video con la música nueva
     return json(res, 200, { ok: true });
   }
   if (accion === "voz" && m === "POST") { encolar(id, "voz", (av) => hacerVoz(id, av)); return json(res, 200, { ok: true }); }

@@ -6,6 +6,7 @@ import path from "node:path";
 import { CFG, RAIZ } from "./config.js";
 import { dirProyecto, leer, guardar, slug } from "./proyectos.js";
 import { leerEstilo } from "./estilos.js";
+import { duracion } from "./ff.js";
 
 const DIR_MUSICA = path.join(RAIZ, "musica");
 
@@ -19,7 +20,9 @@ export function promptMusica(id) {
 export async function musicaIA(id, avisar = () => {}, { prompt, reusar, desdePanel = false } = {}) {
   const p = leer(id, "proyecto.json"), est = leerEstilo(p.estilo) || {};
   const t = leer(id, "tiempos.json");
-  const necesito = Math.ceil((t?.duracion || 30) + 0.5);
+  const finalMotion = path.join(dirProyecto(id), "final.mp4");
+  const largo = t?.duracion || (est.tipo === "motion" && fs.existsSync(finalMotion) ? await duracion(finalMotion).catch(() => 0) : 0) || p.motion?.segundos || 30;
+  const necesito = Math.ceil(largo + 0.5);
   reusar = reusar ?? !!est.musicaIA?.reusar;
   const dirLib = path.join(DIR_MUSICA, est.id || "general");
   const clave = `ia-${slug(p.tema || p.titulo || "general").slice(0, 40)}`;

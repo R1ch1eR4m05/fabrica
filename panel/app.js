@@ -348,6 +348,7 @@ function pintarMotion(p, est, ocupado) {
             <div class="fila" style="margin:10px 0"><a class="btn peq" href="/proyectos/${h(p.id)}/final.mp4" download="${h(p.id)}.mp4">Descargar video</a></div>`
           : `<div class="estado">Cuando Claude Code termine, renderiza aquí (o él mismo te lo deja listo).</div>`}
         </div></section>
+      ${est?.musicaIA ? panelMusica(p, est) : ""}
     </div>`;
 
   for (const v of document.querySelectorAll(".mot video")) { const c = v.closest(".mot"); c.onmouseenter = () => v.play().catch(() => {}); c.onmouseleave = () => { v.pause(); }; }
@@ -369,6 +370,7 @@ function pintarMotion(p, est, ocupado) {
   $("#pTitulo").onchange = async (e) => { await api(`/api/proyectos/${p.id}`, "PATCH", { titulo: e.target.value }); S.proyectos = await api("/api/proyectos"); pintarLista(); };
   for (const bt of document.querySelectorAll("#pFormato button")) bt.onclick = async () => { await api(`/api/proyectos/${p.id}`, "PATCH", { formato: bt.dataset.v }); abrir(p.id, { mantener: true }); };
   if (S.progreso[p.id]?.render) mostrarProgreso("render", S.progreso[p.id].render);
+  if ($("#muGenerar")) eventosMusica(p, est);
 }
 
 // ---------- música a la medida (ElevenLabs Music) ----------
@@ -386,8 +388,9 @@ function promptDeParametros(par, tema, conVoz) {
 function panelMusica(p, est) {
   const par = { ...(est.musicaIA.parametros || {}), ...(p.musicaParametros || {}) };
   const tiene = p.archivos?.find((n) => n.startsWith("musica."));
+  const esMot = est.tipo === "motion", dur = p.tiempos?.duracion ?? (esMot && p.tieneFinal ? p.motion?.segundos : null);
   const sel = (k) => `<div><label>${NOMBRES_MU[k]}</label><select data-mu="${k}">${Object.keys(MU[k]).map((v) => `<option value="${v}" ${par[k] === v ? "selected" : ""}>${v[0].toUpperCase() + v.slice(1).replace("nostalgico", "nostálgico").replace("epico", "épico")}</option>`).join("")}</select></div>`;
-  return `<section class="paso">${pasoCab(4, "musica", "Música a la medida (ElevenLabs)", `<button class="btn peq primario" id="muGenerar" ${!S.info.voz ? "disabled title='Pon ELEVENLABS_API_KEY en el .env'" : !p.tiempos ? "disabled title='Primero la voz: la música se hace del largo exacto'" : ""}>Generar e insertar</button>`)}
+  return `<section class="paso">${pasoCab(4, "musica", "Música a la medida (ElevenLabs)", `<button class="btn peq primario" id="muGenerar" ${!S.info.voz ? "disabled title='Pon ELEVENLABS_API_KEY en el .env'" : !dur ? `disabled title='${esMot ? "Primero renderiza el motion" : "Primero la voz"}: la música se hace del largo exacto'` : ""}>Generar e insertar</button>`)}
     <div class="cont">
       <div class="estado" id="est-musica">Ahora: ${tiene ? (p.musicaIA?.reusada ? "reutilizada de tu biblioteca" : p.musicaIA ? `a la medida (${p.musicaIA.segundos} s)` : "la que subiste") : "la de tu biblioteca musica/ (o el ambiente del estilo)"}</div>
       <div class="barra oculto" id="bar-musica"><div></div></div>
@@ -400,7 +403,7 @@ function panelMusica(p, est) {
       <textarea id="muPrompt" style="min-height:70px;font-size:13px"></textarea>
       <div class="fila" style="margin-top:6px">
         ${est.musicaIA.reusar ? `<label class="estado" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="muReusar" style="width:auto" checked> si ya hay una de este mismo tema, reutilizarla (no gasta)</label>` : ""}
-        <span class="estado">Se hace del largo exacto${p.tiempos ? ` (${Math.ceil(p.tiempos.duracion)} s)` : ""} y luego se vuelve a sacar el video con ella.</span>
+        <span class="estado">Se hace del largo exacto${dur ? ` (unos ${Math.ceil(dur)} s)` : ""} y luego ${esMot ? "se mezcla con el video" : "se vuelve a sacar el video con ella"}.</span>
       </div>
     </div></section>`;
 }
@@ -418,7 +421,7 @@ function eventosMusica(p, est) {
     const reusar = $("#muReusar") ? $("#muReusar").checked && !editado : false;
     api(`/api/proyectos/${p.id}/musica`, "POST", { prompt: $("#muPrompt").value, reusar, insertar: true }).then(() => avisar("Componiendo la música… luego se vuelve a sacar el video.")).catch((e) => avisar(e.message, true));
   };
-  if ($("#muQuitar")) $("#muQuitar").onclick = async () => { await api(`/api/proyectos/${p.id}/archivo?tipo=musica`, "DELETE"); abrir(p.id, { mantener: true }); };
+  if ($("#muQuitar")) $("#muQuitar").onclick = async () => { await api(`/api/proyectos/${p.id}/archivo?tipo=musica`, "DELETE"); if (est.tipo === "motion" && p.tieneFinal) await api(`/api/proyectos/${p.id}/remezclar`, "POST"); abrir(p.id, { mantener: true }); };
 }
 
 function panelFondo(p) {
