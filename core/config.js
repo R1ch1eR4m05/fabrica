@@ -33,7 +33,8 @@ export const CFG = {
   pexelsKey: e.PEXELS_API_KEY || "",
   pixabayKey: e.PIXABAY_API_KEY || "",
   geminiKey: e.GEMINI_API_KEY || "",
-  geminiModelo: e.GEMINI_MODEL || "gemini-flash-latest",
+  // varios modelos separados por coma: si uno está saturado se prueba el siguiente
+  geminiModelos: (e.GEMINI_MODEL || "gemini-flash-latest,gemini-flash-lite-latest,gemini-2.5-flash").split(",").map((x) => x.trim()).filter(Boolean),
   apimartKey: e.APIMART_API_KEY || "",
   apifyToken: e.APIFY_TOKEN || "",
   flowUrl: (e.FLOW_MCP_URL || "http://127.0.0.1:8787").replace(/\/$/, ""),

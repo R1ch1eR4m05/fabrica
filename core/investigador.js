@@ -176,13 +176,28 @@ function sistemaDe(cfg) {
 export const hayIA = () => !!(CFG.geminiKey || CFG.anthropicKey);
 async function pedirIA(sistema, texto) {
   if (CFG.geminiKey) {
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${CFG.geminiModelo}:generateContent`, {
-      method: "POST", signal: AbortSignal.timeout(240000), headers: { "x-goog-api-key": CFG.geminiKey, "content-type": "application/json" },
-      body: JSON.stringify({ systemInstruction: { parts: [{ text: sistema }] }, contents: [{ role: "user", parts: [{ text: texto }] }], generationConfig: { responseMimeType: "application/json", temperature: 0.8 } }),
-    });
-    if (!r.ok) throw new Error(`Gemini respondió ${r.status}: ${(await r.text()).slice(0, 300)}`);
-    const j = await r.json();
-    return (j.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join("");
+    // el nivel gratis a veces se satura (503/429): reintenta con pausas y cambia de modelo
+    let ultimo = "";
+    for (const modelo of CFG.geminiModelos) {
+      for (let intento = 0; intento < 3; intento++) {
+        if (intento) await new Promise((r) => setTimeout(r, [0, 8000, 20000][intento]));
+        try {
+          const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent`, {
+            method: "POST", signal: AbortSignal.timeout(180000), headers: { "x-goog-api-key": CFG.geminiKey, "content-type": "application/json" },
+            body: JSON.stringify({ systemInstruction: { parts: [{ text: sistema }] }, contents: [{ role: "user", parts: [{ text: texto }] }], generationConfig: { responseMimeType: "application/json", temperature: 0.8 } }),
+          });
+          if (r.ok) {
+            const j = await r.json();
+            const out = (j.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join("");
+            if (out.trim()) return out;
+            ultimo = `${modelo}: respuesta vacía`; continue;
+          }
+          ultimo = `${modelo} → ${r.status}: ${(await r.text()).slice(0, 160)}`;
+          if (![429, 500, 502, 503, 504].includes(r.status)) break; // error que no se arregla reintentando: siguiente modelo
+        } catch (e) { ultimo = `${modelo}: ${e.message}`; }
+      }
+    }
+    throw new Error(`Gemini no respondió (saturado). Último error: ${ultimo}`);
   }
   if (CFG.anthropicKey) {
     const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", signal: AbortSignal.timeout(240000), headers: { "x-api-key": CFG.anthropicKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
@@ -246,7 +261,22 @@ export async function importarInforme(texto, fuente = "informe", avisar = () => 
   return convertirInforme(guardarInforme(texto, fuente), fuente, avisar);
 }
 
+// reintenta solos los informes que no se pudieron convertir (cada 15 min, hasta 8 veces)
+export async function reintentarPendientes(avisar = () => {}) {
+  if (!hayIA()) return [];
+  const hechos = [];
+  for (const n of informesPendientes()) {
+    const marca = path.join(DIR_INFORMES, n + ".intentos");
+    const est = fs.existsSync(marca) ? JSON.parse(fs.readFileSync(marca, "utf8")) : { n: 0, ultimo: 0 };
+    if (est.n >= 8 || Date.now() - est.ultimo < 15 * 60000) continue;
+    try { hechos.push(await convertirInforme(n, n.replace(/^[\d-]+-/, "").replace(/\.md$/, ""), avisar)); fs.rmSync(marca, { force: true }); }
+    catch (e) { fs.writeFileSync(marca, JSON.stringify({ n: est.n + 1, ultimo: Date.now(), error: e.message })); }
+  }
+  return hechos;
+}
+
 export function informesPendientes() { return fs.readdirSync(DIR_INFORMES).filter((f) => f.endsWith(".md") && !f.endsWith(".hecho.md")); }
+export const intentosDe = (n) => { const f = path.join(DIR_INFORMES, n + ".intentos"); return fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, "utf8")) : null; };
 
 // archivos que caen en investigacion/entrada/ (n8n, una carpeta sincronizada, o tú) se importan solos
 export async function revisarEntrada(avisar = () => {}) {

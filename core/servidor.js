@@ -101,7 +101,7 @@ async function api(req, res, partes) {
         try {
           const r = await INV.convertirInforme(nombre, fuente, av);
           emitir({ id: "_investigador", paso: "investigar", estado: "listo", msg: `Llegó un informe (${fuente}): ${r.propuestas} propuestas`, resultado: r });
-        } catch (e) { console.error("Informe", nombre, e); emitir({ id: "_investigador", paso: "investigar", estado: "error", msg: `No pude convertir el informe: ${e.message}. Quedó guardado; Claude Code lo puede convertir.` }); }
+        } catch (e) { console.error("Informe", nombre, e.message); emitir({ id: "_investigador", paso: "investigar", estado: "error", msg: `No pude convertir el informe todavía (${e.message}). Quedó guardado y se reintenta solo cada 15 minutos.` }); }
         finally { investigando = null; }
       };
       correr();
@@ -245,8 +245,10 @@ export function arrancar() {
   setInterval(async () => {
     if (investigando) return;
     investigando = { inicio: Date.now() };
-    try { for (const r of await INV.revisarEntrada()) emitir({ id: "_investigador", paso: "investigar", estado: "listo", msg: r.pendiente ? "Llegó un informe nuevo (pendiente de convertir)" : `Llegó un informe: ${r.propuestas} propuestas`, resultado: r }); }
-    catch (e) { console.error(e); } finally { investigando = null; }
+    try {
+      for (const r of await INV.reintentarPendientes()) emitir({ id: "_investigador", paso: "investigar", estado: "listo", msg: `Se convirtió un informe pendiente: ${r.propuestas} propuestas`, resultado: r });
+      for (const r of await INV.revisarEntrada()) emitir({ id: "_investigador", paso: "investigar", estado: "listo", msg: r.pendiente ? "Llegó un informe nuevo (pendiente de convertir)" : `Llegó un informe: ${r.propuestas} propuestas`, resultado: r });
+    } catch (e) { console.error(e); } finally { investigando = null; }
   }, 60000);
   srv.listen(CFG.puerto, CFG.host, () => {
     const dir = `http://${CFG.host === "0.0.0.0" ? "TU-IP" : CFG.host}:${CFG.puerto}/`;
