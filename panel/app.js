@@ -9,7 +9,7 @@ const api = async (ruta, metodo = "GET", datos) => {
 };
 
 const S = { info: null, proyectos: [], actual: null, guion: null, sucio: false, progreso: {}, reproductor: null };
-const PASOS = { guion: "Guion", voz: "Voz", render: "Video", fondo: "Fondo" };
+const PASOS = { guion: "Guion", voz: "Voz", render: "Video", fondo: "Fondo", musica: "Música" };
 const PRINCIPALES = ["guion", "voz", "render"];
 const ESTADO_TXT = { pendiente: "Pendiente", "en-fila": "En fila", trabajando: "Trabajando…", listo: "Listo", error: "Error", desactualizado: "Hay que rehacerlo" };
 
@@ -210,6 +210,15 @@ function pintarProyecto() {
           ${p.conVoz !== false && !S.info.voz ? `<div class="nota">Sin llave de ElevenLabs se genera una <b>voz de prueba muda</b> con tiempos estimados, para ensayar el video. Pon <code>ELEVENLABS_API_KEY</code> y <code>ELEVENLABS_VOICE_ID</code> en el <code>.env</code> para la voz real.${est?.vozSugerida ? "<br>Voz sugerida: " + h(est.vozSugerida) : ""}</div>` : ""}
           <div class="barra oculto" id="bar-voz"><div></div></div>
           ${est?.fondo ? panelFondo(p) : ""}
+          ${est?.musicaIA ? `<div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--b)">
+            <div class="estado" id="est-musica">Música: ${p.archivos?.some((n) => n.startsWith("musica.")) ? (p.musicaIA?.reusada ? "reutilizada de tu biblioteca" : p.musicaIA ? "a la medida (ElevenLabs)" : "la tuya") : "de tu biblioteca musica/ (o el ambiente del estilo si está vacía)"}</div>
+            <div class="barra oculto" id="bar-musica"><div></div></div>
+            ${S.info.voz ? `<details style="margin-top:6px"><summary class="estado" style="cursor:pointer">Música a la medida con ElevenLabs</summary>
+              <textarea id="mPrompt" style="min-height:58px;font-size:13px" placeholder="Cargando la descripción sugerida…"></textarea>
+              <div class="fila" style="margin-top:6px"><button class="btn peq" id="mIA" ${p.tiempos ? "" : "disabled title='Primero la voz: la música se hace del largo exacto'"}>Generar música (gasta créditos)</button>
+              ${est.musicaIA.reusar ? `<label class="estado" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="mReusar" style="width:auto" checked> reutilizar la del mismo tema si ya existe</label>` : ""}</div>
+            </details>` : ""}
+          </div>` : ""}
           ${p.tieneVoz ? `<audio id="vAudio" controls src="/proyectos/${h(p.id)}/voz.mp3?v=${Date.now()}" style="width:100%"></audio><div class="estado">${p.tiempos ? `${p.tiempos.duracion.toFixed(1)} s${p.tiempos.sinVoz ? " · sin voz, solo música" : p.tiempos.prueba ? " · voz de prueba" : ""}` : ""}</div>` : `<div class="estado">Primero el guion.</div>`}
         </div></section>
 
@@ -261,6 +270,10 @@ function pintarProyecto() {
     for (const b of document.querySelectorAll("[data-quitar]")) b.onclick = async () => { await api(`/api/proyectos/${p.id}/archivo?tipo=${b.dataset.quitar}`, "DELETE"); abrir(p.id, { mantener: true }); };
   }
   $("#vHacer").onclick = () => api(`/api/proyectos/${p.id}/voz`, "POST").catch((e) => avisar(e.message, true));
+  if ($("#mPrompt")) {
+    api(`/api/proyectos/${p.id}/musica`).then((r) => { if (!$("#mPrompt").value) $("#mPrompt").value = r.prompt; }).catch(() => {});
+    $("#mIA").onclick = () => api(`/api/proyectos/${p.id}/musica`, "POST", { prompt: $("#mPrompt").value, reusar: $("#mReusar") ? $("#mReusar").checked : false }).catch((e) => avisar(e.message, true));
+  }
   $("#rTodo").onclick = () => api(`/api/proyectos/${p.id}/todo`, "POST").catch((e) => avisar(e.message, true));
   $("#rHacer").onclick = () => api(`/api/proyectos/${p.id}/render`, "POST").catch((e) => avisar(e.message, true));
   if ($("#copiar")) {
@@ -491,6 +504,7 @@ async function investigador(archivo) {
     <div class="fila">${inv ? `<button class="btn" id="iRehacer" title="Vuelve a sacar las propuestas de esta misma investigación con los estilos y cierres de hoy (no gasta Apify)">Volver a proponer</button>` : ""}${inv ? `<button class="btn" id="iTodas" title="Crea un video por propuesta y los manda a hacer (voz + video) uno tras otro">Crear y hacer todas</button>` : ""}<button class="btn primario" id="iCorrer" ${!d.ia || d.trabajando ? "disabled" : ""} title="${d.ia ? "" : "Necesita GEMINI_API_KEY o ANTHROPIC_API_KEY"}">Investigar ahora</button>
       ${d.lista.length ? `<select id="iHist" style="width:auto">${d.lista.map((x) => `<option value="${h(x.archivo)}" ${x.archivo === archivo ? "selected" : ""}>${new Date(x.fecha).toLocaleString()} · ${x.propuestas} propuestas${x.modo === "web" ? " · sin métricas" : ` · ${x.analizadas} analizadas`}</option>`).join("")}</select>` : ""}
       ${S.info.flow ? `<label class="estado" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="iFlow" style="width:auto" ${localStorage.getItem("invFlow") === "1" ? "checked" : ""}> Fondos con Google Flow (gasta créditos) · tope <input id="iFlowMax" type="number" min="1" value="${h(localStorage.getItem("invFlowMax") || "25")}" style="width:70px"></label>` : `<span class="estado" title="Abre Flow Studio (flow-mcp) para generar los fondos con Flow">Flow cerrado: los fondos salen de Pexels</span>`}
+      ${S.info.voz ? `<label class="estado" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="iMusica" style="width:auto" ${localStorage.getItem("invMusica") === "1" ? "checked" : ""}> Música a la medida con ElevenLabs (gasta créditos; en frases reutiliza por tema)</label>` : ""}
       <span class="estado" id="est-investigar">${d.trabajando ? "Trabajando…" : ""}</span></div>
     <div class="barra ${d.trabajando ? "" : "oculto"}" id="bar-investigar"><div></div></div>
     ${inv ? `
@@ -530,7 +544,8 @@ async function investigador(archivo) {
     catch (e) { avisar(e.message, true); $("#iImportar").disabled = false; }
   };
   const conFlow = () => { const c = $("#iFlow"); if (!c) return null; localStorage.setItem("invFlow", c.checked ? "1" : "0"); localStorage.setItem("invFlowMax", $("#iFlowMax").value); return c.checked ? { maxCreditos: Number($("#iFlowMax").value) || 25 } : null; };
-  const hacerTodo = async (pid) => { const r = await api(`/api/proyectos/${pid}/todo`, "POST", { flow: conFlow() }); return !r.motionPendiente; };
+  const conMusica = () => { const c = $("#iMusica"); if (!c) return false; localStorage.setItem("invMusica", c.checked ? "1" : "0"); return c.checked; };
+  const hacerTodo = async (pid) => { const r = await api(`/api/proyectos/${pid}/todo`, "POST", { flow: conFlow(), musica: conMusica() }); return !r.motionPendiente; };
   if ($("#iTodas")) $("#iTodas").onclick = async () => {
     const f = conFlow();
     if (!confirm(`Se crearán ${inv.propuestas.length} videos 9:16, cada uno en el estilo que el investigador eligió, y se harán completos uno tras otro.${f ? ` Los fondos se harán con Google Flow (gasta créditos, tope ${f.maxCreditos} por clip).` : " Los fondos salen de Pexels."} Los motion graphics quedan listos para que Claude Code los construya. ¿Seguir?`)) return;

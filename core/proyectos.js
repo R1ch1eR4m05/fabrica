@@ -54,7 +54,7 @@ export function marcar(id, paso, valor, extra = {}) {
   Object.assign(p, extra);
   // si cambia un paso, los siguientes quedan desactualizados
   const orden = ["guion", "voz", "render"];
-  const despues = paso === "fondo" ? ["render"] : orden.includes(paso) ? orden.slice(orden.indexOf(paso) + 1) : [];
+  const despues = paso === "fondo" || paso === "musica" ? ["render"] : orden.includes(paso) ? orden.slice(orden.indexOf(paso) + 1) : [];
   if (valor === "listo") for (const s of despues) if (p.estado[s] === "listo") p.estado[s] = "desactualizado";
   guardar(id, "proyecto.json", p);
   return p;

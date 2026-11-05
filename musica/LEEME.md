@@ -10,3 +10,8 @@ Dónde conseguirlas gratis y con permiso de uso: YouTube Audio Library (revisa s
 Si una pista pide créditos, ponlos en un `CREDITOS.txt` junto a ella y agrégalos a la descripción al publicar.
 
 Estas pistas no se suben a GitHub: viven solo en cada compu (laptop y VPS por separado).
+
+## Música a la medida (ElevenLabs Music)
+Desde el panel (paso de Voz → "Música a la medida") o con la casilla del Investigador. Se hace del largo exacto del video.
+En Frases se guarda aquí como `frases-desenfocado/ia-<tema>.mp3` y se reutiliza cuando vuelve a salir ese tema (no se paga dos veces).
+La música de ElevenLabs solo está en sus planes de pago.

@@ -16,6 +16,7 @@ import * as INV from "./investigador.js";
 import { clipDeFlow, flowDisponible } from "./flow.js";
 import * as MOT from "./motion.js";
 import * as ACT from "./actualizar.js";
+import { musicaIA, promptMusica } from "./musica.js";
 
 let investigando = null;
 function correrInvestigacion() {
@@ -166,7 +167,7 @@ async function api(req, res, partes) {
         if (!guion.subir) guion.subir = { titulo: prop.tituloPost || "", descripcion: prop.descripcion || "", hashtags: prop.hashtags || [] };
       }
       const p = P.crearProyecto(datos);
-      p.flowPrompt = prop.flowPrompt; p.fondoBuscar = prop.pexels; p.desdeInvestigacion = { archivo: id, n: prop.n };
+      p.flowPrompt = prop.flowPrompt; p.fondoBuscar = prop.pexels; p.desdeInvestigacion = { archivo: id, n: prop.n }; p.tema = prop.tema || "";
       if (b.canal) p.canal = b.canal;
       P.guardar(p.id, "proyecto.json", p);
       P.guardar(p.id, "guion.json", guion);
@@ -283,7 +284,16 @@ async function api(req, res, partes) {
       encolar(id, "fondo", (av) => clipDeFlow(id, prompt, (a) => av({ ...a, paso: "fondo" }), { maxCreditos: Number(b.flow.maxCreditos) || 25 })
         .catch((e) => { console.error("Flow", e.message); emitir({ id, paso: "fondo", estado: "error", msg: `Flow falló (${e.message}); sigo con Pexels.` }); }));
     encolar(id, "voz", (av) => hacerVoz(id, av));
+    // música a la medida con ElevenLabs (si la pidieron); si falla, el video sale con la música de la biblioteca
+    if (b?.musica && CFG.elevenKey && est?.musicaIA) { fila.push({ id, paso: "musica", fn: (av) => musicaIA(id, av).catch((e) => { console.error("Música", e.message); emitir({ id, paso: "musica", estado: "error", msg: `No se pudo generar la música (${e.message}); sigue con la de la biblioteca.` }); }) }); P.marcar(id, "musica", "en-fila"); }
     fila.push({ id, paso: "render", fn: (av) => render(id, av) }); P.marcar(id, "render", "en-fila");
+    return json(res, 200, { ok: true });
+  }
+  if (accion === "musica" && m === "GET") return json(res, 200, { prompt: promptMusica(id) });
+  if (accion === "musica" && m === "POST") {
+    const b = await cuerpo(req);
+    if (!P.leer(id, "tiempos.json")) return json(res, 400, { error: "Primero haz la voz: la música se hace del largo exacto del video." });
+    encolar(id, "musica", (av) => musicaIA(id, av, { prompt: (b.prompt || "").trim() || undefined, reusar: b.reusar }));
     return json(res, 200, { ok: true });
   }
   if (accion === "voz" && m === "POST") { encolar(id, "voz", (av) => hacerVoz(id, av)); return json(res, 200, { ok: true }); }
