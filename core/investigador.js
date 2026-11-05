@@ -164,9 +164,14 @@ const FORMATO = `Devuelve SOLO JSON válido:
   }]
 }`;
 
-// estilos que la fábrica puede hacer sola de principio a fin (los motion graphics se construyen a mano con Claude Code)
+// estilos que puede elegir el investigador (los motion graphics quedan con su brief listo y los construye Claude Code)
 export function estilosDisponibles() {
-  return listarEstilos().filter((e) => e.listo && e.tipo !== "motion").map((e) => ({ id: e.id, nombre: e.nombre, descripcion: e.descripcion }));
+  const lista = [];
+  for (const e of listarEstilos().filter((x) => x.listo)) {
+    if (e.tipo !== "motion") lista.push({ id: e.id, nombre: e.nombre, descripcion: e.descripcion });
+    else for (const c of e.catalogo || []) lista.push({ id: `motion:${c.id}`, nombre: `Motion graphics · ${c.nombre}`, descripcion: `${c.que} (sin voz, texto animado; bueno para pasos, listas, un dato fuerte o un anuncio)` });
+  }
+  return lista;
 }
 
 function sistemaDe(cfg) {

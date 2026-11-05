@@ -116,6 +116,19 @@ async function api(req, res, partes) {
       const inv = INV.leerInvestigacion(id), prop = inv.propuestas.find((x) => x.n === Number(b.n));
       if (!prop) return json(res, 404, { error: "No encuentro esa propuesta." });
       // el estilo lo eligió el investigador según el contenido; si no hay (propuestas viejas) o no existe, frases
+      if (String(prop.estilo || "").startsWith("motion:")) { // motion graphics: brief automático; lo construye Claude Code
+        const mot = leerEstilo("motion"), c = (mot.catalogo || []).find((x) => x.id === prop.estilo.slice(7));
+        if (!c) return json(res, 400, { error: "Ese estilo de motion ya no existe." });
+        const cfg = INV.leerConfig();
+        const p = P.crearProyecto({ estilo: "motion", titulo: prop.tituloPost || prop.tema, idea: prop.idea || prop.frase, formato: b.formato || "9:16", duracion: "corto", conVoz: false });
+        p.desdeInvestigacion = { archivo: id, n: prop.n }; if (b.canal) p.canal = b.canal; P.guardar(p.id, "proyecto.json", p);
+        MOT.guardarBrief(p.id, { estiloMotion: c.id, formato: b.formato || "9:16", para: "Reels / TikTok", segundos: Math.round(c.seg || 12), loop: false,
+          textos: [String(prop.frase || "").replace(/\*/g, ""), prop.cierre].filter(Boolean).join("\n"),
+          marca: /levania/i.test(cfg.nombre) ? "Levania: rosa #C4837A, salvia #8FA58A, crema #F6EEE4, tinta #3D3230. Tipografías Cormorant Garamond (títulos) y Jost (texto). Logo: estilos/render-datos/marca/levania_logo.png" : cfg.marca || "",
+          medios: "ninguno, solo gráfico", notas: [prop.idea, prop.porque, prop.adaptacion && `Adaptación: ${prop.adaptacion}`].filter(Boolean).join("\n") });
+        P.marcar(p.id, "guion", "listo");
+        return json(res, 200, P.detalle(p.id));
+      }
       const pedido = prop.estilo ? leerEstilo(prop.estilo) : null;
       const est = pedido?.listo && pedido.tipo !== "motion" ? pedido : leerEstilo("frases-desenfocado");
       const esFrases = est.id === "frases-desenfocado";
@@ -237,6 +250,17 @@ async function api(req, res, partes) {
     return json(res, 200, { ok: true });
   }
   if (accion === "todo" && m === "POST") { // voz + video seguidos (para lotes)
+    const b = await cuerpo(req).catch(() => ({}));
+    const est = leerEstilo(p.estilo);
+    if (est?.tipo === "motion") { // se construye en Claude Code; si ya está construido, se renderiza
+      if (!MOT.estadoMotion(id).construido) return json(res, 200, { ok: true, motionPendiente: true });
+      encolar(id, "render", (av) => MOT.renderMotion(id, av)); return json(res, 200, { ok: true });
+    }
+    // fondo con Google Flow antes de la voz (solo si lo pidieron, hay prompt y Flow está abierto; si falla, sigue con Pexels)
+    const prompt = (p.flowPrompt || P.leer(id, "guion.json")?.fondo?.flowPrompt || "").trim();
+    if (b?.flow && est?.fondo && prompt && (await flowDisponible()))
+      encolar(id, "fondo", (av) => clipDeFlow(id, prompt, (a) => av({ ...a, paso: "fondo" }), { maxCreditos: Number(b.flow.maxCreditos) || 25 })
+        .catch((e) => { console.error("Flow", e.message); emitir({ id, paso: "fondo", estado: "error", msg: `Flow falló (${e.message}); sigo con Pexels.` }); }));
     encolar(id, "voz", (av) => hacerVoz(id, av));
     fila.push({ id, paso: "render", fn: (av) => render(id, av) }); P.marcar(id, "render", "en-fila");
     return json(res, 200, { ok: true });

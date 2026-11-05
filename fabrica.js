@@ -9,6 +9,7 @@
 //   node fabrica.js fotos <id> [seg,seg,…]        saca fotogramas para revisar (proyectos/<id>/revision/)
 //   node fabrica.js render <id> [--formato 16:9]  saca el video final (también en listos/)
 //   node fabrica.js todo <id>                     voz + render
+//   node fabrica.js motion-pendientes             (Claude Code) lista los motion graphics con brief que faltan por construir
 //   node fabrica.js listo-motion <id>             (Claude Code) marca terminado un motion graphics y lo copia a listos/
 //   node fabrica.js convertir                     convierte en propuestas los informes pendientes (Gemini o Claude)
 //   node fabrica.js recolectar                    junta y puntúa publicaciones virales (Apify) para que Claude Code las analice
@@ -68,6 +69,12 @@ async function main() {
       const { render } = await import("./core/render.js");
       const r = await render(id, avisar); P.marcar(id, "render", "listo");
       console.log(`\nVideo listo en ${r.archivo} (${r.segundos} s)`); return;
+    }
+    case "motion-pendientes": {
+      const MOT = await import("./core/motion.js");
+      const ps = P.listarProyectos().filter((p) => p.estilo === "motion" && p.motion?.estiloMotion && p.estado?.render !== "listo" && !MOT.estadoMotion(p.id).construido);
+      console.log(ps.length ? ps.map((p) => `${p.id}  ·  ${p.motion.estiloMotion}  ·  ${p.titulo}`).join("\n") : "No hay motion graphics pendientes.");
+      return;
     }
     case "listo-motion": {
       const MOT = await import("./core/motion.js");

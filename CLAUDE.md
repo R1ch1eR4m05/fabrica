@@ -36,6 +36,10 @@ La skill vive en `motion/` (claude-video, MIT, textos en portugués; tú hablas 
 5. Render final con `bash motion/scripts/render.sh proyectos/<id>/motion/proj proyectos/<id>/final.mp4 high` y luego `node fabrica.js listo-motion <id>` (lo copia a `listos/`).
 Requisitos en la laptop: Node 22+, ffmpeg, Python 3 y Git Bash (`bash motion/scripts/checar.sh` lo revisa).
 
+### "Construye los motion pendientes"
+`node fabrica.js motion-pendientes` lista los que dejó el investigador con su brief. Constrúyelos uno por uno con el proceso de arriba.
+Si Richie dice que los hagas sin preguntarle, puedes saltarte las aprobaciones: revisa tú mismo tarjetas y fotogramas, corrige lo que se encime y renderiza. No gastes créditos de Flow sin su permiso.
+
 ## Investigador desde Claude Code (sin API de Claude)
 Cuando Richie diga "investiga" o "dame frases virales":
 1. Si hay `APIFY_TOKEN` en el .env: `node fabrica.js recolectar` y lee el archivo `investigacion/datos-*.json` que indica (40 publicaciones con vistas, guardados, compartidos y `rebase` = vistas/seguidores).
@@ -51,8 +55,9 @@ Cuando Richie diga "investiga" o "dame frases virales":
 - Los que no terminan en `.hecho.md` están pendientes. Si Richie dice "convierte los informes pendientes": léelos, escribe la investigación en el formato de arriba (`"modo": "informe"`, `"fuente"`) y renombra el informe a `.hecho.md`.
 
 ## Propuestas del investigador y estilos
-- Cada propuesta lleva `estilo` (id exacto de uno de los estilos listos que no sean motion), `porQueEstilo` e `idea`. Elige el que mejor le queda al contenido; si todo son frases, todo va en `frases-desenfocado`.
-- Al crear el video desde una propuesta, `frases-desenfocado` usa la frase tal cual; los demás estilos escriben el guion con la IA siguiendo el GUION.md de ese estilo. Propuestas viejas sin `estilo` se hacen como frases.
+- Cada propuesta lleva `estilo` (id exacto de un estilo listo, o `motion:<id del catálogo>` para motion graphics), `porQueEstilo` e `idea`. Elige el que mejor le queda al contenido; si todo son frases, todo va en `frases-desenfocado`.
+- Al crear el video desde una propuesta, `frases-desenfocado` usa la frase tal cual; los demás estilos escriben el guion con la IA siguiendo el GUION.md de ese estilo. Propuestas viejas sin `estilo` se hacen como frases. Los `motion:` quedan creados con su brief y esperan a "construye los motion pendientes".
+- "Crear y hacer" con la casilla de Flow: si flow-mcp está abierto y el estilo usa fondo, primero genera el clip con el `flowPrompt` (con tope de créditos); si falla, sigue con Pexels.
 
 ## Investigador y Flow
 - El nicho vive en `investigacion/nicho.json`; cada investigación en `investigacion/<fecha>.json` (patrones + propuestas).
