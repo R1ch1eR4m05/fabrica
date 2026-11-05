@@ -128,7 +128,7 @@ async function api(req, res, partes) {
   if (recurso === "info") return json(res, 200, {
     flow: await flowDisponible(), apify: !!CFG.apifyToken,
     estilos: listarEstilos(), formatos: FORMATOS, efectos: EFECTOS,
-    ia: !!CFG.anthropicKey, voz: !!CFG.elevenKey, pexels: !!(CFG.pexelsKey || CFG.pixabayKey), gemini: !!CFG.geminiKey, apimart: !!CFG.apimartKey, trabajando: actual ? { id: actual.id, paso: actual.paso } : null,
+    ia: INV.hayIA(), motorIA: CFG.anthropicKey ? "Claude" : CFG.geminiKey ? "Gemini" : null, voz: !!CFG.elevenKey, pexels: !!(CFG.pexelsKey || CFG.pixabayKey), gemini: !!CFG.geminiKey, apimart: !!CFG.apimartKey, trabajando: actual ? { id: actual.id, paso: actual.paso } : null,
   });
 
   if (recurso === "eventos") {
@@ -253,7 +253,7 @@ export function arrancar() {
   srv.listen(CFG.puerto, CFG.host, () => {
     const dir = `http://${CFG.host === "0.0.0.0" ? "TU-IP" : CFG.host}:${CFG.puerto}/`;
     console.log(`\n  Fábrica lista → ${dir}\n  (deja esta ventana abierta mientras la usas)\n`);
-    if (!CFG.anthropicKey) console.log("  · Sin ANTHROPIC_API_KEY: el guion lo escribe Claude Code o tú en el panel.");
+    if (!CFG.anthropicKey && !CFG.geminiKey) console.log("  · Sin GEMINI_API_KEY ni ANTHROPIC_API_KEY: el guion lo escribe Claude Code o tú en el panel.");
     if (!CFG.elevenKey) console.log("  · Sin ELEVENLABS_API_KEY: se usará voz de prueba (muda) para ensayar.");
     if (CFG.host === "0.0.0.0" && !CFG.clave) console.log("  ⚠ Estás abriendo el panel a internet sin PANEL_CLAVE. Ponle una en el .env.");
   });

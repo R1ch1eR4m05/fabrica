@@ -22,7 +22,7 @@ async function cargar() {
   S.info = await api("/api/info");
   S.proyectos = await api("/api/proyectos");
   $("#chips").innerHTML = [
-    `<span class="chip ${S.info.ia ? "ok" : "am"}">${S.info.ia ? "Guion con IA ✓" : "Guion: Claude Code o a mano"}</span>`,
+    `<span class="chip ${S.info.ia ? "ok" : "am"}">${S.info.ia ? `Guion con ${S.info.motorIA} ✓` : "Guion: Claude Code o a mano"}</span>`,
     `<span class="chip ${S.info.voz ? "ok" : "am"}">${S.info.voz ? "Voz ElevenLabs ✓" : "Voz de prueba (sin llave)"}</span>`,
     `<span class="chip ${S.info.pexels ? "ok" : ""}">${S.info.pexels ? "Pexels ✓" : "Sin Pexels"}</span>`,
     `<span class="chip ${S.info.apify ? "ok" : ""}">${S.info.apify ? "Apify ✓" : "Sin Apify"}</span>`,
@@ -140,7 +140,7 @@ function pintarProyecto() {
         <button class="btn peq" id="gIA" ${ocupado("guion") || !S.info.ia ? "disabled" : ""}>${S.guion ? "Pedir cambios a la IA" : "Escribir con IA"}</button>`)}
         <div class="cont">
           ${S.info.ia ? `<textarea id="gCambios" placeholder="${S.guion ? "Ej.: haz el gancho más fuerte y agrega una regla sobre las ventanas" : "Indicaciones extra (opcional): tono, número de reglas, un dato que quieras usar…"}" style="min-height:44px"></textarea>`
-            : `<div class="nota">Para escribirlo con IA desde aquí, pon tu <code>ANTHROPIC_API_KEY</code> en el archivo <code>.env</code>. O abre Claude Code en la carpeta de la fábrica y dile: <code>escribe el guion de ${h(p.id)}</code>. También puedes escribirlo tú abajo.</div>`}
+            : `<div class="nota">Para escribirlo con IA desde aquí, pon <code>GEMINI_API_KEY</code> (gratis en aistudio.google.com) en el archivo <code>.env</code>. O abre Claude Code en la carpeta de la fábrica y dile: <code>escribe el guion de ${h(p.id)}</code>. También puedes escribirlo tú abajo.</div>`}
           <div class="barra oculto" id="bar-guion"><div></div></div>
           <div id="escenas" style="margin-top:8px"></div>
           <div class="fila" style="margin-top:10px"><button class="mini" id="gAgregar">+ Agregar escena</button>${!S.guion ? `<button class="mini" id="gVacio">Empezar a mano</button>` : ""}</div>

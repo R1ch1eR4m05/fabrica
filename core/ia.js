@@ -1,6 +1,6 @@
-// Escribe el guion con la API de Claude (con búsqueda web para verificar datos).
-// Si no hay ANTHROPIC_API_KEY, el panel le dice al usuario que se lo pida a Claude Code.
-import { CFG } from "./config.js";
+// Escribe el guion con la IA que haya: Claude (de pago) o Gemini (gratis), las dos con búsqueda web para verificar datos.
+// Si no hay ninguna llave, el panel le dice al usuario que se lo pida a Claude Code.
+import { hayIA, pedir, jsonDe } from "./llm.js";
 import { leerEstilo, instruccionesGuion } from "./estilos.js";
 
 const FORMATO_SALIDA = `
@@ -13,7 +13,7 @@ Devuelve SOLO un objeto JSON válido (sin texto antes ni después, sin \`\`\`), 
 }`;
 
 export async function escribirGuion(proyecto, { cambios = "", guionActual = null } = {}) {
-  if (!CFG.anthropicKey) throw new Error("Falta ANTHROPIC_API_KEY en el archivo .env. También puedes pedirle el guion a Claude Code.");
+  if (!hayIA()) throw new Error("Falta GEMINI_API_KEY (gratis) o ANTHROPIC_API_KEY en el .env. También puedes pedirle el guion a Claude Code.");
   const estilo = leerEstilo(proyecto.estilo);
   const sistema = [
     `Eres guionista de videos para redes en español de México (neutro, natural, nada de España: nada de "vosotros", "vale", "ordenador").`,
@@ -28,33 +28,15 @@ export async function escribirGuion(proyecto, { cambios = "", guionActual = null
     ? `Este es el guion actual:\n${JSON.stringify(guionActual)}\n\nCámbialo así: ${cambios}\nMantén el resto igual.`
     : `Tema o idea del video: ${proyecto.idea || proyecto.titulo}${cambios ? `\nIndicaciones extra: ${cambios}` : ""}`;
 
-  let mensajes = [{ role: "user", content: pedido }];
-  let ultima;
-  for (let vuelta = 0; vuelta < 4; vuelta++) {
-    const r = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "x-api-key": CFG.anthropicKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({
-        model: CFG.anthropicModelo,
-        max_tokens: 16000,
-        system: sistema,
-        tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 6 }],
-        messages: mensajes,
-      }),
-    });
-    if (!r.ok) throw new Error(`La API de Claude respondió ${r.status}: ${(await r.text()).slice(0, 300)}`);
-    ultima = await r.json();
-    if (ultima.stop_reason !== "pause_turn") break;
-    mensajes = [...mensajes, { role: "assistant", content: ultima.content }];
-  }
-  const texto = ultima.content.filter((b) => b.type === "text").map((b) => b.text).join("");
-  return extraerJSON(texto);
+  const r = await pedir(sistema, pedido, { buscar: true });
+  const g = extraerJSON(r.texto);
+  // si la IA no puso fuentes pero sí buscó, se guardan las páginas que consultó
+  if ((!g.fuentes || !g.fuentes.length) && r.fuentes?.length) g.fuentes = r.fuentes.slice(0, 6).map((x) => ({ dato: x.titulo || "Fuente consultada", url: x.url }));
+  return g;
 }
 
 export function extraerJSON(texto) {
-  const a = texto.indexOf("{"), b = texto.lastIndexOf("}");
-  if (a < 0 || b < a) throw new Error("La IA no devolvió el guion en el formato esperado. Intenta otra vez.");
-  const g = JSON.parse(texto.slice(a, b + 1));
+  const g = jsonDe(texto);
   if (!Array.isArray(g.escenas) || !g.escenas.length) throw new Error("El guion llegó sin escenas.");
   return g;
 }

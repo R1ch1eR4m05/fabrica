@@ -172,41 +172,9 @@ function sistemaDe(cfg) {
   ].join("\n\n");
 }
 
-// Llama al modelo que haya: Gemini (llave gratis de AI Studio) o Claude (API de pago). Devuelve texto.
-export const hayIA = () => !!(CFG.geminiKey || CFG.anthropicKey);
-async function pedirIA(sistema, texto) {
-  if (CFG.geminiKey) {
-    // el nivel gratis a veces se satura (503/429): reintenta con pausas y cambia de modelo
-    let ultimo = "";
-    for (const modelo of CFG.geminiModelos) {
-      for (let intento = 0; intento < 3; intento++) {
-        if (intento) await new Promise((r) => setTimeout(r, [0, 8000, 20000][intento]));
-        try {
-          const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent`, {
-            method: "POST", signal: AbortSignal.timeout(180000), headers: { "x-goog-api-key": CFG.geminiKey, "content-type": "application/json" },
-            body: JSON.stringify({ systemInstruction: { parts: [{ text: sistema }] }, contents: [{ role: "user", parts: [{ text: texto }] }], generationConfig: { responseMimeType: "application/json", temperature: 0.8 } }),
-          });
-          if (r.ok) {
-            const j = await r.json();
-            const out = (j.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join("");
-            if (out.trim()) return out;
-            ultimo = `${modelo}: respuesta vacía`; continue;
-          }
-          ultimo = `${modelo} → ${r.status}: ${(await r.text()).slice(0, 160)}`;
-          if (![429, 500, 502, 503, 504].includes(r.status)) break; // error que no se arregla reintentando: siguiente modelo
-        } catch (e) { ultimo = `${modelo}: ${e.message}`; }
-      }
-    }
-    throw new Error(`Gemini no respondió (saturado). Último error: ${ultimo}`);
-  }
-  if (CFG.anthropicKey) {
-    const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", signal: AbortSignal.timeout(240000), headers: { "x-api-key": CFG.anthropicKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({ model: CFG.anthropicModelo, max_tokens: 12000, system: sistema, messages: [{ role: "user", content: texto }] }) });
-    if (!r.ok) throw new Error(`La API de Claude respondió ${r.status}: ${(await r.text()).slice(0, 300)}`);
-    return (await r.json()).content.filter((b) => b.type === "text").map((b) => b.text).join("");
-  }
-  throw new Error("SIN_IA");
-}
+import { hayIA as _hayIA, pedir, jsonDe as _jsonDe } from "./llm.js";
+export const hayIA = _hayIA;
+async function pedirIA(sistema, texto) { return (await pedir(sistema, texto)).texto; }
 function guardarResultado(salida, j) {
   salida.patrones = j.patrones || [];
   salida.propuestas = (j.propuestas || []).map((p, i) => ({ ...p, n: i + 1 }));
@@ -214,7 +182,7 @@ function guardarResultado(salida, j) {
   fs.writeFileSync(path.join(DIR_INV, archivo), JSON.stringify(salida, null, 2));
   return { archivo, propuestas: salida.propuestas.length };
 }
-const jsonDe = (texto) => { const a = texto.indexOf("{"), b = texto.lastIndexOf("}"); return JSON.parse(texto.slice(a, b + 1)); };
+const jsonDe = _jsonDe;
 
 // ---------------- informes externos (Gemini Deep Research, muse.ai, lo que sea) ----------------
 export const DIR_INFORMES = path.join(DIR_INV, "informes");
