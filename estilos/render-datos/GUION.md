@@ -42,6 +42,9 @@ Las reglas completas de la marca están en `referencia/LEVANIA-REGLAS.md`: léel
 - `tarjeta`: "EN VEZ DE / DI" (`tachar: true` tacha la primera cuando aparece la segunda).
 - `frase`: `texto` en cursiva, para una idea sin dato.
 - `cierre`: logo y botón. Si no pones `boton`, sale "Comenta RUTINA" (o "Link en mi perfil" con la opción Cierre = TikTok). `sub` opcional ("Descárgalo gratis e imprímelo"). La voz del cierre cambia según la versión: escribe la de Instagram; en TikTok la fábrica usa `vozTT` si la pones.
+- **Dibujos animados (úsalos en casi todas las escenas):** `"dibujo": "<nombre>"` pone un dibujo que se mueve solo (la luna brilla, el celular hace scroll, el reloj gira, la cama respira con "z"). Si no lo pones, la fábrica elige uno según lo que dice la voz; `"dibujo": false` lo quita. `dibujoDice` hace que aparezca en esa palabra. En `palabras`, `"dibujos": [...]` pone uno junto a cada palabra.
+  Disponibles: luna, sol, telefono, tele, cama, nino, nina, mama, abrazo, reloj, alarma, corazon, libro, cerebro, bateria, casa, escuela, plato, nube, check, tache, calendario, lupa, estrellas.
+- Ritmo: escenas de 1.5 a 3 s; ningún momento de solo texto más de 2 s. Mejor más escenas cortas que pocas largas.
 - Cualquier escena acepta `titulo`, `chip` y `sfx` (tic, tac, pop, barrido) para cambiar el efecto.
 
 ## Piezas 3D a la medida

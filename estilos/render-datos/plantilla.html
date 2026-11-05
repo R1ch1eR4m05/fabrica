@@ -3,6 +3,7 @@
 <style>html,body{margin:0;background:#000;overflow:hidden}canvas{display:block;width:100vw;height:100vh;object-fit:contain}</style>
 </head><body><canvas id="lienzo"></canvas>
 <script src="../_comun/motor.js"></script>
+<script src="dibujos.js"></script>
 <script>
 // Estilo de datos de Levania (reglas en referencia/LEVANIA-REGLAS.md):
 // la voz entra en 0 s, el primer cuadro ya tiene texto grande, cortes secos entre escenas, cada cosa aparece
@@ -35,12 +36,13 @@ Motor.iniciar({
     // fondo con un respiro leve
     const g = c.createRadialGradient(W * 0.5, H * 0.35, 0, W * 0.5, H * 0.35, H * 0.8);
     g.addColorStop(0, C.fondo2); g.addColorStop(1, C.fondo); c.fillStyle = g; c.fillRect(0, 0, W, H);
-    if (C === TEMAS.claro) { blob(c, W * 0.1, H * 0.12, W * 0.45, "rgba(196,131,122,0.12)"); blob(c, W * 0.95, H * 0.9, W * 0.5, "rgba(143,165,138,0.14)"); }
+    fondoVivo(c, M, t, i);
 
-    // empuje de cámara por escena (cada corte arranca de nuevo = corte seco)
+    // empuje de cámara por escena + entrada con barrido (cada escena entra de un lado distinto)
     c.save();
-    const z = 1 + 0.045 * M.suave(p / Math.max(d, 0.5));
-    c.translate(W / 2, H * 0.45); c.scale(z, z); c.translate(-W / 2, -H * 0.45);
+    const z = 1 + 0.06 * M.suave(p / Math.max(d, 0.5));
+    const ent = i === 0 ? 1 : M.salida(M.clamp(p / 0.3)), lado = i % 2 ? -1 : 1;
+    c.translate(W / 2 + (1 - ent) * W * 0.22 * lado, H * 0.45); c.rotate((1 - ent) * 0.05 * lado); c.scale(z * (0.94 + 0.06 * ent), z * (0.94 + 0.06 * ent)); c.translate(-W / 2, -H * 0.45);
     escena(c, M, t, i, e, te, p, d);
     c.restore();
 
@@ -55,6 +57,33 @@ Motor.iniciar({
     subtitulos(c, M, t, te);
   },
 });
+
+// ---------- fondo vivo: manchas de color que se mueven, partículas y estrellas (nunca se queda quieto) ----------
+function fondoVivo(c, M, t, i) {
+  const W = M.W, H = M.H, os = C === TEMAS.oscuro;
+  const cols = os ? ["rgba(232,160,149,0.13)", "rgba(143,165,138,0.12)", "rgba(242,196,109,0.08)"] : ["rgba(196,131,122,0.16)", "rgba(143,165,138,0.18)", "rgba(242,196,109,0.14)"];
+  for (let k = 0; k < 3; k++) {
+    const a = t * (0.13 + k * 0.05) + k * 2.1 + i * 0.7;
+    blob(c, W * (0.5 + 0.42 * Math.cos(a)), H * (0.45 + 0.32 * Math.sin(a * 1.3)), W * (0.55 + 0.1 * k), cols[(k + i) % 3]);
+  }
+  for (let k = 0; k < 34; k++) {
+    const r = M.hash(k * 7.3), q = M.hash(k * 3.1 + 9), vel = 18 + r * 40;
+    const x = ((q * W + Math.sin(t * 0.6 + k) * 30) % W + W) % W, y = (((r * H - t * vel) % H) + H) % H;
+    const tam = (2 + (k % 4) * 1.6) * M.u, brillo = 0.25 + 0.5 * (0.5 + 0.5 * Math.sin(t * 2.5 + k));
+    c.globalAlpha = brillo * (os ? 0.7 : 0.45); c.fillStyle = k % 5 === 0 ? C.rosa : os ? "#F6EEE4" : C.salviaOsc;
+    c.beginPath(); c.arc(x, y, tam, 0, 7); c.fill();
+  }
+  c.globalAlpha = 1;
+}
+
+// dibujo animado de la escena: el que diga el guion ("dibujo"), o uno que encaje con lo que dice la voz
+function dibujoDe(e) { if (e.dibujo === false) return null; return e.dibujo || Dibujos.auto([e.voz, e.titulo, e.texto, e.detalle].filter(Boolean).join(" ")); }
+function ponerDibujo(c, M, t, e, te, x, y, tam) {
+  const n = dibujoDe(e); if (!n) return false;
+  const t0 = e.dibujoDice ? cuandoDice(te, e.dibujoDice, te.ini + 0.1) : te.ini < 0.05 ? -1 : te.ini + 0.08; // en el primer cuadro ya está (regla: el cuadro 1 tiene acción)
+  Dibujos.dibujar(c, n, x, y, tam, t, M.clamp((t - t0) / 0.45), C);
+  return true;
+}
 
 // ---------- utilidades de dibujo ----------
 function blob(c, x, y, r, col) { const g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, col); g.addColorStop(1, "rgba(0,0,0,0)"); c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2); }
@@ -115,14 +144,16 @@ function escena(c, M, t, i, e, te, p, d) {
   const W = M.W, H = M.H, u = M.u;
   c.textAlign = "center"; c.textBaseline = "middle";
   const titulo = e.titulo;
-  const yT = e.tipo === "gancho" && !e.reloj && !e.imagen ? H * 0.4 : H * 0.19;
-  if (titulo) { const a = aparece(M, t, te.ini, 0.12); c.save(); c.translate(W / 2, yT); const s = pop(M, a); c.scale(s, s); c.translate(-W / 2, -yT); texto(c, M, titulo, yT, { tam: e.tipo === "gancho" ? 112 : 92, mayus: e.mayus !== false }); c.restore(); }
+  const conDibujo = !!dibujoDe(e);
+  const yT = e.tipo === "gancho" && !e.reloj && !e.imagen && !conDibujo ? H * 0.4 : H * 0.19;
+  if (titulo) { const a = aparece(M, t, te.ini, 0.12); c.save(); c.translate(W / 2, yT); const s = pop(M, a); c.scale(s, s); c.translate(-W / 2, -yT); texto(c, M, titulo, yT, { tam: e.tipo === "gancho" ? (conDibujo ? 100 : 112) : 88, mayus: e.mayus !== false }); c.restore(); }
 
   switch (e.tipo) {
     case "gancho": case "frase": {
       if (e.reloj) relojDigital(c, M, e.reloj, W / 2, H * 0.38, t, te.ini);
       if (e.tipo === "frase" && !titulo) texto(c, M, e.texto, H * 0.42, { tam: 84, italic: true, peso: 500, mayus: false, ancho: 0.8 });
       if (e.imagen && imgs[e.imagen]) imagenPop(c, M, imgs[e.imagen], W / 2, H * 0.47, W * 0.62, t, te.ini + 0.1);
+      else if (!e.reloj) ponerDibujo(c, M, t, e, te, W / 2, M.vertical ? H * 0.47 : H * 0.55, Math.min(W * 0.6, H * 0.36));
       break;
     }
     case "reloj": {
@@ -137,6 +168,7 @@ function escena(c, M, t, i, e, te, p, d) {
       const final = k >= 0.999, s = final ? pop(M, aparece(M, t, te.ini + 0.2 + Math.max(1, (te.finVoz - te.ini) * 0.75), 0.25)) : 1;
       c.save(); c.translate(W / 2, yR + 200 * u); c.scale(s, s); c.font = `600 ${130 * u}px Cormorant`; c.fillStyle = final ? C.rosa : C.texto;
       c.fillText(`${hh} h ${String(mm).padStart(2, "0")} min`, 0, 0); c.restore();
+      if (M.vertical) ponerDibujo(c, M, t, { ...e, dibujo: e.dibujo ?? (k < 0.5 ? "luna" : "sol") }, te, W / 2, yR + 380 * u, W * 0.26);
       break;
     }
     case "rango": {
@@ -155,6 +187,7 @@ function escena(c, M, t, i, e, te, p, d) {
         c.fillStyle = C.texto; c.beginPath(); c.arc(xm, y, 16 * u, 0, 7); c.fill(); c.font = `500 ${36 * u}px Jost`; c.fillText(`${r.marcador}${r.unidad || ""}`, xm, y - 105 * u);
         if (r.desde != null && r.marcador < r.desde && kR > 0.5) { c.fillStyle = "rgba(232,160,149,0.35)"; for (let k = 0; k < 6; k++) { const xx = xm + ((X(r.desde) - xm) * k) / 6; c.fillRect(xx, y - 14 * u, (X(r.desde) - xm) / 12, 28 * u); } }
       }
+      if (M.vertical) ponerDibujo(c, M, t, e, te, W * 0.78, y + 330 * u, W * 0.24);
       if (r.diferencia) { const tD = cuandoDice(te, r.diferenciaDice || r.diferencia.split(/\s+/)[0].replace(/[−-]/, ""), te.ini + d * 0.55); const a = aparece(M, t, tD, 0.2); c.save(); c.translate(W / 2, y + 170 * u); const s = pop(M, a) * (1 + 0.04 * Math.sin(t * 6)); c.scale(s, s); c.globalAlpha = a; c.font = `600 ${74 * u}px Cormorant`; c.fillStyle = C.rosa; c.fillText(r.diferencia, 0, 0); c.restore(); }
       break;
     }
@@ -162,9 +195,10 @@ function escena(c, M, t, i, e, te, p, d) {
       const txt = String(e.cifra || ""), m = txt.match(/^([^\d]*)([\d.,]+)(.*)$/);
       let mostrar = txt;
       if (m) { const n = Number(m[2].replace(/,/g, "")), anio = /^\d{4}$/.test(m[2]); if (!anio && isFinite(n)) { const k = M.salida(M.clamp((p - 0.05) / 0.9)); const dec = (m[2].split(".")[1] || "").length; mostrar = m[1] + (n * k).toLocaleString("es-MX", { minimumFractionDigits: dec, maximumFractionDigits: dec }) + m[3]; } }
+      const hayD = ponerDibujo(c, M, t, e, te, W / 2, M.vertical ? H * 0.27 : H * 0.3, Math.min(W * 0.34, H * 0.24));
       const s = pop(M, aparece(M, t, te.ini + 0.9, 0.25));
-      c.save(); c.translate(W / 2, H * 0.43); c.scale(s, s); c.font = `600 ${230 * u}px Cormorant`; c.fillStyle = C.rosa; c.fillText(mostrar, 0, 0); c.restore();
-      if (e.detalle) texto(c, M, e.detalle, H * 0.56, { tam: 52, fuente: "Jost", peso: 400, color: C.suave, mayus: false });
+      c.save(); c.translate(W / 2, hayD && M.vertical ? H * 0.47 : H * 0.43); c.scale(s, s); c.font = `600 ${230 * u}px Cormorant`; c.fillStyle = C.rosa; c.fillText(mostrar, 0, 0); c.restore();
+      if (e.detalle) texto(c, M, e.detalle, hayD && M.vertical ? H * 0.58 : H * 0.56, { tam: 52, fuente: "Jost", peso: 400, color: C.suave, mayus: false });
       break;
     }
     case "comparar": {
@@ -174,6 +208,7 @@ function escena(c, M, t, i, e, te, p, d) {
         c.fillStyle = C.tarjeta; c.beginPath(); c.roundRect(-W * 0.2, -H * 0.11, W * 0.4, H * 0.22, 30 * u); c.fill();
         c.font = `600 ${120 * u}px Cormorant`; c.fillStyle = k ? C.rosa : C.salvia; c.fillText(x.valor, 0, -20 * u);
         c.font = `400 ${34 * u}px Jost`; c.fillStyle = C.texto; c.fillText(x.etiqueta || "", 0, 80 * u); c.restore(); });
+      if (M.vertical) ponerDibujo(c, M, t, e, te, W / 2, H * 0.62, W * 0.24);
       break;
     }
     case "palabras": {
@@ -181,7 +216,9 @@ function escena(c, M, t, i, e, te, p, d) {
       lista.forEach((w, k) => { const tw = cuandoDice(te, w, te.ini + 0.3 + k * 0.7); const a = aparece(M, t, tw, 0.16); if (a <= 0) return;
         const y = H * (0.36 + k * (0.3 / Math.max(1, lista.length - 1 || 1)));
         c.save(); c.translate(W / 2, lista.length === 1 ? H * 0.42 : y); const s = pop(M, a); c.scale(s, s); c.globalAlpha = a;
-        c.font = `600 ${120 * u}px Cormorant`; c.fillStyle = k === lista.length - 1 ? C.rosa : C.texto; c.fillText(String(w).toUpperCase(), 0, 0); c.restore(); });
+        c.font = `600 ${110 * u}px Cormorant`; const pal = String(w).toUpperCase(), ic = (e.dibujos || [])[k] ?? Dibujos.auto(w), ancho = c.measureText(pal).width;
+        c.fillStyle = k === lista.length - 1 ? C.rosa : C.texto; c.fillText(pal, ic ? 70 * u : 0, 0); c.restore();
+        if (ic) Dibujos.dibujar(c, ic, W / 2 - ancho / 2 - 30 * u, lista.length === 1 ? H * 0.42 : y, 150 * u, t, M.clamp((t - tw) / 0.35), C); });
       break;
     }
     case "tarjeta": {
@@ -195,11 +232,13 @@ function escena(c, M, t, i, e, te, p, d) {
         const tachar = tj.tachar && ts[k + 1] && t >= cuandoDice(te, ts[k + 1].dice || ts[k + 1].texto.split(/\s+/)[0], te.ini + 1.3);
         if (tachar) { const mw = c.measureText(tj.texto).width; c.strokeStyle = C.rosa; c.lineWidth = 4 * u; c.beginPath(); c.moveTo(x + 36 * u, y + h * 0.64); c.lineTo(x + 44 * u + mw, y + h * 0.64); c.stroke(); }
         c.textAlign = "center"; c.restore(); });
+      if (M.vertical) ponerDibujo(c, M, t, e, te, W / 2, H * 0.66, W * 0.2);
       break;
     }
     case "cierre": {
       if (e.imagen && imgs[e.imagen]) imagenPop(c, M, imgs[e.imagen], W / 2, H * 0.4, W * 0.5, t, te.ini + 0.05, -3);
-      else if (logo.naturalWidth) { const w = W * 0.42, h = w * (logo.height / logo.width), a = aparece(M, t, te.ini, 0.3); c.globalAlpha = a; c.drawImage(logo, (W - w) / 2, H * 0.36 - h / 2, w, h); c.globalAlpha = 1; }
+      else if (logo.naturalWidth) { const w = W * 0.42, h = w * (logo.height / logo.width), a = aparece(M, t, te.ini, 0.3); c.globalAlpha = a; c.drawImage(logo, (W - w) / 2, H * 0.44 - h / 2, w, h); c.globalAlpha = 1;
+        ponerDibujo(c, M, t, { ...e, dibujo: e.dibujo ?? "abrazo" }, te, W / 2, H * 0.27, Math.min(W * 0.36, H * 0.2)); }
       const tt = (M.proyecto.opciones || {}).cierre === "tt";
       const boton = (tt ? e.botonTT : e.boton) || (tt ? "Link en mi perfil" : "Comenta RUTINA");
       const tb = cuandoDice(te, e.botonDice || boton.split(/\s+/).pop(), te.ini + d * 0.4), a = aparece(M, t, tb, 0.2);
