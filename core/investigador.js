@@ -8,6 +8,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { CFG, RAIZ } from "./config.js";
+import { listarEstilos } from "./estilos.js";
 
 export const DIR_INV = path.join(RAIZ, "investigacion");
 fs.mkdirSync(DIR_INV, { recursive: true });
@@ -143,7 +144,10 @@ const FORMATO = `Devuelve SOLO JSON válido:
 {
   "patrones": ["5 a 8 hallazgos concretos de lo que funciona: temas, ganchos, estructura de la frase, emoción, largo, tipo de clip de fondo, CTA"],
   "propuestas": [{
-    "frase": "frase ORIGINAL en español de México, 8 a 28 palabras, con 1-2 palabras clave entre *asteriscos*",
+    "estilo": "id EXACTO del estilo de video que mejor le queda a esta idea, de la lista de estilos disponibles",
+    "porQueEstilo": "una línea: por qué ese estilo es el mejor para este contenido",
+    "idea": "de qué trata el video en 1-2 frases (tema, ángulo y, si lleva datos, qué dato real hay que verificar). Para el estilo de frases puede ir vacío",
+    "frase": "el gancho o mensaje central, ORIGINAL, en español de México, 8 a 28 palabras, con 1-2 palabras clave entre *asteriscos* (en el estilo de frases es lo que sale en pantalla)",
     "autor": "solo si es una cita real verificada; si no, vacío",
     "cierre": "llamada a la acción corta (comentar una palabra, guardar, enviar a alguien)",
     "tema": "1-3 palabras",
@@ -160,11 +164,18 @@ const FORMATO = `Devuelve SOLO JSON válido:
   }]
 }`;
 
+// estilos que la fábrica puede hacer sola de principio a fin (los motion graphics se construyen a mano con Claude Code)
+export function estilosDisponibles() {
+  return listarEstilos().filter((e) => e.listo && e.tipo !== "motion").map((e) => ({ id: e.id, nombre: e.nombre, descripcion: e.descripcion }));
+}
+
 function sistemaDe(cfg) {
   return [
     "Eres investigador de contenido viral para redes sociales y estratega creativo. Trabajas para esta marca:",
     `${cfg.nombre}. Audiencia: ${cfg.descripcion}`, cfg.marca,
-    "Formato de los videos: 9:16 vertical, frase en pantalla sobre un clip en cámara lenta desenfocado, 10-25 s.",
+    "Todos los videos son 9:16 vertical. Cada propuesta es una IDEA de video y debes elegir para ella el estilo que mejor le queda, según el contenido (no fuerces variedad; si todo son frases, todo va en frases). Estilos disponibles:\n" +
+      estilosDisponibles().map((e) => `- ${e.id}: ${e.nombre}. ${e.descripcion}`).join("\n") +
+      "\nPon en \"estilo\" el id exacto. Si eliges un estilo con datos o cifras, la idea debe apoyarse en datos reales verificables (nada inventado).",
     "REGLAS: no copies frases de otras cuentas (eso es plagio y la plataforma lo castiga): toma el patrón y escribe algo nuevo con la voz de la marca.",
     "Nunca atribuyas una frase a una persona real si no puedes verificarla. Nada de culpa ni de vergüenza hacia las mamás; sí de reconocimiento y ternura.",
     "ADAPTACIÓN AL PÚBLICO HISPANO: muchas fuentes son cuentas en inglés de EE. UU. a propósito, porque ahí aparecen primero las tendencias. Trátalas como señal temprana de lo que viene. No traduzcas literal: adapta la idea a mamás hispanas de México y EE. UU. (familia extendida y abuelas, la escuela y las tareas, las mañanas con prisa, el trabajo y la culpa, la fe cuando venga al caso, la comida, el 'mijo/mija'), con español natural de México. Para EE. UU. se vale un toque bilingüe solo si suena natural.",

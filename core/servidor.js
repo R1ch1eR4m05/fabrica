@@ -115,11 +115,27 @@ async function api(req, res, partes) {
       const b = await cuerpo(req);
       const inv = INV.leerInvestigacion(id), prop = inv.propuestas.find((x) => x.n === Number(b.n));
       if (!prop) return json(res, 404, { error: "No encuentro esa propuesta." });
-      const p = P.crearProyecto({ estilo: "frases-desenfocado", titulo: prop.tituloPost || prop.tema, idea: prop.frase, formato: b.formato || "9:16", duracion: "corto", conVoz: b.conVoz ?? false, opciones: b.opciones || { tema: "noche", letra: "serif" } });
+      // el estilo lo eligió el investigador según el contenido; si no hay (propuestas viejas) o no existe, frases
+      const pedido = prop.estilo ? leerEstilo(prop.estilo) : null;
+      const est = pedido?.listo && pedido.tipo !== "motion" ? pedido : leerEstilo("frases-desenfocado");
+      const esFrases = est.id === "frases-desenfocado";
+      const opciones = b.opciones || (esFrases ? { tema: "noche", letra: "serif" } : Object.fromEntries((est.opciones || []).map((o) => [o.clave, Object.keys(o.valores)[0]])));
+      const datos = { estilo: est.id, titulo: prop.tituloPost || prop.tema, idea: prop.idea || prop.frase, formato: b.formato || "9:16", duracion: "corto", conVoz: est.vozOpcional ? (b.conVoz ?? false) : true, opciones };
+      let guion;
+      if (esFrases) guion = INV.guionDesdePropuesta(prop);
+      else {
+        const cfg = INV.leerConfig();
+        const idea = `${prop.idea || prop.frase}\nÁngulo: ${prop.tema || ""}. Gancho sugerido: "${prop.frase}".${prop.adaptacion ? ` Adaptación al público hispano: ${prop.adaptacion}.` : ""}\nMarca: ${cfg.nombre}. Audiencia: ${cfg.descripcion} ${cfg.marca}${prop.cierre ? ` Cierre sugerido: ${prop.cierre}` : ""}`;
+        try { guion = await escribirGuion({ ...datos, idea }); }
+        catch (e) { return json(res, 502, { error: `No pude escribir el guion en el estilo ${est.nombre}: ${e.message}` }); }
+        guion.inspiracion = prop.inspiradaEn || [];
+        if (!guion.subir) guion.subir = { titulo: prop.tituloPost || "", descripcion: prop.descripcion || "", hashtags: prop.hashtags || [] };
+      }
+      const p = P.crearProyecto(datos);
       p.flowPrompt = prop.flowPrompt; p.fondoBuscar = prop.pexels; p.desdeInvestigacion = { archivo: id, n: prop.n };
       if (b.canal) p.canal = b.canal;
       P.guardar(p.id, "proyecto.json", p);
-      P.guardar(p.id, "guion.json", INV.guionDesdePropuesta(prop));
+      P.guardar(p.id, "guion.json", guion);
       P.marcar(p.id, "guion", "listo");
       return json(res, 200, P.detalle(p.id));
     }

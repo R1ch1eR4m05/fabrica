@@ -475,17 +475,19 @@ async function investigador(archivo) {
       <div class="card" style="margin:16px 0"><h2>Lo que está funcionando</h2><ul style="margin:8px 0 0;padding-left:18px;color:var(--t2)">${(inv.patrones || []).map((x) => `<li>${h(x)}</li>`).join("")}</ul></div>
       <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(330px,1fr))">${inv.propuestas.map((p) => `
         <div class="card">
-          <div class="estado">${h(p.tema || "")}${p.origen === "en" ? ` · <span title="Tendencia en inglés">🇺🇸→🇲🇽</span>` : ""}${p.llegada ? ` · <b style="color:${p.llegada === "aún no llega" ? "var(--ok)" : p.llegada === "poco en español" ? "var(--am)" : "var(--t2)"}">${h(p.llegada)}</b>` : ""}</div>
+          <div class="estado"><b style="color:var(--t)" title="${h(p.porQueEstilo || "")}">${h(estiloDe(p.estilo)?.nombre || "Frases · Fondo desenfocado")}</b> · ${h(p.tema || "")}${p.origen === "en" ? ` · <span title="Tendencia en inglés">🇺🇸→🇲🇽</span>` : ""}${p.llegada ? ` · <b style="color:${p.llegada === "aún no llega" ? "var(--ok)" : p.llegada === "poco en español" ? "var(--am)" : "var(--t2)"}">${h(p.llegada)}</b>` : ""}</div>
           <div style="font-size:19px;line-height:1.35;margin:6px 0 8px;font-family:Georgia,serif">${marcarAcento(p.frase)}</div>
           ${p.autor ? `<div class="estado">— ${h(p.autor)}</div>` : ""}
           ${p.cierre ? `<div class="estado" style="margin-top:4px">Cierre: ${h(p.cierre)}</div>` : ""}
           <details style="margin-top:8px"><summary class="estado" style="cursor:pointer">Por qué y clip</summary>
+            ${p.porQueEstilo ? `<p class="estado"><b>Por qué este estilo:</b> ${h(p.porQueEstilo)}</p>` : ""}
+            ${p.idea ? `<p class="estado"><b>Idea:</b> ${h(p.idea)}</p>` : ""}
             <p class="estado">${h(p.porque || "")}</p>
             ${p.adaptacion ? `<p class="estado"><b>Adaptación:</b> ${h(p.adaptacion)}</p>` : ""}
             ${(p.inspiradaEn || []).length ? `<p class="estado">Inspirada en: ${p.inspiradaEn.map((u, i) => `<a href="${h(u)}" target="_blank" style="color:var(--t2)">[${i + 1}]</a>`).join(" ")}</p>` : ""}
             <pre class="subir" style="max-height:120px">${h(p.flowPrompt || "")}</pre>
           </details>
-          <div class="fila" style="margin-top:10px"><button class="btn primario peq" data-crear="${p.n}">Crear video 9:16</button><button class="btn peq" data-copiar="${p.n}">Copiar prompt Flow</button></div>
+          <div class="fila" style="margin-top:10px"><button class="btn primario peq" data-hacer="${p.n}" title="Escribe el guion, hace la voz y renderiza el video completo">Crear y hacer 9:16</button><button class="btn peq" data-crear="${p.n}" title="Solo crea el proyecto para que lo revises antes">Solo crear</button><button class="btn peq" data-copiar="${p.n}">Copiar prompt Flow</button></div>
         </div>`).join("")}</div>
       ${inv.publicaciones?.length ? `<details class="card" style="margin-top:16px"><summary style="cursor:pointer;font-weight:600">Publicaciones analizadas (${inv.publicaciones.length})</summary>
         <div style="overflow:auto"><table style="width:100%;font-size:13px;border-collapse:collapse;margin-top:8px">${inv.publicaciones.map((x, i) => `<tr style="border-bottom:1px solid var(--b)"><td>${i + 1}</td><td>${h(x.red)}</td><td><a href="${h(x.url)}" target="_blank" style="color:var(--t)">@${h(x.autor)}</a></td><td>${(x.vistas || 0).toLocaleString()} vistas</td><td>${x.rebase ? x.rebase + "× seguidores" : ""}</td><td>${(x.guardados || 0).toLocaleString()} guard.</td><td>${(x.compartidos || 0).toLocaleString()} comp.</td><td style="color:var(--t2)">${h((x.texto || "").slice(0, 80))}</td></tr>`).join("")}</table></div></details>` : ""}`
@@ -505,15 +507,24 @@ async function investigador(archivo) {
     catch (e) { avisar(e.message, true); $("#iImportar").disabled = false; }
   };
   if ($("#iTodas")) $("#iTodas").onclick = async () => {
-    if (!confirm(`Se crearán ${inv.propuestas.length} videos 9:16 y se harán uno tras otro. Los fondos de Flow los pones después en cada uno (o usa Pexels). ¿Seguir?`)) return;
-    for (const pr of inv.propuestas) { const p = await api(`/api/investigacion/${archivo}/crear`, "POST", { n: pr.n, formato: "9:16", canal: localStorage.getItem("canal") || "" }); await api(`/api/proyectos/${p.id}/todo`, "POST"); }
-    S.proyectos = await api("/api/proyectos"); pintarLista(); avisar("Listo: quedaron en fila. Míralos en la lista de la izquierda.");
+    if (!confirm(`Se crearán ${inv.propuestas.length} videos 9:16, cada uno en el estilo que el investigador eligió, y se harán completos (guion, voz y video) uno tras otro. Los fondos de Flow los pones después (o usa Pexels). ¿Seguir?`)) return;
+    let ok = 0; const fallos = [];
+    for (const pr of inv.propuestas) {
+      try { const p = await api(`/api/investigacion/${archivo}/crear`, "POST", { n: pr.n, formato: "9:16", canal: localStorage.getItem("canal") || "" }); await api(`/api/proyectos/${p.id}/todo`, "POST"); ok++; }
+      catch (e) { fallos.push(`#${pr.n}: ${e.message}`); }
+    }
+    S.proyectos = await api("/api/proyectos"); pintarLista();
+    avisar(`Quedaron en fila ${ok} de ${inv.propuestas.length}. Míralos en la lista de la izquierda.${fallos.length ? " No se pudo: " + fallos.join(" | ") : ""}`, !!fallos.length);
   };
   if ($("#iHist")) $("#iHist").onchange = (e) => investigador(e.target.value);
   for (const b of document.querySelectorAll("[data-copiar]")) b.onclick = () => navigator.clipboard.writeText(inv.propuestas.find((x) => x.n == b.dataset.copiar).flowPrompt || "").then(() => avisar("Prompt copiado."));
-  for (const b of document.querySelectorAll("[data-crear]")) b.onclick = async () => {
-    const p = await api(`/api/investigacion/${archivo}/crear`, "POST", { n: Number(b.dataset.crear), formato: "9:16", canal: localStorage.getItem("canal") || "" });
-    S.proyectos = await api("/api/proyectos"); S.vista = null; abrir(p.id);
+  for (const b of document.querySelectorAll("[data-crear],[data-hacer]")) b.onclick = async () => {
+    const hacer = b.dataset.hacer != null; b.disabled = true; b.textContent = "Creando…";
+    try {
+      const p = await api(`/api/investigacion/${archivo}/crear`, "POST", { n: Number(b.dataset.crear ?? b.dataset.hacer), formato: "9:16", canal: localStorage.getItem("canal") || "" });
+      if (hacer) await api(`/api/proyectos/${p.id}/todo`, "POST");
+      S.proyectos = await api("/api/proyectos"); S.vista = null; abrir(p.id);
+    } catch (e) { avisar(e.message, true); b.disabled = false; b.textContent = hacer ? "Crear y hacer 9:16" : "Solo crear"; }
   };
 }
 
