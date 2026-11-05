@@ -18,6 +18,7 @@ export function leerEstilo(id) {
   if (!fs.existsSync(f)) return null;
   const est = JSON.parse(fs.readFileSync(f, "utf8"));
   est.id = id;
+  est.preview = fs.existsSync(path.join(dir, "preview.mp4"));
   est.listo = est.estado !== "pronto" && (est.tipo === "motion" || fs.existsSync(path.join(dir, "plantilla.html")));
   const cat = path.join(dir, "catalogo.json");
   if (fs.existsSync(cat)) est.catalogo = JSON.parse(fs.readFileSync(cat, "utf8"));

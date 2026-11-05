@@ -47,19 +47,34 @@ const estiloDe = (id) => S.info.estilos.find((e) => e.id === id);
 // ---------- inicio: estilos ----------
 function inicio() {
   S.actual = null; S.vista = null; parar(); pintarLista(); history.replaceState(null, "", "/");
+  const tarjeta = (attrs, cls, video, poster, nombre, desc, pie, badge) => `
+      <div class="card estilo mot ${cls}" ${attrs} style="padding:10px">
+        ${badge ? `<span class="badge">${badge}</span>` : ""}
+        ${video ? `<video src="${video}" poster="${poster}" muted loop playsinline preload="none" style="width:100%;border-radius:8px;height:190px;object-fit:cover;background:#000"></video>` : `<div style="height:190px;border-radius:8px;background:var(--f);display:flex;align-items:center;justify-content:center;color:var(--t2);font-size:13px">Sin vista previa</div>`}
+        <h3 style="font-size:15px;margin:10px 0 4px;padding-right:0">${h(nombre)}</h3><p style="font-size:12.5px">${h(desc)}</p>
+        ${pie ? `<p style="margin-top:8px;font-size:12px">${h(pie)}</p>` : ""}
+      </div>`;
+  let html = "";
+  for (const e of S.info.estilos) {
+    if (e.tipo === "motion" && e.listo) {
+      const fams = [...new Set((e.catalogo || []).map((c) => c.familia))];
+      html += fams.map((fa) => `<div class="estado" style="grid-column:1/-1;margin:14px 0 0;text-transform:uppercase;letter-spacing:1px;font-size:11px">Motion graphics · ${h(fa)}</div>` + e.catalogo.filter((c) => c.familia === fa).map((c) =>
+        tarjeta(`data-id="${h(e.id)}" data-mot="${h(c.id)}"`, "", `/motion/galeria/videos/${h(c.id)}.mp4`, `/motion/galeria/portadas/${h(c.id)}.jpg`, c.nombre, c.que, `${(e.formatos || []).join(" · ")} · ${Math.round(c.seg)} s`)).join("")).join("");
+    } else {
+      html += tarjeta(`data-id="${h(e.id)}"`, e.listo ? "" : "pronto", e.preview ? `/estilos/${h(e.id)}/preview.mp4` : "", e.preview ? `/estilos/${h(e.id)}/preview.jpg` : "", e.nombre, e.descripcion, (e.formatos || []).join(" · "), e.listo ? "" : "Pronto");
+    }
+  }
   $("#main").innerHTML = `
-    <h1>¿Qué video hacemos?</h1><p class="sub">Elige un estilo. Los que dicen "Pronto" los vamos agregando.</p>
-    <div class="grid">${S.info.estilos.map((e) => `
-      <div class="card estilo ${e.listo ? "" : "pronto"}" data-id="${h(e.id)}">
-        <span class="badge">${e.listo ? "Listo" : "Pronto"}</span>
-        <h3>${h(e.nombre)}</h3><p>${h(e.descripcion)}</p>
-        <p style="margin-top:10px;font-size:12px">${(e.formatos || []).join(" · ")}</p>
-      </div>`).join("")}</div>`;
-  for (const el of document.querySelectorAll(".estilo:not(.pronto)")) el.onclick = () => nuevo(el.dataset.id);
+    <h1>¿Qué video hacemos?</h1><p class="sub">Elige un estilo (pasa el mouse para verlo moverse). Los que dicen "Pronto" los vamos agregando.</p>
+    <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(210px,1fr))">${html}</div>`;
+  for (const c of document.querySelectorAll(".mot")) {
+    const v = c.querySelector("video"); if (v) { c.onmouseenter = () => v.play().catch(() => {}); c.onmouseleave = () => v.pause(); }
+    if (!c.classList.contains("pronto")) c.onclick = () => nuevo(c.dataset.id, c.dataset.mot);
+  }
 }
 
 // ---------- nuevo video ----------
-function nuevo(estiloId) {
+function nuevo(estiloId, motionId = "") {
   parar();
   const listos = S.info.estilos.filter((e) => e.listo);
   const est = estiloDe(estiloId) || listos[0];
@@ -95,24 +110,13 @@ function nuevo(estiloId) {
     seg("#nFormato", "formato");
     $("#nIdea").placeholder = e.tipo === "motion" ? "Ej.: 3 pasos para mañanas sin gritos (anuncio de Levania)" : "Ej.: Si escuchas que alguien te llama por tu nombre a las 3 de la mañana";
   };
-  let motionElegido = "";
+  let motionElegido = motionId;
   const galeria = () => {
     const e = estiloDe($("#nEstilo").value), cat = e.tipo === "motion" ? e.catalogo || [] : [];
     if (!cat.length) { $("#nGaleria").innerHTML = ""; return; }
-    if (!cat.some((c) => c.id === motionElegido)) motionElegido = "";
-    const fams = [...new Set(cat.map((c) => c.familia))];
-    $("#nGaleria").innerHTML = `<label>Elige el estilo de motion (pasa el mouse para verlo moverse)</label>` + fams.map((fa) => `<div class="estado" style="margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px;font-size:11px">${h(fa)}</div>
-      <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(190px,1fr))">${cat.filter((c) => c.familia === fa).map((c) => `
-        <div class="card estilo mot" data-nmot="${h(c.id)}" style="padding:10px">
-          <video src="/motion/galeria/videos/${h(c.id)}.mp4" poster="/motion/galeria/portadas/${h(c.id)}.jpg" muted loop playsinline preload="none" style="width:100%;border-radius:8px;max-height:120px;object-fit:cover;background:#000"></video>
-          <h3 style="font-size:14px;margin:8px 0 4px;padding-right:0">${h(c.nombre)}</h3><p style="font-size:12.5px">${h(c.que)}</p>
-        </div>`).join("")}</div>`).join("");
-    const marcar = () => { for (const x of document.querySelectorAll("[data-nmot]")) { const on = x.dataset.nmot === motionElegido; x.style.borderColor = on ? "var(--a)" : ""; x.style.boxShadow = on ? "0 0 0 2px var(--a) inset" : ""; } };
-    for (const c of document.querySelectorAll("[data-nmot]")) {
-      const v = c.querySelector("video"); c.onmouseenter = () => v.play().catch(() => {}); c.onmouseleave = () => v.pause();
-      c.onclick = () => { motionElegido = c.dataset.nmot; marcar(); };
-    }
-    marcar();
+    if (!cat.some((c) => c.id === motionElegido)) motionElegido = cat[0].id;
+    $("#nGaleria").innerHTML = `<label>Estilo de motion</label><select id="nMot">${cat.map((c) => `<option value="${h(c.id)}" ${c.id === motionElegido ? "selected" : ""}>${h(c.familia)} · ${h(c.nombre)}</option>`).join("")}</select>`;
+    $("#nMot").onchange = () => (motionElegido = $("#nMot").value);
   };
   const ideas = () => { extra(); formatos(); galeria(); const e = estiloDe($("#nEstilo").value); $("#nIdeas").innerHTML = (e.ideas || []).map((i) => `<span class="idea">${h(i)}</span>`).join(""); for (const el of document.querySelectorAll(".idea")) el.onclick = () => ($("#nIdea").value = el.textContent); };
   const seg = (sel, k) => { for (const b of document.querySelectorAll(`${sel} button`)) { b.classList.toggle("on", b.dataset.v === st[k]); b.onclick = () => { st[k] = b.dataset.v; seg(sel, k); }; } };
@@ -123,7 +127,6 @@ function nuevo(estiloId) {
     const idea = $("#nIdea").value.trim();
     if (!idea) return avisar("Escribe la idea del video.", true);
     const esMotion = estiloDe($("#nEstilo").value)?.tipo === "motion";
-    if (esMotion && !motionElegido) return avisar("Elige un estilo de la galería.", true);
     localStorage.setItem("canal", $("#nCanal").value.trim());
     const opciones = {}; for (const sel of document.querySelectorAll("[data-op]")) opciones[sel.dataset.op] = sel.value;
     const conVoz = !$("#nVoz") || $("#nVoz button.on").dataset.v === "si";
@@ -578,7 +581,7 @@ function escuchar() {
   };
 }
 
-$("#btnNuevo").onclick = () => nuevo();
+$("#btnNuevo").onclick = () => inicio();
 $("#btnInv").onclick = () => investigador();
 $(".logo").onclick = inicio; $(".logo").style.cursor = "pointer";
 cargar().then(() => { escuchar(); const id = location.hash.slice(1); id === "investigador" ? investigador() : id && S.proyectos.some((p) => p.id === id) ? abrir(id) : inicio(); })
