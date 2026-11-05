@@ -329,7 +329,14 @@ async function investigador(archivo) {
   $("#main").innerHTML = `
     <h1>Investigador de virales</h1>
     <p class="sub">Revisa lo que está funcionando en tu nicho y te propone frases originales con su clip para Flow (9:16).</p>
-    ${!d.ia ? `<div class="nota">Sin <code>ANTHROPIC_API_KEY</code> (que se cobra aparte), pídeselo a <b>Claude Code</b> en la carpeta de la fábrica: <code>investiga mi nicho y dame frases virales</code>. Usa tus métricas de Apify si las tienes y deja aquí el resultado; recarga esta página al terminar.</div>` : ""}
+    ${!d.ia ? `<div class="nota">Sin IA conectada: pon <code>GEMINI_API_KEY</code> (gratis en aistudio.google.com) en el <code>.env</code>, o pídeselo a <b>Claude Code</b> en la carpeta de la fábrica: <code>investiga mi nicho y dame frases virales</code> (o <code>convierte los informes pendientes</code>). Recarga esta página al terminar.</div>` : `<div class="estado" style="margin-bottom:8px">Motor: ${h(d.motor)}</div>`}
+    ${d.pendientes?.length ? `<div class="nota">Informes guardados sin convertir: ${d.pendientes.map(h).join(", ")}. Dile a Claude Code: <code>convierte los informes pendientes</code>.</div>` : ""}
+    <details class="card" style="margin-bottom:16px"><summary style="cursor:pointer;font-weight:600">Importar un informe (Gemini Deep Research, muse.ai…)</summary>
+      <p class="estado">1) Copia el prompt y pégalo en Gemini con <b>Deep Research</b>. 2) Copia el informe que te dé y pégalo abajo. También puedes soltar archivos .md/.txt/.csv en <code>investigacion/entrada/</code> o mandarlos desde n8n.</p>
+      <div class="fila"><button class="btn peq" id="iPrompt">Copiar prompt para Deep Research</button></div>
+      <textarea id="iInforme" placeholder="Pega aquí el informe completo" style="min-height:120px;margin-top:10px"></textarea>
+      <div class="fila" style="margin-top:8px"><input id="iFuente" value="gemini" style="max-width:200px" title="De dónde viene"><button class="btn primario peq" id="iImportar">Importar y proponer</button></div>
+    </details>
     ${!d.apify ? `<div class="nota">Sin <code>APIFY_TOKEN</code> investiga con búsqueda web: sirve, pero <b>sin métricas reales</b> (vistas, guardados, compartidos). Con Apify mide de verdad lo viral en TikTok e Instagram.</div>` : ""}
     <details class="card" ${inv ? "" : "open"} style="margin-bottom:16px"><summary style="cursor:pointer;font-weight:600">Tu nicho y fuentes</summary>
       <div class="fila" style="align-items:flex-start">
@@ -344,7 +351,7 @@ async function investigador(archivo) {
       </div>
       <div class="fila" style="margin-top:14px"><button class="btn" id="iGuardar">Guardar</button></div>
     </details>
-    <div class="fila">${inv ? `<button class="btn" id="iTodas" title="Crea un video por propuesta y los manda a hacer (voz + video) uno tras otro">Crear y hacer todas</button>` : ""}<button class="btn primario" id="iCorrer" ${!d.ia || d.trabajando ? "disabled" : ""}>Investigar ahora</button>
+    <div class="fila">${inv ? `<button class="btn" id="iTodas" title="Crea un video por propuesta y los manda a hacer (voz + video) uno tras otro">Crear y hacer todas</button>` : ""}<button class="btn primario" id="iCorrer" ${!d.ia || d.trabajando ? "disabled" : ""} title="${d.ia ? "" : "Necesita GEMINI_API_KEY o ANTHROPIC_API_KEY"}">Investigar ahora</button>
       ${d.lista.length ? `<select id="iHist" style="width:auto">${d.lista.map((x) => `<option value="${h(x.archivo)}" ${x.archivo === archivo ? "selected" : ""}>${new Date(x.fecha).toLocaleString()} · ${x.propuestas} propuestas${x.modo === "web" ? " · sin métricas" : ` · ${x.analizadas} analizadas`}</option>`).join("")}</select>` : ""}
       <span class="estado" id="est-investigar">${d.trabajando ? "Trabajando…" : ""}</span></div>
     <div class="barra ${d.trabajando ? "" : "oculto"}" id="bar-investigar"><div></div></div>
@@ -374,6 +381,13 @@ async function investigador(archivo) {
     avisar("Nicho guardado.");
   };
   $("#iCorrer").onclick = async () => { await $("#iGuardar").onclick(); api("/api/investigacion", "POST").catch((e) => avisar(e.message, true)); };
+  $("#iPrompt").onclick = async () => navigator.clipboard.writeText(await api("/api/investigacion/prompt")).then(() => avisar("Prompt copiado. Pégalo en Gemini con Deep Research."));
+  $("#iImportar").onclick = async () => {
+    const texto = $("#iInforme").value.trim(); if (texto.length < 80) return avisar("Pega el informe completo.", true);
+    $("#iImportar").disabled = true; avisar("Importando…");
+    try { const r = await api("/api/investigacion/importar", "POST", { texto, fuente: $("#iFuente").value || "informe" }); r.pendiente ? (avisar("Guardado. Pídele a Claude Code que lo convierta."), investigador()) : investigador(r.archivo); }
+    catch (e) { avisar(e.message, true); $("#iImportar").disabled = false; }
+  };
   if ($("#iTodas")) $("#iTodas").onclick = async () => {
     if (!confirm(`Se crearán ${inv.propuestas.length} videos 9:16 y se harán uno tras otro. Los fondos de Flow los pones después en cada uno (o usa Pexels). ¿Seguir?`)) return;
     for (const pr of inv.propuestas) { const p = await api(`/api/investigacion/${archivo}/crear`, "POST", { n: pr.n, formato: "9:16", canal: localStorage.getItem("canal") || "" }); await api(`/api/proyectos/${p.id}/todo`, "POST"); }

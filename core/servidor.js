@@ -81,7 +81,22 @@ async function api(req, res, partes) {
   const m = req.method;
 
   if (recurso === "investigacion") {
-    if (!id && m === "GET") return json(res, 200, { config: INV.leerConfig(), lista: INV.listarInvestigaciones(), trabajando: !!investigando, apify: !!CFG.apifyToken, ia: !!CFG.anthropicKey });
+    if (!id && m === "GET") return json(res, 200, { config: INV.leerConfig(), lista: INV.listarInvestigaciones(), trabajando: !!investigando, apify: !!CFG.apifyToken, ia: INV.hayIA(), motor: CFG.geminiKey ? "Gemini" : CFG.anthropicKey ? "Claude" : null, pendientes: INV.informesPendientes() });
+    if (id === "prompt" && m === "GET") { res.writeHead(200, { "content-type": "text/plain; charset=utf-8" }); return res.end(INV.promptDeepResearch()); }
+    if (id === "importar" && m === "POST") {
+      // también lo puede llamar n8n: POST /api/investigacion/importar  { "texto": "...", "fuente": "muse" }   (o texto plano en el cuerpo)
+      const crudo = await new Promise((ok) => { let b = ""; req.on("data", (d) => (b += d)); req.on("end", () => ok(b)); });
+      let datos; try { datos = JSON.parse(crudo); } catch { datos = { texto: crudo }; }
+      if (investigando) return json(res, 409, { error: "Hay una investigación en marcha; intenta en un momento." });
+      investigando = { inicio: Date.now() };
+      const av = (a) => emitir({ id: "_investigador", paso: "investigar", estado: "trabajando", ...a });
+      try {
+        const r = await INV.importarInforme(datos.texto ?? datos.informe ?? crudo, datos.fuente || "informe", av);
+        emitir({ id: "_investigador", paso: "investigar", estado: "listo", msg: r.pendiente ? "Informe guardado. Pídele a Claude Code que lo convierta." : `Listo: ${r.propuestas} propuestas`, resultado: r });
+        return json(res, 200, r);
+      } catch (e) { emitir({ id: "_investigador", paso: "investigar", estado: "error", msg: e.message }); return json(res, 400, { error: e.message }); }
+      finally { investigando = null; }
+    }
     if (!id && m === "PUT") return json(res, 200, INV.guardarConfig(await cuerpo(req)));
     if (!id && m === "POST") { correrInvestigacion(); return json(res, 200, { ok: true }); }
     if (id && !accion && m === "GET") return json(res, 200, INV.leerInvestigacion(id));
@@ -103,7 +118,7 @@ async function api(req, res, partes) {
   if (recurso === "info") return json(res, 200, {
     flow: await flowDisponible(), apify: !!CFG.apifyToken,
     estilos: listarEstilos(), formatos: FORMATOS, efectos: EFECTOS,
-    ia: !!CFG.anthropicKey, voz: !!CFG.elevenKey, pexels: !!CFG.pexelsKey, apimart: !!CFG.apimartKey, trabajando: actual ? { id: actual.id, paso: actual.paso } : null,
+    ia: !!CFG.anthropicKey, voz: !!CFG.elevenKey, pexels: !!(CFG.pexelsKey || CFG.pixabayKey), gemini: !!CFG.geminiKey, apimart: !!CFG.apimartKey, trabajando: actual ? { id: actual.id, paso: actual.paso } : null,
   });
 
   if (recurso === "eventos") {
@@ -216,6 +231,13 @@ export function arrancar() {
       res.writeHead(404); res.end("No existe");
     } catch (e) { console.error(e); json(res, 500, { error: e.message }); }
   });
+  // carpeta de entrada: lo que caiga en investigacion/entrada/ se importa solo (cada minuto)
+  setInterval(async () => {
+    if (investigando) return;
+    investigando = { inicio: Date.now() };
+    try { for (const r of await INV.revisarEntrada()) emitir({ id: "_investigador", paso: "investigar", estado: "listo", msg: r.pendiente ? "Llegó un informe nuevo (pendiente de convertir)" : `Llegó un informe: ${r.propuestas} propuestas`, resultado: r }); }
+    catch (e) { console.error(e); } finally { investigando = null; }
+  }, 60000);
   srv.listen(CFG.puerto, CFG.host, () => {
     const dir = `http://${CFG.host === "0.0.0.0" ? "TU-IP" : "127.0.0.1"}:${CFG.puerto}/`;
     console.log(`\n  Fábrica lista → ${dir}\n  (deja esta ventana abierta mientras la usas)\n`);

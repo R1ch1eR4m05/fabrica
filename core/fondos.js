@@ -36,6 +36,21 @@ async function pexels(buscar, vertical) {
   return { url: foto.src.large2x || foto.src.original, tipo: "imagen", credito: `Foto de ${foto.photographer} en Pexels`, ext: ".jpg" };
 }
 
+async function pixabay(buscar, vertical) {
+  const r = await fetch(`https://pixabay.com/api/videos/?key=${encodeURIComponent(CFG.pixabayKey)}&q=${encodeURIComponent(buscar)}&per_page=30&safesearch=true`);
+  if (!r.ok) throw new Error(`Pixabay respondió ${r.status}`);
+  const j = await r.json();
+  const opciones = (j.hits || []).filter((v) => v.duration >= 6).map((v) => {
+    const f = [v.videos?.large, v.videos?.medium].find((x) => x?.url) || {};
+    return { v, f, vert: f.height > f.width };
+  }).filter((x) => x.f.url);
+  if (!opciones.length) return null;
+  const mejores = opciones.filter((x) => x.vert === vertical);
+  const lista = mejores.length ? mejores : opciones;
+  const x = lista[Math.floor(Math.random() * Math.min(4, lista.length))];
+  return { url: x.f.url, tipo: "video", credito: `Video de ${x.v.user || "Pixabay"} en Pixabay`, ext: ".mp4" };
+}
+
 export async function prepararFondo(id, avisar = () => {}, { buscar } = {}) {
   const proyecto = leer(id, "proyecto.json");
   const guion = leer(id, "guion.json") || {};
@@ -50,10 +65,11 @@ export async function prepararFondo(id, avisar = () => {}, { buscar } = {}) {
   let fuente = fondoPropio(id), credito = "", tipo = null;
   if (fuente) tipo = VIDEO.test(fuente) ? "video" : "imagen";
   const consulta = buscar || proyecto.fondoBuscar || guion.fondo?.buscar;
-  if (!fuente && consulta && CFG.pexelsKey) {
-    avisar({ paso: "voz", msg: `Buscando fondo en Pexels: "${consulta}"…` });
+  if (!fuente && consulta && (CFG.pexelsKey || CFG.pixabayKey)) {
+    avisar({ paso: "voz", msg: `Buscando fondo: "${consulta}"…` });
     try {
-      const p = await pexels(consulta, fmt.h > fmt.w);
+      let p = CFG.pexelsKey ? await pexels(consulta, fmt.h > fmt.w).catch(() => null) : null;
+      if (!p && CFG.pixabayKey) p = await pixabay(consulta, fmt.h > fmt.w);
       if (p) {
         const bin = Buffer.from(await (await fetch(p.url)).arrayBuffer());
         fuente = path.join(dir, "fondo-pexels" + p.ext); fs.writeFileSync(fuente, bin);

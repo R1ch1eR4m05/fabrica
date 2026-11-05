@@ -30,6 +30,10 @@ Cuando Richie diga "investiga" o "dame frases virales":
    Usa `investigacion/nicho.json` (audiencia, marca, número de propuestas). Nunca copies frases de otras cuentas.
 3. Dile a Richie que recargue el Investigador del panel: ahí puede crear los videos.
 
+## Informes externos (Gemini Deep Research, muse.ai, n8n)
+- Los informes llegan a `investigacion/informes/*.md` (pegados en el panel, soltados en `investigacion/entrada/` o enviados por n8n a `POST /api/investigacion/importar`).
+- Los que no terminan en `.hecho.md` están pendientes. Si Richie dice "convierte los informes pendientes": léelos, escribe la investigación en el formato de arriba (`"modo": "informe"`, `"fuente"`) y renombra el informe a `.hecho.md`.
+
 ## Investigador y Flow
 - El nicho vive en `investigacion/nicho.json`; cada investigación en `investigacion/<fecha>.json` (patrones + propuestas).
 - Si Richie pide investigar desde Claude Code sin API: busca en la web, sigue el mismo formato de propuestas y guarda el archivo ahí; el panel lo muestra.

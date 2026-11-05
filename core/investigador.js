@@ -143,11 +143,8 @@ const FORMATO = `Devuelve SOLO JSON válido:
   }]
 }`;
 
-export async function investigar(avisar = () => {}) {
-  if (!CFG.anthropicKey) throw new Error("El investigador necesita ANTHROPIC_API_KEY en el .env.");
-  const cfg = leerConfig();
-  const salida = { fecha: new Date().toISOString(), config: cfg, modo: CFG.apifyToken ? "metricas" : "web", errores: [] };
-  const sistema = [
+function sistemaDe(cfg) {
+  return [
     "Eres investigador de contenido viral para redes sociales y estratega creativo. Trabajas para esta marca:",
     `${cfg.nombre}. Audiencia: ${cfg.descripcion}`, cfg.marca,
     "Formato de los videos: 9:16 vertical, frase en pantalla sobre un clip en cámara lenta desenfocado, 10-25 s.",
@@ -156,6 +153,95 @@ export async function investigar(avisar = () => {}) {
     `Da exactamente ${cfg.propuestas} propuestas, variadas en tema y emoción.`,
     FORMATO,
   ].join("\n\n");
+}
+
+// Llama al modelo que haya: Gemini (llave gratis de AI Studio) o Claude (API de pago). Devuelve texto.
+export const hayIA = () => !!(CFG.geminiKey || CFG.anthropicKey);
+async function pedirIA(sistema, texto) {
+  if (CFG.geminiKey) {
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${CFG.geminiModelo}:generateContent`, {
+      method: "POST", headers: { "x-goog-api-key": CFG.geminiKey, "content-type": "application/json" },
+      body: JSON.stringify({ systemInstruction: { parts: [{ text: sistema }] }, contents: [{ role: "user", parts: [{ text: texto }] }], generationConfig: { responseMimeType: "application/json", temperature: 0.8 } }),
+    });
+    if (!r.ok) throw new Error(`Gemini respondió ${r.status}: ${(await r.text()).slice(0, 300)}`);
+    const j = await r.json();
+    return (j.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join("");
+  }
+  if (CFG.anthropicKey) {
+    const r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "x-api-key": CFG.anthropicKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+      body: JSON.stringify({ model: CFG.anthropicModelo, max_tokens: 12000, system: sistema, messages: [{ role: "user", content: texto }] }) });
+    if (!r.ok) throw new Error(`La API de Claude respondió ${r.status}: ${(await r.text()).slice(0, 300)}`);
+    return (await r.json()).content.filter((b) => b.type === "text").map((b) => b.text).join("");
+  }
+  throw new Error("SIN_IA");
+}
+function guardarResultado(salida, j) {
+  salida.patrones = j.patrones || [];
+  salida.propuestas = (j.propuestas || []).map((p, i) => ({ ...p, n: i + 1 }));
+  const archivo = `${salida.fecha.slice(0, 16).replace(/[:T]/g, "-")}.json`;
+  fs.writeFileSync(path.join(DIR_INV, archivo), JSON.stringify(salida, null, 2));
+  return { archivo, propuestas: salida.propuestas.length };
+}
+const jsonDe = (texto) => { const a = texto.indexOf("{"), b = texto.lastIndexOf("}"); return JSON.parse(texto.slice(a, b + 1)); };
+
+// ---------------- informes externos (Gemini Deep Research, muse.ai, lo que sea) ----------------
+export const DIR_INFORMES = path.join(DIR_INV, "informes");
+export const DIR_ENTRADA = path.join(DIR_INV, "entrada");
+for (const d of [DIR_INFORMES, DIR_ENTRADA]) fs.mkdirSync(d, { recursive: true });
+
+export function promptDeepResearch() {
+  const c = leerConfig();
+  return `Investiga qué videos cortos (TikTok, Instagram Reels, YouTube Shorts y Facebook) de frases, reflexiones y mensajes emotivos se están haciendo virales en los últimos ${c.dias} días para esta audiencia: ${c.descripcion}
+
+${c.cuentasTiktok.length || c.cuentasInstagram.length ? `Revisa en especial estas cuentas: ${[...c.cuentasTiktok, ...c.cuentasInstagram].join(", ")}.
+` : ""}Temas y hashtags a cubrir: ${c.hashtags.map((h) => "#" + h).join(" ")}.
+
+Quiero un informe con:
+1. Las 15-25 publicaciones con mejor desempeño que encuentres: enlace, cuenta, frase o texto que aparece en pantalla, vistas/likes/guardados/compartidos si se conocen, y tipo de clip de fondo.
+2. Patrones: temas, emociones, estructura y largo de las frases, ganchos de los primeros 2 segundos, llamados a la acción que más comentarios generan, y horarios si los hay.
+3. Qué tipo de clip de fondo acompaña a los que más funcionan (por ejemplo: niño corriendo a los brazos de su mamá en cámara lenta).
+Cita las fuentes. No inventes métricas: si no hay datos, dilo.`;
+}
+
+// guarda el informe y, si hay IA configurada, lo convierte en propuestas
+export async function importarInforme(texto, fuente = "informe", avisar = () => {}) {
+  texto = String(texto || "").trim();
+  if (texto.length < 80) throw new Error("El informe está vacío o es demasiado corto.");
+  const fecha = new Date().toISOString();
+  const nombre = `${fecha.slice(0, 16).replace(/[:T]/g, "-")}-${(fuente || "informe").replace(/[^\w-]+/g, "-").slice(0, 30)}.md`;
+  fs.writeFileSync(path.join(DIR_INFORMES, nombre), texto);
+  if (!hayIA()) return { pendiente: true, informe: `investigacion/informes/${nombre}` };
+  avisar({ progreso: 0.5, msg: `Convirtiendo el informe en propuestas (${CFG.geminiKey ? "Gemini" : "Claude"})…` });
+  const cfg = leerConfig();
+  const j = jsonDe(await pedirIA(sistemaDe(cfg), `Este es un informe de investigación de tendencias (${fuente}). Úsalo como base: saca los patrones y propón.\n\n${texto.slice(0, 120000)}`));
+  const r = guardarResultado({ fecha, config: cfg, modo: "informe", fuente, informe: nombre, errores: [] }, j);
+  const f = path.join(DIR_INFORMES, nombre); fs.renameSync(f, f.replace(/\.md$/, ".hecho.md"));
+  return r;
+}
+
+export function informesPendientes() { return fs.readdirSync(DIR_INFORMES).filter((f) => f.endsWith(".md") && !f.endsWith(".hecho.md")); }
+
+// archivos que caen en investigacion/entrada/ (n8n, una carpeta sincronizada, o tú) se importan solos
+export async function revisarEntrada(avisar = () => {}) {
+  const hechos = [];
+  for (const f of fs.readdirSync(DIR_ENTRADA)) {
+    if (!/\.(md|txt|csv|json|html?)$/i.test(f)) continue;
+    const ruta = path.join(DIR_ENTRADA, f);
+    try {
+      let texto = fs.readFileSync(ruta, "utf8");
+      if (/\.html?$/i.test(f)) texto = texto.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+      hechos.push(await importarInforme(texto, path.basename(f).replace(/\.[^.]+$/, ""), avisar));
+      fs.rmSync(ruta);
+    } catch (e) { console.error("Entrada", f, e.message); fs.renameSync(ruta, ruta + ".error"); }
+  }
+  return hechos;
+}
+
+export async function investigar(avisar = () => {}) {
+  if (!hayIA()) throw new Error("El botón necesita GEMINI_API_KEY (gratis en aistudio.google.com) o ANTHROPIC_API_KEY. Sin ellas, pídeselo a Claude Code o importa un informe.");
+  const cfg = leerConfig();
+  const salida = { fecha: new Date().toISOString(), config: cfg, modo: CFG.apifyToken ? "metricas" : "web", errores: [] };
+  const sistema = sistemaDe(cfg);
 
   let contenido;
   if (CFG.apifyToken) {
@@ -177,6 +263,12 @@ export async function investigar(avisar = () => {}) {
     contenido = `Investiga en la web qué videos de frases y reflexiones para este nicho se están haciendo virales ahora en TikTok, Instagram Reels y Facebook (cuentas, temas, formatos, ejemplos con enlace). Usa la búsqueda. Luego analiza y propón. Aclara en "patrones" que no hay métricas exactas.`;
   }
 
+  if (!CFG.anthropicKey) { // solo Gemini: va el texto de las publicaciones (sin portadas ni búsqueda web)
+    if (!CFG.apifyToken) throw new Error("Con Gemini gratis el botón necesita Apify para traer las publicaciones. Si no, usa Gemini Deep Research e importa el informe.");
+    avisar({ progreso: 0.8, msg: "Gemini está escribiendo las propuestas…" });
+    const soloTexto = contenido.filter((b) => b.type === "text").map((b) => b.text).join("\n");
+    return guardarResultado(salida, jsonDe(await pedirIA(sistema, soloTexto)));
+  }
   avisar({ progreso: 0.8, msg: "Claude está escribiendo las propuestas…" });
   let mensajes = [{ role: "user", content: contenido }], r;
   for (let vuelta = 0; vuelta < 4; vuelta++) {
