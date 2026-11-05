@@ -5,3 +5,6 @@ proyectos/*
 cache/
 listos/*
 !listos/.gitkeep
+investigacion/*
+!investigacion/.gitkeep
+package-lock.json

@@ -5,11 +5,20 @@ echo.
 echo  == Actualizando la fabrica ==
 where git >nul 2>nul
 if errorlevel 1 ( echo  Falta Git. Instalalo desde https://git-scm.com y vuelve a abrir este archivo. & start https://git-scm.com/download/win & pause & exit /b 1 )
-git pull --ff-only
+git fetch origin main
 if errorlevel 1 (
   echo.
-  echo  No se pudo actualizar solo. Probablemente cambiaste algun archivo de la fabrica a mano.
-  echo  Tus videos, tu .env y tus proyectos NO se tocan. Pidele ayuda a Claude con este mensaje.
+  echo  No pude conectarme a GitHub. Revisa tu internet y vuelve a intentarlo.
+  pause & exit /b 1
+)
+rem Si algun archivo de la fabrica cambio en esta compu, se guarda aparte (git stash) y se pone la version nueva.
+rem Tus videos, proyectos, investigaciones y el .env no estan en GitHub, asi que no se tocan.
+git diff --quiet HEAD 2>nul
+if errorlevel 1 ( echo  Guardando aparte los cambios locales... & git stash push -m "antes de actualizar" >nul )
+git reset --hard origin/main
+if errorlevel 1 (
+  echo.
+  echo  No se pudo actualizar. Pidele ayuda a Claude con este mensaje.
   pause & exit /b 1
 )
 call npm install --no-audit --no-fund
