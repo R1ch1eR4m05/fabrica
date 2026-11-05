@@ -170,7 +170,15 @@ async function api(req, res, partes) {
   const p = P.leer(id, "proyecto.json");
   if (!p) return json(res, 404, { error: "No encuentro ese video." });
 
-  if (!accion && m === "GET") { const d = P.detalle(id); if (leerEstilo(p.estilo)?.tipo === "motion") d.motionEstado = MOT.estadoMotion(id); return json(res, 200, d); }
+  if (!accion && m === "GET") {
+    const d = P.detalle(id); if (leerEstilo(p.estilo)?.tipo === "motion") d.motionEstado = MOT.estadoMotion(id);
+    // de dónde salió la idea (si vino del investigador): enlaces, por qué y la adaptación
+    if (p.desdeInvestigacion) try {
+      const inv = INV.leerInvestigacion(p.desdeInvestigacion.archivo), pr = inv.propuestas.find((x) => x.n === p.desdeInvestigacion.n);
+      if (pr) d.inspiracion = { enlaces: pr.inspiradaEn || [], porque: pr.porque || "", adaptacion: pr.adaptacion || "", llegada: pr.llegada || "", origen: pr.origen || "", porQueEstilo: pr.porQueEstilo || "", fuente: inv.fuente || inv.modo || "", archivo: p.desdeInvestigacion.archivo, n: pr.n };
+    } catch {}
+    return json(res, 200, d);
+  }
   if (accion === "brief" && m === "PUT") {
     MOT.guardarBrief(id, await cuerpo(req)); P.marcar(id, "guion", "listo");
     const d = P.detalle(id); d.motionEstado = MOT.estadoMotion(id); return json(res, 200, d);

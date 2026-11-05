@@ -147,6 +147,7 @@ const FORMATO = `Devuelve SOLO JSON válido:
   "propuestas": [{
     "estilo": "id EXACTO del estilo de video que mejor le queda a esta idea, de la lista de estilos disponibles",
     "porQueEstilo": "una línea: por qué ese estilo es el mejor para este contenido",
+    "beats": ["SOLO para motion y datos: 5 a 8 momentos del video, cada uno con el texto exacto en pantalla (máx. 8 palabras). El 1 es el gancho que detiene el scroll; el último es el remate o la acción"],
     "idea": "de qué trata el video en 1-2 frases (tema, ángulo y, si lleva datos, qué dato real hay que verificar). Para el estilo de frases puede ir vacío",
     "frase": "el gancho o mensaje central, ORIGINAL, en español de México, 8 a 28 palabras, con 1-2 palabras clave entre *asteriscos* (en el estilo de frases es lo que sale en pantalla)",
     "autor": "solo si es una cita real verificada; si no, vacío",
@@ -156,7 +157,7 @@ const FORMATO = `Devuelve SOLO JSON válido:
     "llegada": "ya está en español" | "poco en español" | "aún no llega" (qué tanto existe ya en español),
     "adaptacion": "qué cambiaste para que conecte con mamás hispanas (si viene del inglés)",
     "porque": "por qué debería funcionar, citando el patrón y las publicaciones que la inspiran",
-    "inspiradaEn": ["url de las publicaciones que la inspiran"],
+    "inspiradaEn": ["url REAL de las publicaciones que la inspiran, copiada de los datos o del informe; nunca inventes una. Si no hay, lista vacía"],
     "flowPrompt": "prompt EN INGLÉS para Google Flow/Veo, vertical 9:16, ~8 s: slow motion, shallow depth of field, soft natural light, una sola acción emotiva y simple (ej. a child running into their mother's arms in a sunlit field), cámara suave, cinematic, warm tones, no text, no logos, no subtitles",
     "pexels": "2-4 palabras en inglés para buscar un clip parecido en Pexels",
     "tituloPost": "título/gancho para publicar",
@@ -181,7 +182,8 @@ function sistemaDe(cfg) {
     `${cfg.nombre}. Audiencia: ${cfg.descripcion}`, cfg.marca,
     "Todos los videos son 9:16 vertical. Cada propuesta es una IDEA de video y debes elegir para ella el estilo que mejor le queda, según el contenido (no fuerces variedad; si todo son frases, todo va en frases). Estilos disponibles:\n" +
       estilosDisponibles().map((e) => `- ${e.id}: ${e.nombre}. ${e.descripcion}`).join("\n") +
-      "\nPon en \"estilo\" el id exacto. Si eliges un estilo con datos o cifras, la idea debe apoyarse en datos reales verificables (nada inventado).",
+      "\nPon en \"estilo\" el id exacto. Si eliges un estilo con datos o cifras, la idea debe apoyarse en datos reales verificables (nada inventado)." +
+      "\nElige un motion graphics SOLO si la publicación que inspira la idea ya es un formato visual que funcionó (lista, pasos, comparación, un dato que se anima) y tienes su enlace; para una frase emotiva usa frases. Un motion necesita contenido para 15-25 s: gancho, 4-6 momentos y remate, no una sola frase.",
     "REGLAS: no copies frases de otras cuentas (eso es plagio y la plataforma lo castiga): toma el patrón y escribe algo nuevo con la voz de la marca.",
     "Nunca atribuyas una frase a una persona real si no puedes verificarla. Nada de culpa ni de vergüenza hacia las mamás; sí de reconocimiento y ternura.",
     "ADAPTACIÓN AL PÚBLICO HISPANO: muchas fuentes son cuentas en inglés de EE. UU. a propósito, porque ahí aparecen primero las tendencias. Trátalas como señal temprana de lo que viene. No traduzcas literal: adapta la idea a mamás hispanas de México y EE. UU. (familia extendida y abuelas, la escuela y las tareas, las mañanas con prisa, el trabajo y la culpa, la fe cuando venga al caso, la comida, el 'mijo/mija'), con español natural de México. Para EE. UU. se vale un toque bilingüe solo si suena natural.",

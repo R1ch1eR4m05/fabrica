@@ -204,6 +204,7 @@ function pintarProyecto() {
       </div>
     </div>
     <p class="sub">${h(est?.nombre)} · ${p.duracion === "largo" ? "Largo" : "Corto"} · <span style="opacity:.7">${h(p.idea)}</span></p>
+    ${panelInspiracion(p)}
 
     <div class="pasos">
       <section class="paso">${pasoCab(1, "guion", "Guion", `
@@ -303,6 +304,7 @@ function pintarMotion(p, est, ocupado) {
       <div class="seg" id="pFormato">${(est.formatos || ["9:16"]).map((k) => `<button data-v="${k}" class="${p.formato === k ? "on" : ""}">${k}</button>`).join("")}</div>
     </div>
     <p class="sub">${h(est.nombre)} · <span style="opacity:.7">${h(p.idea)}</span></p>
+    ${panelInspiracion(p)}
     <div class="pasos">
       <section class="paso">${pasoCab(1, "guion", "Estilo y brief", `<button class="btn primario peq" id="mGuardar">Guardar brief</button>`)}
         <div class="cont">
@@ -371,6 +373,20 @@ function pintarMotion(p, est, ocupado) {
   for (const bt of document.querySelectorAll("#pFormato button")) bt.onclick = async () => { await api(`/api/proyectos/${p.id}`, "PATCH", { formato: bt.dataset.v }); abrir(p.id, { mantener: true }); };
   if (S.progreso[p.id]?.render) mostrarProgreso("render", S.progreso[p.id].render);
   if ($("#muGenerar")) eventosMusica(p, est);
+}
+
+// ---------- de dónde salió la idea ----------
+function panelInspiracion(p) {
+  const i = p.inspiracion; if (!i) return "";
+  const red = (u) => { try { const x = new URL(u); return x.hostname.replace(/^www\./, "").split(".")[0] + x.pathname.replace(/\/$/, "").slice(0, 40); } catch { return u.slice(0, 50); } };
+  return `<details class="card" style="margin:0 0 14px;padding:12px 16px" ${i.enlaces.length ? "" : "open"}>
+    <summary style="cursor:pointer;font-weight:600">Inspiración ${i.enlaces.length ? `· ${i.enlaces.length} enlace${i.enlaces.length > 1 ? "s" : ""}` : "· <span style='color:var(--am)'>sin enlace directo</span>"}${i.llegada ? ` · <span class="estado">${h(i.llegada)}</span>` : ""}</summary>
+    ${i.enlaces.length ? `<ul style="margin:8px 0;padding-left:18px">${i.enlaces.map((u) => `<li><a href="${h(u)}" target="_blank" rel="noopener" style="color:var(--t)">${h(red(u))}</a></li>`).join("")}</ul>`
+      : `<p class="estado">Esta idea no trae una publicación concreta que la respalde (salió de los patrones${i.fuente ? " del informe de " + h(i.fuente) : ""}). Tómala como hipótesis, no como algo que ya probó ser viral.</p>`}
+    ${i.porque ? `<p class="estado"><b>Por qué debería funcionar:</b> ${h(i.porque)}</p>` : ""}
+    ${i.porQueEstilo ? `<p class="estado"><b>Por qué este estilo:</b> ${h(i.porQueEstilo)}</p>` : ""}
+    ${i.adaptacion ? `<p class="estado"><b>Adaptación:</b> ${h(i.adaptacion)}</p>` : ""}
+  </details>`;
 }
 
 // ---------- música a la medida (ElevenLabs Music) ----------

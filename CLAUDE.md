@@ -42,6 +42,7 @@ La skill vive en `motion/` (claude-video, MIT, textos en portugués; tú hablas 
 1. Lee `proyectos/<id>/BRIEF.md` y `proyectos/<id>/proyecto.json` (campo `motion`). Las etapas A y B ya están hechas: no vuelvas a preguntar lo que ya dice el brief.
 2. Sigue `motion/SKILL.md` desde la **etapa C** con la carpeta de trabajo `proyectos/<id>/motion/` (proyecto en `proyectos/<id>/motion/proj`).
    Formato del brief (por defecto **9:16 → `9x16`**, 1080×1920). Las fichas vienen en 16:9: reacomoda la composición a vertical, mantén mecanismo, paleta, traço y ritmo.
+   Si es para Reels/TikTok (casi siempre): lee las notas del brief (enlaces de inspiración y REGLAS DE REEL). Intenta ver la publicación de referencia; si no se abre, apóyate en la descripción del informe. Cada línea de "Texto en pantalla" es una escena. Nada de piezas de 5 s con una frase: 15-25 s con gancho, desarrollo y remate.
 3. Mismos portones: tarjetas aprobadas antes de animar, 3 fotogramas aprobados antes del render (guárdalos en `proj/frames/`, el panel los muestra).
 4. Clips de IA: no Higgsfield. Usa flow-mcp si está conectado (9:16, con aprobación y tope de créditos) o pídele el clip a Richie.
 5. Render final con `bash motion/scripts/render.sh proyectos/<id>/motion/proj proyectos/<id>/final.mp4 high` y luego `node fabrica.js listo-motion <id>` (lo copia a `listos/`).

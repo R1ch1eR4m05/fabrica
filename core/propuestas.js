@@ -17,10 +17,12 @@ export async function crearDesdePropuesta(archivo, n, b = {}) {
         const cfg = INV.leerConfig();
         const p = P.crearProyecto({ estilo: "motion", titulo: prop.tituloPost || prop.tema, idea: prop.idea || prop.frase, formato: b.formato || "9:16", duracion: "corto", conVoz: false });
         p.desdeInvestigacion = { archivo, n: prop.n }; if (b.canal) p.canal = b.canal; P.guardar(p.id, "proyecto.json", p);
-        MOT.guardarBrief(p.id, { estiloMotion: c.id, formato: b.formato || "9:16", para: "Reels / TikTok", segundos: Math.max(10, Math.round(c.seg || 12)), // en Reels menos de 10 s casi no se alcanza a leer loop: false,
-          textos: [String(prop.frase || "").replace(/\*/g, ""), INV.cierreValido(prop.cierre)].filter(Boolean).join("\n"),
+        MOT.guardarBrief(p.id, { estiloMotion: c.id, formato: b.formato || "9:16", para: "Reels / TikTok", segundos: Math.max(15, Math.round(c.seg || 15)), // en Reels: 15-25 s para que haya gancho, desarrollo y remate loop: false,
+          textos: [...(prop.beats?.length ? prop.beats : [prop.frase]).map((x) => String(x).replace(/\*/g, "")), INV.cierreValido(prop.cierre)].filter(Boolean).join("\n"),
           marca: /levania/i.test(cfg.nombre) ? "Levania: rosa #C4837A, salvia #8FA58A, crema #F6EEE4, tinta #3D3230. Tipografías Cormorant Garamond (títulos) y Jost (texto). Logo: estilos/render-datos/marca/levania_logo.png" : cfg.marca || "",
-          medios: "ninguno, solo gráfico", notas: [prop.idea, prop.porque, prop.adaptacion && `Adaptación: ${prop.adaptacion}`].filter(Boolean).join("\n") });
+          medios: "ninguno, solo gráfico", notas: [prop.idea, prop.porque, prop.adaptacion && `Adaptación: ${prop.adaptacion}`,
+            (prop.inspiradaEn || []).length ? `Inspiración (míralas antes de diseñar; copia el ritmo y la estructura, nunca el texto): ${prop.inspiradaEn.join(" · ")}` : "Sin publicación de referencia: es una hipótesis, diseña con las reglas de Reels.",
+            "REGLAS DE REEL: el primer cuadro ya trae el gancho en letra grande; algo cambia cada 1.5 s en los primeros 6 s y luego cada 2-3 s; cada momento de 'Texto en pantalla' es una escena; termina con un remate claro; densidad de estudio (capas, texturas, micro-movimientos), nunca una sola frase flotando."].filter(Boolean).join("\n") });
         P.marcar(p.id, "guion", "listo");
         return P.detalle(p.id);
       }
