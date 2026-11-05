@@ -18,6 +18,7 @@ import * as MOT from "./motion.js";
 import * as ACT from "./actualizar.js";
 import { musicaIA, promptMusica } from "./musica.js";
 import { crearDesdePropuesta } from "./propuestas.js";
+import * as HIS from "./historia.js";
 
 let investigando = null;
 function correrInvestigacion() {
@@ -172,6 +173,7 @@ async function api(req, res, partes) {
 
   if (!accion && m === "GET") {
     const d = P.detalle(id); if (leerEstilo(p.estilo)?.tipo === "motion") d.motionEstado = MOT.estadoMotion(id);
+    if (leerEstilo(p.estilo)?.preparar === "historia") d.clips = HIS.estadoClips(id);
     // de dónde salió la idea (si vino del investigador): enlaces, por qué y la adaptación
     if (p.desdeInvestigacion) try {
       const inv = INV.leerInvestigacion(p.desdeInvestigacion.archivo), pr = inv.propuestas.find((x) => x.n === p.desdeInvestigacion.n);
@@ -221,6 +223,7 @@ async function api(req, res, partes) {
     const limpiar = (pref) => fs.readdirSync(dir).filter((n) => n.startsWith(pref + ".")).forEach((n) => fs.rmSync(path.join(dir, n)));
     const base = { fondo: "fondo-propio", musica: "musica" }[tipo];
     if (m === "DELETE") {
+      if (tipo === "clip" && fs.existsSync(HIS.dirClips(id))) for (const x of fs.readdirSync(HIS.dirClips(id))) if (x.startsWith(`escena-${q.get("n")}.`)) fs.rmSync(path.join(HIS.dirClips(id), x));
       if (base) limpiar(base);
       if (base === "fondo" && P.existe(id, "tiempos.json")) { try { encolar(id, "fondo", (av) => prepararFondo(id, (a) => av({ ...a, paso: "fondo" }))); } catch {} }
       return json(res, 200, P.detalle(id));
@@ -229,6 +232,12 @@ async function api(req, res, partes) {
     const ext = path.extname(nombre).toLowerCase().replace(/[^.a-z0-9]/g, "");
     let destino;
     if (base) { limpiar(base); destino = path.join(dir, base + ext); }
+    else if (tipo === "clip") { // historia: clip de la escena N (clips/escena-N.ext)
+      const n = Number(q.get("n")); if (!n) return json(res, 400, { error: "Falta el número de escena." });
+      fs.mkdirSync(HIS.dirClips(id), { recursive: true });
+      for (const x of fs.readdirSync(HIS.dirClips(id))) if (x.startsWith(`escena-${n}.`)) fs.rmSync(path.join(HIS.dirClips(id), x));
+      destino = path.join(HIS.dirClips(id), `escena-${n}${ext}`);
+    }
     else if (tipo === "imagen") { fs.mkdirSync(path.join(dir, "img"), { recursive: true }); destino = path.join(dir, "img", P.slug(path.basename(nombre, ext)) + ext); }
     else return json(res, 400, { error: "Tipo de archivo no válido." });
     await new Promise((ok, mal) => { const w = fs.createWriteStream(destino); req.pipe(w); w.on("finish", ok); w.on("error", mal); });
@@ -253,13 +262,21 @@ async function api(req, res, partes) {
     }
     // fondo con Google Flow antes de la voz (solo si lo pidieron, hay prompt y Flow está abierto; si falla, sigue con Pexels)
     const prompt = (p.flowPrompt || P.leer(id, "guion.json")?.fondo?.flowPrompt || "").trim();
-    if (b?.flow && est?.fondo && prompt && (await flowDisponible()))
+    if (b?.flow && est?.preparar === "historia" && (await flowDisponible()))
+      encolar(id, "fondo", (av) => HIS.clipsDeFlow(id, (a) => av({ ...a, paso: "fondo" }), { maxCreditos: Number(b.flow.maxCreditos) || 25 })
+        .catch((e) => { console.error("Flow", e.message); emitir({ id, paso: "fondo", estado: "error", msg: `Flow falló (${e.message}); sigo con Pexels o dibujos.` }); }));
+    else if (b?.flow && est?.fondo && prompt && (await flowDisponible()))
       encolar(id, "fondo", (av) => clipDeFlow(id, prompt, (a) => av({ ...a, paso: "fondo" }), { maxCreditos: Number(b.flow.maxCreditos) || 25 })
         .catch((e) => { console.error("Flow", e.message); emitir({ id, paso: "fondo", estado: "error", msg: `Flow falló (${e.message}); sigo con Pexels.` }); }));
     encolar(id, "voz", (av) => hacerVoz(id, av));
     // música a la medida con ElevenLabs (si la pidieron); si falla, el video sale con la música de la biblioteca
     if (b?.musica && CFG.elevenKey && est?.musicaIA) { fila.push({ id, paso: "musica", fn: (av) => musicaIA(id, av).catch((e) => { console.error("Música", e.message); emitir({ id, paso: "musica", estado: "error", msg: `No se pudo generar la música (${e.message}); sigue con la de la biblioteca.` }); }) }); P.marcar(id, "musica", "en-fila"); }
     fila.push({ id, paso: "render", fn: (av) => render(id, av) }); P.marcar(id, "render", "en-fila");
+    return json(res, 200, { ok: true });
+  }
+  if (accion === "clips" && m === "POST") { // historia: genera en Flow los clips que faltan
+    const b = await cuerpo(req);
+    encolar(id, "fondo", (av) => HIS.clipsDeFlow(id, (a) => av({ ...a, paso: "fondo" }), { maxCreditos: Number(b.maxCreditos) || 25, soloFaltantes: b.todos !== true }));
     return json(res, 200, { ok: true });
   }
   if (accion === "remezclar" && m === "POST") { encolar(id, "render", () => MOT.terminar(id)); return json(res, 200, { ok: true }); } // motion: vuelve a mezclar la música (o la quita)

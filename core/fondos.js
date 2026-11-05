@@ -16,7 +16,7 @@ export function fondoPropio(id) {
   return f ? path.join(dirProyecto(id), f) : null;
 }
 
-async function pexels(buscar, vertical) {
+export async function pexels(buscar, vertical) {
   const h = { Authorization: CFG.pexelsKey };
   const orient = vertical ? "portrait" : "landscape";
   const r = await fetch(`https://api.pexels.com/videos/search?query=${encodeURIComponent(buscar)}&orientation=${orient}&size=medium&per_page=15`, { headers: h });
@@ -36,7 +36,7 @@ async function pexels(buscar, vertical) {
   return { url: foto.src.large2x || foto.src.original, tipo: "imagen", credito: `Foto de ${foto.photographer} en Pexels`, ext: ".jpg" };
 }
 
-async function pixabay(buscar, vertical) {
+export async function pixabay(buscar, vertical) {
   const r = await fetch(`https://pixabay.com/api/videos/?key=${encodeURIComponent(CFG.pixabayKey)}&q=${encodeURIComponent(buscar)}&per_page=30&safesearch=true`);
   if (!r.ok) throw new Error(`Pixabay respondió ${r.status}`);
   const j = await r.json();

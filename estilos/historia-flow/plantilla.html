@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><title>Historia con Flow</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}canvas{display:block;width:100vw;height:100vh;object-fit:contain}</style>
+</head><body><canvas id="lienzo"></canvas>
+<script src="../_comun/motor.js"></script>
+<script src="../render-datos/dibujos.js"></script>
+<script>
+// Historia con Flow: cada escena es su propio clip (Flow, tuyo o Pexels) con zoom lento, narración y subtítulos grandes.
+// Entre escenas: corte con destello y empuje. Si una escena no tiene clip, sale un dibujo animado sobre fondo vivo.
+const F = "../_comun/fuentes/";
+const C = { fondo: "#2A211F", texto: "#F6EEE4", rosa: "#E8A095", salvia: "#8FA58A", salviaOsc: "#5F735C", suave: "rgba(246,238,228,0.6)" };
+let info = [], cache = new Map(), actual = null, logo = null, conMarca = true, frase = false;
+
+Motor.inicioVoz = 0.15;
+Motor.iniciar({
+  fuentes: [
+    ["Cormorant", F + "cormorant-garamond-latin-600-normal.woff2", { weight: "600" }], ["Cormorant", F + "cormorant-garamond-latin-500-italic.woff2", { weight: "500", style: "italic" }],
+    ["Jost", F + "jost-latin-400-normal.woff2", { weight: "400" }], ["Jost", F + "jost-latin-500-normal.woff2", { weight: "500" }],
+    ["Montserrat", F + "montserrat-latin-800-normal.woff2", { weight: "800" }],
+  ],
+  async preparar(M) {
+    const op = M.proyecto.opciones || {};
+    conMarca = op.marca !== "ninguna"; frase = op.subtitulos === "frase";
+    try { const r = await fetch(`/proyectos/${encodeURIComponent(M.proyecto.id)}/clips/historia.json?v=${Date.now()}`); if (r.ok) info = await r.json(); } catch {}
+    if (conMarca) { logo = new Image(); logo.src = "../render-datos/marca/levania_logo_blanco.png"; await logo.decode().catch(() => {}); }
+    M.antesDeDibujar = async (t) => {
+      const i = M.escenaEn(t), c = info[i]; actual = null;
+      if (!c || c.tipo === "ninguno" || !c.frames) return;
+      const lt = t - M.tiempos.escenas[i].ini;
+      const k = c.tipo === "video" ? Math.min(c.frames - 1, Math.max(0, Math.floor(lt * c.fps))) : 0;
+      actual = await cuadro(M, i + 1, k);
+      if (c.tipo === "video") for (let j = 1; j <= 3; j++) if (k + j < c.frames) cuadro(M, i + 1, k + j);
+    };
+  },
+
+  dibujar(c, t, M) {
+    const W = M.W, H = M.H, u = M.u;
+    const i = M.escenaEn(t), e = M.guion.escenas[i], te = M.tiempos.escenas[i], p = t - te.ini, d = Math.max(0.5, te.fin - te.ini);
+    c.fillStyle = C.fondo; c.fillRect(0, 0, W, H);
+
+    // ---- la toma: zoom lento + paneo (cada escena hacia un lado) y entrada con empuje ----
+    const ent = i === 0 ? 1 : M.salida(M.clamp(p / 0.35));
+    const z = 1.04 + 0.1 * M.suave(p / d) + (1 - ent) * 0.12, lado = i % 2 ? -1 : 1;
+    c.save(); c.translate(W / 2 + lado * W * 0.03 * M.suave(p / d), H / 2); c.scale(z, z); c.translate(-W / 2, -H / 2);
+    if (actual) cubrir(c, actual, W, H);
+    else { fondoVivo(c, M, t, i); const n = e.dibujo || Dibujos.auto([e.voz, e.texto].join(" ")) || "corazon"; Dibujos.dibujar(c, n, W / 2, H * 0.42, Math.min(W * 0.62, H * 0.36), t, M.clamp((t - te.ini + (te.ini < 0.05 ? 1 : 0)) / 0.45), C); }
+    c.restore();
+    // destello del corte
+    if (i > 0 && p < 0.14) { c.fillStyle = `rgba(255,248,240,${0.35 * (1 - p / 0.14)})`; c.fillRect(0, 0, W, H); }
+
+    // ---- legibilidad: viñeta y degradado abajo ----
+    const g = c.createLinearGradient(0, H * 0.45, 0, H); g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.72)"); c.fillStyle = g; c.fillRect(0, 0, W, H);
+    const v = c.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.75); v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,0.45)"); c.fillStyle = v; c.fillRect(0, 0, W, H);
+
+    // ---- texto grande de la escena (gancho, giro, remate) ----
+    if (e.texto && e.tipo !== "cierre") {
+      const a = i === 0 ? 1 : M.clamp((p - 0.05) / 0.2), s = 0.85 + 0.15 * M.salida(a) + 0.06 * Math.sin(Math.min(1, a) * Math.PI);
+      c.save(); c.translate(W / 2, M.vertical ? H * 0.2 : H * 0.18); c.scale(s, s); c.globalAlpha = a;
+      textoGrande(c, M, String(e.texto).replace(/\*/g, ""), 0, 0, 110 * u, W * 0.86); c.restore();
+    }
+
+    if (e.tipo === "cierre") cierre(c, M, t, e, te, p);
+
+    // ---- capa fija ----
+    if (conMarca && logo?.naturalWidth && e.tipo !== "cierre") { const w = 170 * u, h = w * (logo.height / logo.width); c.globalAlpha = 0.85; c.drawImage(logo, (W - w) / 2, 52 * u, w, h); c.globalAlpha = 1; }
+    if (conMarca) { c.font = `400 ${19 * u}px Jost`; c.fillStyle = C.suave; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("Contenido creado con apoyo de IA", W / 2, H - 52 * u); }
+    subtitulos(c, M, t, te);
+  },
+});
+
+async function cuadro(M, n, k) {
+  const clave = n * 100000 + k;
+  if (cache.has(clave)) return cache.get(clave);
+  const pr = (async () => { const r = await fetch(`/proyectos/${encodeURIComponent(M.proyecto.id)}/clips/${n}/${String(k + 1).padStart(5, "0")}.jpg`); return createImageBitmap(await r.blob()); })();
+  cache.set(clave, pr);
+  if (cache.size > 72) cache.delete(cache.keys().next().value);
+  return pr;
+}
+
+function cubrir(c, img, W, H) {
+  const s = Math.max(W / img.width, H / img.height), w = img.width * s, h = img.height * s;
+  c.drawImage(img, (W - w) / 2, (H - h) / 2, w, h);
+}
+
+function blob(c, x, y, r, col) { const g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, col); g.addColorStop(1, "rgba(0,0,0,0)"); c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2); }
+function fondoVivo(c, M, t, i) {
+  const W = M.W, H = M.H, g = c.createRadialGradient(W / 2, H * 0.35, 0, W / 2, H * 0.35, H * 0.8); g.addColorStop(0, "#3a2d2a"); g.addColorStop(1, C.fondo); c.fillStyle = g; c.fillRect(0, 0, W, H);
+  const cols = ["rgba(232,160,149,0.14)", "rgba(143,165,138,0.13)", "rgba(242,196,109,0.09)"];
+  for (let k = 0; k < 3; k++) { const a = t * (0.13 + k * 0.05) + k * 2.1 + i; blob(c, W * (0.5 + 0.42 * Math.cos(a)), H * (0.45 + 0.32 * Math.sin(a * 1.3)), W * 0.6, cols[k]); }
+  for (let k = 0; k < 30; k++) { const r = M.hash(k * 7.3), q = M.hash(k * 3.1 + 9), x = q * W, y = (((r * H - t * (20 + r * 40)) % H) + H) % H;
+    c.globalAlpha = 0.25 + 0.4 * (0.5 + 0.5 * Math.sin(t * 2.5 + k)); c.fillStyle = k % 5 ? "#F6EEE4" : C.rosa; c.beginPath(); c.arc(x, y, (2 + (k % 4) * 1.5) * M.u, 0, 7); c.fill(); }
+  c.globalAlpha = 1;
+}
+
+function textoGrande(c, M, txt, x, y, tam, ancho) {
+  c.textAlign = "center"; c.textBaseline = "middle";
+  let t = tam, ls;
+  for (; t > 40 * M.u; t -= 4 * M.u) { c.font = `800 ${t}px Montserrat`; ls = M.lineas(c, txt.toUpperCase(), ancho); if (ls.length <= 3) break; }
+  const al = t * 1.05, y0 = y - ((ls.length - 1) * al) / 2;
+  c.lineJoin = "round"; c.lineWidth = t * 0.16; c.strokeStyle = "rgba(20,14,12,0.85)";
+  ls.forEach((l, k) => { c.strokeText(l, x, y0 + k * al); c.fillStyle = k === ls.length - 1 ? C.rosa : "#FFFFFF"; c.fillText(l, x, y0 + k * al); });
+}
+
+function subtitulos(c, M, t, te) {
+  const u = M.u, fr = M.frases(te.palabras, frase ? 7 : 3); let cur = null;
+  for (const f of fr) if (t >= f[0].t0 - 0.02) cur = f;
+  if (!cur || t > te.finVoz + 0.25) return;
+  const y = M.vertical ? M.H * 0.76 : M.H * 0.84, tam = (frase ? 52 : 74) * u;
+  c.font = `800 ${tam}px Montserrat`; c.textBaseline = "middle"; c.textAlign = "left";
+  const esp = c.measureText(" ").width, ws = cur.map((p) => ({ ...p, s: p.w.toUpperCase(), pw: c.measureText(p.w.toUpperCase()).width }));
+  let x = (M.W - ws.reduce((a, p) => a + p.pw, 0) - esp * (ws.length - 1)) / 2;
+  c.lineJoin = "round"; c.lineWidth = tam * 0.18; c.strokeStyle = "rgba(0,0,0,0.9)";
+  for (const p of ws) {
+    const on = t >= p.t0 && t < p.t1 + 0.06, s = on ? 1.08 : 1;
+    c.save(); c.translate(x + p.pw / 2, y); c.scale(s, s); c.strokeText(p.s, -p.pw / 2, 0); c.fillStyle = on ? C.rosa : "#FFFFFF"; c.fillText(p.s, -p.pw / 2, 0); c.restore();
+    x += p.pw + esp;
+  }
+  c.textAlign = "center";
+}
+
+function cierre(c, M, t, e, te, p) {
+  const W = M.W, H = M.H, u = M.u, a = M.clamp(p / 0.3);
+  c.fillStyle = `rgba(42,33,31,${0.55 * a})`; c.fillRect(0, 0, W, H);
+  if (conMarca && logo?.naturalWidth) { const w = W * 0.42, h = w * (logo.height / logo.width); c.globalAlpha = a; c.drawImage(logo, (W - w) / 2, H * 0.3 - h / 2, w, h); c.globalAlpha = 1; }
+  const txt = String(e.texto || e.voz || "").replace(/\*/g, "");
+  if (txt) { c.save(); c.globalAlpha = a; c.font = `600 ${70 * u}px Cormorant`; c.fillStyle = C.texto; c.textAlign = "center"; c.textBaseline = "middle";
+    M.lineas(c, txt, W * 0.8).forEach((l, k) => c.fillText(l, W / 2, H * 0.45 + k * 80 * u)); c.restore(); }
+}
+</script>
+</body></html>

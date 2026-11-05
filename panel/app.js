@@ -229,6 +229,7 @@ function pintarProyecto() {
           ${p.conVoz !== false && !S.info.voz ? `<div class="nota">Sin llave de ElevenLabs se genera una <b>voz de prueba muda</b> con tiempos estimados, para ensayar el video. Pon <code>ELEVENLABS_API_KEY</code> y <code>ELEVENLABS_VOICE_ID</code> en el <code>.env</code> para la voz real.${est?.vozSugerida ? "<br>Voz sugerida: " + h(est.vozSugerida) : ""}</div>` : ""}
           <div class="barra oculto" id="bar-voz"><div></div></div>
           ${est?.fondo ? panelFondo(p) : ""}
+          ${est?.preparar === "historia" ? panelClips(p) : ""}
           ${p.tieneVoz ? `<audio id="vAudio" controls src="/proyectos/${h(p.id)}/voz.mp3?v=${Date.now()}" style="width:100%"></audio><div class="estado">${p.tiempos ? `${p.tiempos.duracion.toFixed(1)} s${p.tiempos.sinVoz ? " · sin voz, solo música" : p.tiempos.prueba ? " · voz de prueba" : ""}` : ""}</div>` : `<div class="estado">Primero el guion.</div>`}
         </div></section>
 
@@ -281,6 +282,7 @@ function pintarProyecto() {
     for (const b of document.querySelectorAll("[data-quitar]")) b.onclick = async () => { await api(`/api/proyectos/${p.id}/archivo?tipo=${b.dataset.quitar}`, "DELETE"); abrir(p.id, { mantener: true }); };
   }
   $("#vHacer").onclick = () => api(`/api/proyectos/${p.id}/voz`, "POST").catch((e) => avisar(e.message, true));
+  if (est?.preparar === "historia") eventosClips(p);
   if ($("#muGenerar")) eventosMusica(p, est);
   $("#rTodo").onclick = () => api(`/api/proyectos/${p.id}/todo`, "POST").catch((e) => avisar(e.message, true));
   $("#rHacer").onclick = () => api(`/api/proyectos/${p.id}/render`, "POST").catch((e) => avisar(e.message, true));
@@ -374,6 +376,34 @@ function pintarMotion(p, est, ocupado) {
   for (const bt of document.querySelectorAll("#pFormato button")) bt.onclick = async () => { await api(`/api/proyectos/${p.id}`, "PATCH", { formato: bt.dataset.v }); abrir(p.id, { mantener: true }); };
   if (S.progreso[p.id]?.render) mostrarProgreso("render", S.progreso[p.id].render);
   if ($("#muGenerar")) eventosMusica(p, est);
+}
+
+// ---------- historia con Flow: un clip por escena ----------
+function panelClips(p) {
+  const cs = p.clips || [], faltan = cs.filter((x) => x.tipo !== "cierre" && !x.archivo).length;
+  return `<div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--b)">
+    <div class="estado" id="est-fondo">Clips por escena: ${cs.length - faltan - cs.filter((x) => x.tipo === "cierre").length} listos · ${faltan} sin clip (sin clip usa Pexels con "buscar" o un dibujo animado)</div>
+    <div class="barra oculto" id="bar-fondo"><div></div></div>
+    <div class="fila" style="margin:8px 0">
+      <button class="btn peq primario" id="cFlow" ${S.info.flow && faltan ? "" : "disabled"} title="${S.info.flow ? "Genera en Flow los que faltan" : "Abre Flow Studio (flow-mcp)"}">Generar en Flow los que faltan</button>
+      <span class="estado">Tope de créditos por clip</span><input id="cMax" type="number" value="25" min="1" style="width:80px">
+      ${S.info.flow ? "" : `<span class="estado">Flow cerrado: copia cada prompt, hazlo en Flow y súbelo aquí.</span>`}
+    </div>
+    <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(230px,1fr))">${cs.map((x) => `
+      <div class="card" style="padding:10px">
+        <div class="estado"><b style="color:var(--t)">Escena ${x.n}</b> · ${x.tipo === "cierre" ? "cierre (sin clip)" : x.archivo ? `<span style="color:var(--ok)">✓ ${h(x.archivo)}</span>` : "<span style='color:var(--am)'>sin clip</span>"}</div>
+        ${x.archivo && /\.(mp4|mov|webm|m4v)$/i.test(x.archivo) ? `<video src="/proyectos/${h(p.id)}/clips/${h(x.archivo)}" muted loop playsinline preload="metadata" style="width:100%;max-height:200px;border-radius:8px;background:#000;margin-top:6px" onmouseenter="this.play()" onmouseleave="this.pause()"></video>` : x.archivo ? `<img src="/proyectos/${h(p.id)}/clips/${h(x.archivo)}" style="width:100%;max-height:200px;object-fit:cover;border-radius:8px;margin-top:6px">` : ""}
+        ${x.tipo !== "cierre" ? `<div class="fila" style="margin-top:6px"><button class="mini" data-csub="${x.n}">${x.archivo ? "Cambiar" : "Subir clip"}</button>${x.flowPrompt ? `<button class="mini" data-cprom="${x.n}">Copiar prompt</button>` : ""}${x.archivo ? `<button class="mini" data-cdel="${x.n}">Quitar</button>` : ""}</div>` : ""}
+      </div>`).join("")}</div>
+  </div>`;
+}
+function eventosClips(p) {
+  if ($("#cFlow")) $("#cFlow").onclick = () => { if (confirm("Esto gasta créditos de tu cuenta de Flow (un clip por escena que falte) y usa automatización no oficial. ¿Seguir?")) api(`/api/proyectos/${p.id}/clips`, "POST", { maxCreditos: $("#cMax").value }).catch((e) => avisar(e.message, true)); };
+  for (const b of document.querySelectorAll("[data-csub]")) b.onclick = () => subir(p.id, `clip&n=${b.dataset.csub}`, "video/*,image/*");
+  for (const b of document.querySelectorAll("[data-cdel]")) b.onclick = async () => { await api(`/api/proyectos/${p.id}/archivo?tipo=clip&n=${b.dataset.cdel}`, "DELETE"); abrir(p.id, { mantener: true }); };
+  for (const b of document.querySelectorAll("[data-cprom]")) b.onclick = () => { const g = S.guion || {}, e = g.escenas?.[b.dataset.cprom - 1] || {};
+    const txt = [g.estiloVisual, g.personajes && `Characters (keep them identical in every shot): ${g.personajes}`, e.flowPrompt, "Vertical 9:16, cinematic, smooth camera, no text, no subtitles, no logos."].filter(Boolean).join(" ");
+    navigator.clipboard.writeText(txt).then(() => avisar("Prompt copiado. En Flow: video 9:16.")); };
 }
 
 // ---------- de dónde salió la idea ----------

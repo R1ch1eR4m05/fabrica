@@ -90,6 +90,10 @@ export async function render(id, avisar = () => {}) {
   const nav = await abrirNavegador();
   let hechos = 0;
   try {
+    if (estilo.preparar === "historia") {
+      const { prepararHistoria } = await import("./historia.js");
+      await prepararHistoria(id, avisar);
+    }
     if (estilo.preparar === "mapas") {
       const { prepararMapa } = await import("./mapas.js");
       await prepararMapa(id, avisar, { abrirPagina, nav, base, fmt });

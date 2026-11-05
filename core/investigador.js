@@ -192,6 +192,7 @@ function sistemaDe(cfg) {
     (cfg.cierres || []).length
       ? `CIERRES: en "cierre" usa EXACTAMENTE uno de estos (cópialo tal cual, elige el que mejor le quede), o déjalo vacío. Nunca inventes otra palabra para comentar:\n${cfg.cierres.map((c) => "- " + c).join("\n")}`
       : `CIERRES: deja "cierre" vacío. No inventes llamados a "comenta una palabra": la marca no ha autorizado ninguno.`,
+    estilosDisponibles().some((e) => e.id === "historia-flow") ? "Al menos UNA propuesta debe ir en el estilo historia-flow: toma una publicación viral (una anécdota, un momento, un antes/después) y adáptala a una micro-historia de 5-7 escenas con personajes de una familia hispana. En sus \"beats\" pon lo que pasa en cada escena." : "",
     `Da exactamente ${cfg.propuestas} propuestas, variadas en tema y emoción.`,
     FORMATO,
   ].join("\n\n");

@@ -8,6 +8,7 @@ Una sola interfaz para hacer videos de varios estilos. Cada estilo es una carpet
 - ✅ **Mapas · Shorts de geografía**: historia de un territorio, comparar tamaños reales, fronteras raras y rutas con kilómetros. Looks Plano, Satélite y Papel antiguo. Banderas con ojos y caras, estados de cada país, ciudades. Ver `estilos/mapas/CREDITOS.md`.
 - ✅ **Motion graphics · 21 estilos** (de la skill claude-video, MIT): eliges el estilo en una galería, llenas el brief en el panel y Claude Code construye la pieza; se renderiza con HyperFrames.
 - ✅ **Levania · Datos**: gráficas con datos reales en la paleta de Levania (reloj que avanza, barra de rango recomendado, contador, comparación, tarjetas "en vez de / di"). Voz desde el primer cuadro, cortes secos, fuente en pantalla y versión Instagram (Comenta RUTINA) o TikTok (link en mi perfil).
+- ✅ **Historia con Flow**: micro-historias de 25 a 40 s, un clip de Google Flow por escena (o tuyos, o de Pexels), narración, subtítulos grandes y música. El investigador mete al menos una por tanda.
 - ⏳ Animación 3D tipo película (Kling vía APIMart)
 
 ## Investigador de virales

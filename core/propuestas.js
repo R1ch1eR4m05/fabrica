@@ -35,7 +35,7 @@ export async function crearDesdePropuesta(archivo, n, b = {}) {
       if (esFrases) guion = INV.guionDesdePropuesta(prop);
       else {
         const cfg = INV.leerConfig();
-        const idea = `${prop.idea || prop.frase}\nÁngulo: ${prop.tema || ""}. Gancho sugerido: "${prop.frase}".${prop.adaptacion ? ` Adaptación al público hispano: ${prop.adaptacion}.` : ""}\nMarca: ${cfg.nombre}. Audiencia: ${cfg.descripcion} ${cfg.marca}\n${INV.cierreValido(prop.cierre) ? `Cierre (úsalo tal cual): ${INV.cierreValido(prop.cierre)}` : (cfg.cierres || []).length ? `Cierre: usa uno de estos tal cual: ${cfg.cierres.join(" / ")}` : "Sin cierre de 'comenta una palabra': no inventes ninguno."}`;
+        const idea = `${prop.idea || prop.frase}\nÁngulo: ${prop.tema || ""}. Gancho sugerido: "${prop.frase}".${(prop.beats || []).length ? ` Momentos: ${prop.beats.join(" | ")}.` : ""}${(prop.inspiradaEn || []).length ? ` Inspirado en (viral): ${prop.inspiradaEn.join(" ")}.` : ""}${prop.adaptacion ? ` Adaptación al público hispano: ${prop.adaptacion}.` : ""}\nMarca: ${cfg.nombre}. Audiencia: ${cfg.descripcion} ${cfg.marca}\n${INV.cierreValido(prop.cierre) ? `Cierre (úsalo tal cual): ${INV.cierreValido(prop.cierre)}` : (cfg.cierres || []).length ? `Cierre: usa uno de estos tal cual: ${cfg.cierres.join(" / ")}` : "Sin cierre de 'comenta una palabra': no inventes ninguno."}`;
         try { if (b.sinIA) throw new Error("Creado sin IA: el guion lo escribe Claude Code."); guion = await escribirGuion({ ...datos, idea }); }
         catch (e) { // sin IA (cuota, saturación): el proyecto se crea igual y el guion lo escribe Claude Code
           const p = P.crearProyecto({ ...datos, idea });

@@ -10,7 +10,8 @@ Devuelve SOLO un objeto JSON válido (sin texto antes ni después, sin \`\`\`), 
   "escenas": [ { "tipo": "<tipo>", "texto": "lo que dice la voz y se ve en pantalla", "visual": "<visual>" } ],
   "fuentes": [ { "dato": "la cifra o hecho", "url": "https://..." } ],
   "subir": { "titulo": "título para publicar", "descripcion": "2-3 líneas", "hashtags": ["#..."] }
-}`;
+}
+Agrega también los campos extra que pidan las instrucciones del estilo (en el guion o en cada escena), con esos mismos nombres.`;
 
 export async function escribirGuion(proyecto, { cambios = "", guionActual = null } = {}) {
   if (!hayIA()) throw new Error("Falta GEMINI_API_KEY (gratis) o ANTHROPIC_API_KEY en el .env. También puedes pedirle el guion a Claude Code.");

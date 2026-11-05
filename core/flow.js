@@ -7,7 +7,7 @@ import { CFG } from "./config.js";
 import { dirProyecto, leer, guardar } from "./proyectos.js";
 import { prepararFondo } from "./fondos.js";
 
-async function llamar(metodo, datos, ms = 60000) {
+export async function llamar(metodo, datos, ms = 60000) {
   const r = await fetch(`${CFG.flowUrl}/api/${metodo}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(datos || {}), signal: AbortSignal.timeout(ms) });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(`Flow: ${j.error || r.status}`);

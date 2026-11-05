@@ -1,0 +1,96 @@
+// Estilo "Historia con Flow": cada escena tiene su propio clip.
+// Orden por escena: tu clip (clips/escena-N.*) → clip de Google Flow (si lo generaste) → búsqueda en Pexels/Pixabay → dibujo animado.
+// Los clips se convierten una vez a fotogramas (clips/N/00001.jpg…) del largo exacto de la escena, para que el render sea exacto.
+import fs from "node:fs";
+import path from "node:path";
+import { CFG, FORMATOS } from "./config.js";
+import { dirProyecto, leer, guardar } from "./proyectos.js";
+import { ffmpeg, duracion } from "./ff.js";
+import { pexels, pixabay } from "./fondos.js";
+import { llamar, flowDisponible } from "./flow.js";
+
+const FPS = 24;
+const VIDEO = /\.(mp4|mov|webm|m4v)$/i, IMAGEN = /\.(jpe?g|png|webp)$/i;
+export const dirClips = (id) => path.join(dirProyecto(id), "clips");
+
+export function clipDeEscena(id, n) {
+  const d = dirClips(id); if (!fs.existsSync(d)) return null;
+  const f = fs.readdirSync(d).find((x) => x.startsWith(`escena-${n}.`) && (VIDEO.test(x) || IMAGEN.test(x)));
+  return f ? path.join(d, f) : null;
+}
+
+export function estadoClips(id) {
+  const g = leer(id, "guion.json") || { escenas: [] };
+  return g.escenas.map((e, k) => { const f = clipDeEscena(id, k + 1); return { n: k + 1, tipo: e.tipo, archivo: f ? path.basename(f) : null, flowPrompt: e.flowPrompt || "", buscar: e.buscar || "" }; });
+}
+
+// prompt de Flow de una escena: estilo visual y personajes del guion + la acción de la escena (así los personajes salen iguales)
+export function promptFlow(guion, e) {
+  return [guion.estiloVisual, guion.personajes && `Characters (keep them identical in every shot): ${guion.personajes}`, e.flowPrompt,
+    "Vertical 9:16, cinematic, smooth camera, no text, no subtitles, no logos."].filter(Boolean).join(" ");
+}
+
+// genera en Flow los clips que faltan (todas las escenas de una vez); cada uno queda como clips/escena-N.mp4
+export async function clipsDeFlow(id, avisar = () => {}, { maxCreditos = 25, soloFaltantes = true } = {}) {
+  if (!(await flowDisponible())) throw new Error("No encuentro flow-mcp abierto. Abre 'Flow Studio' y vuelve a intentar.");
+  const p = leer(id, "proyecto.json"), g = leer(id, "guion.json");
+  const pendientes = g.escenas.map((e, k) => ({ e, n: k + 1 })).filter(({ e, n }) => e.tipo !== "cierre" && e.flowPrompt && (!soloFaltantes || !clipDeEscena(id, n)));
+  if (!pendientes.length) return { generados: 0 };
+  avisar({ paso: "fondo", progreso: 0.05, msg: `Pidiendo ${pendientes.length} clips a Flow…` });
+  const escenas = pendientes.map(({ e }) => ({ prompt: promptFlow(g, e), type: "video", aspect_ratio: p.formato === "16:9" ? "16:9" : "9:16", max_credits: maxCreditos, retries: 1 }));
+  const { jobs } = await llamar("generate", { project: `fabrica-${id}`, scenes: escenas });
+  const ids = jobs.map((j) => j.id), t0 = Date.now();
+  fs.mkdirSync(dirClips(id), { recursive: true });
+  for (;;) {
+    const w = await llamar("wait", { job_ids: ids, timeout_seconds: 40 }, 60000);
+    const listos = (w.jobs || []).filter((j) => ["done", "failed", "error"].includes(j.status)).length;
+    avisar({ paso: "fondo", progreso: Math.min(0.95, 0.1 + 0.85 * (listos / ids.length)), msg: `Flow: ${listos} de ${ids.length} clips (${Math.round((Date.now() - t0) / 1000)} s)` });
+    if (w.finished) {
+      let generados = 0; const fallos = [];
+      (w.jobs || []).forEach((job) => {
+        const k = ids.indexOf(job.id), { n } = pendientes[k] || {};
+        const archivo = (job.files || []).find((f) => VIDEO.test(f));
+        if (n && archivo && fs.existsSync(archivo)) { for (const x of fs.readdirSync(dirClips(id))) if (x.startsWith(`escena-${n}.`)) fs.rmSync(path.join(dirClips(id), x)); fs.copyFileSync(archivo, path.join(dirClips(id), `escena-${n}${path.extname(archivo).toLowerCase()}`)); generados++; }
+        else if (n) fallos.push(`escena ${n}: ${job.error || job.status}`);
+      });
+      if (!generados) throw new Error("Flow no entregó clips: " + fallos.join(" | "));
+      return { generados, fallos };
+    }
+    if (Date.now() - t0 > 40 * 60000) throw new Error("Flow tardó más de 40 minutos. Revisa la ventana de Flow.");
+  }
+}
+
+// antes del render: fotogramas de cada escena
+export async function prepararHistoria(id, avisar = () => {}) {
+  const p = leer(id, "proyecto.json"), g = leer(id, "guion.json"), t = leer(id, "tiempos.json");
+  const fmt = FORMATOS[p.formato], vertical = fmt.h > fmt.w;
+  const w = Math.round((fmt.w * 0.75) / 2) * 2, h = Math.round((fmt.h * 0.75) / 2) * 2;
+  const filtro = `scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h}`;
+  const info = [];
+  for (const [k, e] of g.escenas.entries()) {
+    const n = k + 1, te = t.escenas[k], D = Math.max(1, te.fin - te.ini + 0.4);
+    const sal = path.join(dirClips(id), String(n)); fs.rmSync(sal, { recursive: true, force: true }); fs.mkdirSync(sal, { recursive: true });
+    let fuente = clipDeEscena(id, n), credito = "", origen = fuente ? "tuyo/Flow" : "";
+    if (!fuente && e.buscar && (CFG.pexelsKey || CFG.pixabayKey)) {
+      avisar({ paso: "render", msg: `Escena ${n}: buscando "${e.buscar}"…` });
+      try {
+        let r = CFG.pexelsKey ? await pexels(e.buscar, vertical).catch(() => null) : null;
+        if (!r && CFG.pixabayKey) r = await pixabay(e.buscar, vertical);
+        if (r) { fuente = path.join(dirClips(id), `pexels-${n}${r.ext}`); fs.writeFileSync(fuente, Buffer.from(await (await fetch(r.url)).arrayBuffer())); credito = r.credito; origen = "pexels"; }
+      } catch (er) { console.warn("Pexels:", er.message); }
+    }
+    if (!fuente) { info.push({ n, tipo: "ninguno" }); continue; }
+    avisar({ paso: "render", msg: `Preparando el clip de la escena ${n}…` });
+    if (VIDEO.test(fuente)) {
+      const dv = await duracion(fuente).catch(() => D);
+      const usa = Math.min(dv, D), pingpong = usa < D ? `,split[a][b];[b]reverse[r];[a][r]concat=n=2:v=1:a=0` : "";
+      await ffmpeg(["-t", usa.toFixed(2), "-i", fuente, "-an", "-filter_complex", `[0:v]fps=${FPS},${filtro},eq=saturation=1.05${pingpong}[o]`, "-map", "[o]", "-q:v", "3", path.join(sal, "%05d.jpg")]);
+      info.push({ n, tipo: "video", fps: FPS, frames: fs.readdirSync(sal).length, credito, origen });
+    } else {
+      await ffmpeg(["-i", fuente, "-vf", filtro, "-frames:v", "1", "-q:v", "2", path.join(sal, "00001.jpg")]);
+      info.push({ n, tipo: "imagen", frames: 1, credito, origen });
+    }
+  }
+  guardar(id, path.join("clips", "historia.json"), info);
+  return info;
+}
