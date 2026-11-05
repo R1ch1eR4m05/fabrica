@@ -77,6 +77,7 @@ function nuevo(estiloId) {
         <div><label>Duración</label><div class="seg" id="nDur"><button data-v="corto">Corto</button><button data-v="largo">Largo</button></div></div>
       </div>
       <div id="nExtra"></div>
+      <div id="nGaleria"></div>
       <label>Nombre o @ del canal (se ve como marca de agua; opcional)</label>
       <input id="nCanal" value="${h(localStorage.getItem("canal") || "")}" placeholder="@tucanal">
       <div style="margin-top:18px" class="fila"><button class="btn primario" id="nCrear">Crear</button><button class="btn" id="nCancelar">Cancelar</button></div>
@@ -94,7 +95,26 @@ function nuevo(estiloId) {
     seg("#nFormato", "formato");
     $("#nIdea").placeholder = e.tipo === "motion" ? "Ej.: 3 pasos para mañanas sin gritos (anuncio de Levania)" : "Ej.: Si escuchas que alguien te llama por tu nombre a las 3 de la mañana";
   };
-  const ideas = () => { extra(); formatos(); const e = estiloDe($("#nEstilo").value); $("#nIdeas").innerHTML = (e.ideas || []).map((i) => `<span class="idea">${h(i)}</span>`).join(""); for (const el of document.querySelectorAll(".idea")) el.onclick = () => ($("#nIdea").value = el.textContent); };
+  let motionElegido = "";
+  const galeria = () => {
+    const e = estiloDe($("#nEstilo").value), cat = e.tipo === "motion" ? e.catalogo || [] : [];
+    if (!cat.length) { $("#nGaleria").innerHTML = ""; return; }
+    if (!cat.some((c) => c.id === motionElegido)) motionElegido = "";
+    const fams = [...new Set(cat.map((c) => c.familia))];
+    $("#nGaleria").innerHTML = `<label>Elige el estilo de motion (pasa el mouse para verlo moverse)</label>` + fams.map((fa) => `<div class="estado" style="margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px;font-size:11px">${h(fa)}</div>
+      <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(190px,1fr))">${cat.filter((c) => c.familia === fa).map((c) => `
+        <div class="card estilo mot" data-nmot="${h(c.id)}" style="padding:10px">
+          <video src="/motion/galeria/videos/${h(c.id)}.mp4" poster="/motion/galeria/portadas/${h(c.id)}.jpg" muted loop playsinline preload="none" style="width:100%;border-radius:8px;max-height:120px;object-fit:cover;background:#000"></video>
+          <h3 style="font-size:14px;margin:8px 0 4px;padding-right:0">${h(c.nombre)}</h3><p style="font-size:12.5px">${h(c.que)}</p>
+        </div>`).join("")}</div>`).join("");
+    const marcar = () => { for (const x of document.querySelectorAll("[data-nmot]")) { const on = x.dataset.nmot === motionElegido; x.style.borderColor = on ? "var(--a)" : ""; x.style.boxShadow = on ? "0 0 0 2px var(--a) inset" : ""; } };
+    for (const c of document.querySelectorAll("[data-nmot]")) {
+      const v = c.querySelector("video"); c.onmouseenter = () => v.play().catch(() => {}); c.onmouseleave = () => v.pause();
+      c.onclick = () => { motionElegido = c.dataset.nmot; marcar(); };
+    }
+    marcar();
+  };
+  const ideas = () => { extra(); formatos(); galeria(); const e = estiloDe($("#nEstilo").value); $("#nIdeas").innerHTML = (e.ideas || []).map((i) => `<span class="idea">${h(i)}</span>`).join(""); for (const el of document.querySelectorAll(".idea")) el.onclick = () => ($("#nIdea").value = el.textContent); };
   const seg = (sel, k) => { for (const b of document.querySelectorAll(`${sel} button`)) { b.classList.toggle("on", b.dataset.v === st[k]); b.onclick = () => { st[k] = b.dataset.v; seg(sel, k); }; } };
   seg("#nDur", "duracion"); ideas();
   $("#nEstilo").onchange = ideas;
@@ -102,11 +122,14 @@ function nuevo(estiloId) {
   $("#nCrear").onclick = async () => {
     const idea = $("#nIdea").value.trim();
     if (!idea) return avisar("Escribe la idea del video.", true);
+    const esMotion = estiloDe($("#nEstilo").value)?.tipo === "motion";
+    if (esMotion && !motionElegido) return avisar("Elige un estilo de la galería.", true);
     localStorage.setItem("canal", $("#nCanal").value.trim());
     const opciones = {}; for (const sel of document.querySelectorAll("[data-op]")) opciones[sel.dataset.op] = sel.value;
     const conVoz = !$("#nVoz") || $("#nVoz button.on").dataset.v === "si";
     const p = await api("/api/proyectos", "POST", { estilo: $("#nEstilo").value, idea, titulo: idea, conVoz, opciones, ...st });
     if ($("#nCanal").value.trim()) await api(`/api/proyectos/${p.id}`, "PATCH", { canal: $("#nCanal").value.trim() });
+    if (esMotion) { const c = (estiloDe("motion").catalogo || []).find((x) => x.id === motionElegido); await api(`/api/proyectos/${p.id}/brief`, "PUT", { estiloMotion: motionElegido, formato: st.formato, para: "Reels / TikTok", segundos: Math.round(c?.seg || 12), loop: false, textos: "", marca: "", medios: "ninguno, solo gráfico", notas: "" }); }
     S.proyectos = await api("/api/proyectos"); abrir(p.id);
   };
 }
