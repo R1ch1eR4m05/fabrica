@@ -18,7 +18,16 @@ const CONFIG_INICIAL = {
   descripcion: "Mamás hispanas (México y EE. UU.) con hijos de 3 a 10 años: rutinas, paciencia, culpa de mamá, tiempo de calidad, disciplina con amor.",
   redes: ["tiktok", "instagram"],
   cuentasTiktok: [],
-  cuentasInstagram: [],
+  cuentasInstagram: [
+    // disciplina positiva / dejar de gritar
+    "drbeckyatgoodinside", "biglittlefeelings", "dr.siggie", "themompsychologist", "transformingtoddlerhood", "destini.ann", "simplyonpurpose", "responsive_parenting", "janetlansbury", "unconditional_parenting",
+    // rutinas visuales e independencia (nicho exacto)
+    "busytoddler", "agnes.more.than.mom", "miss_crafty_mama", "parentingtranslator", "thrivinglittles",
+    // mentalidad de crecimiento, resiliencia, inteligencia emocional
+    "nurturedfirst", "biglifejournal", "biglifejournal.espanol", "doctorshefali", "instituteofchildpsych", "curious.parenting", "seed.and.sew", "resilientlittlehearts",
+    // armonía familiar
+    "gottmaninstitute", "happily.family",
+  ],
   hashtags: ["maternidad", "crianzarespetuosa", "frasesdemama", "mamaprimeriza", "crianzaconamor"],
   busquedas: ["frases para mamás", "reflexión maternidad"],
   dias: 45,
@@ -29,9 +38,12 @@ const CONFIG_INICIAL = {
 
 export function leerConfig() {
   if (!fs.existsSync(F_CONFIG)) fs.writeFileSync(F_CONFIG, JSON.stringify(CONFIG_INICIAL, null, 2));
-  return { ...CONFIG_INICIAL, ...JSON.parse(fs.readFileSync(F_CONFIG, "utf8")) };
+  const guardado = JSON.parse(fs.readFileSync(F_CONFIG, "utf8"));
+  // si nunca pusiste cuentas, se usan las de referencia sugeridas
+  for (const k of ["cuentasInstagram", "cuentasTiktok"]) if (Array.isArray(guardado[k]) && !guardado[k].length && !guardado.cuentasEditadas) delete guardado[k];
+  return { ...CONFIG_INICIAL, ...guardado };
 }
-export function guardarConfig(c) { fs.writeFileSync(F_CONFIG, JSON.stringify({ ...leerConfig(), ...c }, null, 2)); return leerConfig(); }
+export function guardarConfig(c) { fs.writeFileSync(F_CONFIG, JSON.stringify({ ...leerConfig(), ...c, cuentasEditadas: true }, null, 2)); return leerConfig(); }
 
 export function listarInvestigaciones() {
   return fs.readdirSync(DIR_INV).filter((f) => /^\d{4}-.*\.json$/.test(f) && !f.startsWith("datos-")).sort().reverse()
