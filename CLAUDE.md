@@ -54,6 +54,9 @@ Cuando Richie diga "investiga" o "dame frases virales":
 - Los informes llegan a `investigacion/informes/*.md` (pegados en el panel, soltados en `investigacion/entrada/` o enviados por n8n a `POST /api/investigacion/importar`).
 - Los que no terminan en `.hecho.md` están pendientes. Si Richie dice "convierte los informes pendientes": léelos, escribe la investigación en el formato de arriba (`"modo": "informe"`, `"fuente"`) y renombra el informe a `.hecho.md`.
 
+## "Vuelve a proponer" desde Claude Code (sin Gemini)
+Lee la investigación más reciente de `investigacion/` (o la que diga Richie) y su informe en `investigacion/informes/*.hecho.md` si lo hay. Escribe una investigación NUEVA en el mismo formato, con `estilo`, `porQueEstilo`, `idea` y los `cierres` de `investigacion/nicho.json` (tal cual, o vacío). Los estilos válidos salen de `node fabrica.js estilos` y de `estilos/motion/catalogo.json` (como `motion:<id>`).
+
 ## Propuestas del investigador y estilos
 - Cada propuesta lleva `estilo` (id exacto de un estilo listo, o `motion:<id del catálogo>` para motion graphics), `porQueEstilo` e `idea`. Elige el que mejor le queda al contenido; si todo son frases, todo va en `frases-desenfocado`.
 - Al crear el video desde una propuesta, `frases-desenfocado` usa la frase tal cual; los demás estilos escriben el guion con la IA siguiendo el GUION.md de ese estilo. Propuestas viejas sin `estilo` se hacen como frases. Los `motion:` quedan creados con su brief y esperan a "construye los motion pendientes".

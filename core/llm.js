@@ -30,11 +30,15 @@ export async function gemini(sistema, texto, { json = true, buscar = false } = {
           if (out.trim()) return { texto: out, fuentes, modelo };
           ultimo = `${modelo}: respuesta vacía`; continue;
         }
-        ultimo = `${modelo} → ${r.status}: ${(await r.text()).slice(0, 160)}`;
+        const cuerpoErr = await r.text();
+        ultimo = `${modelo} → ${r.status}: ${cuerpoErr.slice(0, 160)}`;
+        // se acabó la cuota del día de este modelo: reintentar solo gasta tiempo; pasa directo al siguiente modelo
+        if (r.status === 429 && /quota|exceeded/i.test(cuerpoErr)) break;
         if (![429, 500, 502, 503, 504].includes(r.status)) break;
       } catch (e) { ultimo = `${modelo}: ${e.message}`; }
     }
   }
+  if (/429/.test(ultimo) && /quota|exceeded/i.test(ultimo)) throw new Error("Se acabó la cuota gratis de Gemini de hoy (se reinicia a medianoche, hora del Pacífico). Mientras: pídeselo a Claude Code, o activa la facturación en Google AI Studio.");
   throw new Error(`Gemini no respondió (saturado o con error). Último: ${ultimo}`);
 }
 
