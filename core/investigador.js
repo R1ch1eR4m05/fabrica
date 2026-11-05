@@ -247,13 +247,23 @@ export function guardarInforme(texto, fuente = "informe") {
 
 export async function convertirInforme(nombre, fuente = "informe", avisar = () => {}) {
   const fecha = new Date().toISOString();
-  const texto = fs.readFileSync(path.join(DIR_INFORMES, nombre), "utf8");
+  const ruta = path.join(DIR_INFORMES, nombre);
+  if (!fs.existsSync(ruta)) throw new Error("Ese informe ya se convirtió.");
+  const texto = fs.readFileSync(ruta, "utf8");
   if (!hayIA()) return { pendiente: true, informe: `investigacion/informes/${nombre}` };
+  // candado: que nunca lo conviertan dos procesos a la vez (el panel y la orden de consola)
+  const candado = ruta + ".lock";
+  try { fs.writeFileSync(candado, String(process.pid), { flag: "wx" }); }
+  catch { if (Date.now() - fs.statSync(candado).mtimeMs < 15 * 60000) throw new Error("Ese informe ya se está convirtiendo."); fs.writeFileSync(candado, String(process.pid)); }
+  try { return await convertirConCandado(nombre, fuente, avisar, fecha, texto); } finally { fs.rmSync(candado, { force: true }); }
+}
+
+async function convertirConCandado(nombre, fuente, avisar, fecha, texto) {
   avisar({ progreso: 0.5, msg: `Convirtiendo el informe en propuestas (${CFG.geminiKey ? "Gemini" : "Claude"})…` });
   const cfg = leerConfig();
   const j = jsonDe(await pedirIA(sistemaDe(cfg), `Este es un informe de investigación de tendencias (${fuente}). Úsalo como base: saca los patrones y propón.\n\n${texto.slice(0, 120000)}`));
   const r = guardarResultado({ fecha, config: cfg, modo: "informe", fuente, informe: nombre, errores: [] }, j);
-  const f = path.join(DIR_INFORMES, nombre); fs.renameSync(f, f.replace(/\.md$/, ".hecho.md"));
+  const f = path.join(DIR_INFORMES, nombre); if (fs.existsSync(f)) fs.renameSync(f, f.replace(/\.md$/, ".hecho.md"));
   return r;
 }
 

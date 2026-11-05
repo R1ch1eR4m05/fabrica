@@ -68,6 +68,11 @@ async function main() {
       const r = await render(id, avisar); P.marcar(id, "render", "listo");
       console.log(`\nVideo listo en ${r.archivo} (${r.segundos} s)`); return;
     }
+    case "investigaciones": {
+      const INV = await import("./core/investigador.js");
+      for (const x of INV.listarInvestigaciones()) console.log(`${x.archivo}  ·  ${x.propuestas} propuestas  ·  ${x.modo}`);
+      return;
+    }
     case "convertir": {
       const INV = await import("./core/investigador.js");
       const pend = INV.informesPendientes();
@@ -75,7 +80,7 @@ async function main() {
       for (const n of pend) {
         console.log(`Convirtiendo ${n}…`);
         const t0 = Date.now();
-        const r = await INV.convertirInforme(n, n.replace(/^[\d-]+-/, "").replace(/\.md$/, ""), avisar);
+        let r; try { r = await INV.convertirInforme(n, n.replace(/^[\d-]+-/, "").replace(/\.md$/, ""), avisar); } catch (e) { console.log("  " + e.message); continue; }
         console.log(r.pendiente ? "\n  Sin IA configurada: queda pendiente." : `\n  Listo: ${r.propuestas} propuestas en ${Math.round((Date.now() - t0) / 1000)} s (${r.archivo})`);
       }
       return;
