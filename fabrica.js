@@ -9,6 +9,7 @@
 //   node fabrica.js fotos <id> [seg,seg,…]        saca fotogramas para revisar (proyectos/<id>/revision/)
 //   node fabrica.js render <id> [--formato 16:9]  saca el video final (también en listos/)
 //   node fabrica.js todo <id>                     voz + render
+//   node fabrica.js convertir                     convierte en propuestas los informes pendientes (Gemini o Claude)
 //   node fabrica.js recolectar                    junta y puntúa publicaciones virales (Apify) para que Claude Code las analice
 import path from "node:path";
 import { exec } from "node:child_process";
@@ -66,6 +67,18 @@ async function main() {
       const { render } = await import("./core/render.js");
       const r = await render(id, avisar); P.marcar(id, "render", "listo");
       console.log(`\nVideo listo en ${r.archivo} (${r.segundos} s)`); return;
+    }
+    case "convertir": {
+      const INV = await import("./core/investigador.js");
+      const pend = INV.informesPendientes();
+      if (!pend.length) { console.log("No hay informes pendientes."); return; }
+      for (const n of pend) {
+        console.log(`Convirtiendo ${n}…`);
+        const t0 = Date.now();
+        const r = await INV.convertirInforme(n, n.replace(/^[\d-]+-/, "").replace(/\.md$/, ""), avisar);
+        console.log(r.pendiente ? "\n  Sin IA configurada: queda pendiente." : `\n  Listo: ${r.propuestas} propuestas en ${Math.round((Date.now() - t0) / 1000)} s (${r.archivo})`);
+      }
+      return;
     }
     case "recolectar": {
       const { soloDatos } = await import("./core/investigador.js");
