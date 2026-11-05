@@ -34,7 +34,7 @@ export function leerConfig() {
 export function guardarConfig(c) { fs.writeFileSync(F_CONFIG, JSON.stringify({ ...leerConfig(), ...c }, null, 2)); return leerConfig(); }
 
 export function listarInvestigaciones() {
-  return fs.readdirSync(DIR_INV).filter((f) => /^\d{4}-.*\.json$/.test(f)).sort().reverse()
+  return fs.readdirSync(DIR_INV).filter((f) => /^\d{4}-.*\.json$/.test(f) && !f.startsWith("datos-")).sort().reverse()
     .map((f) => { const j = JSON.parse(fs.readFileSync(path.join(DIR_INV, f), "utf8")); return { archivo: f, fecha: j.fecha, modo: j.modo, propuestas: j.propuestas?.length || 0, analizadas: j.publicaciones?.length || 0 }; });
 }
 export const leerInvestigacion = (f) => JSON.parse(fs.readFileSync(path.join(DIR_INV, path.basename(f)), "utf8"));
@@ -111,6 +111,17 @@ async function imagenBase64(url) {
     const b = Buffer.from(await r.arrayBuffer());
     return b.length > 4.5e6 ? null : { type: "image", source: { type: "base64", media_type: tipo, data: b.toString("base64") } };
   } catch { return null; }
+}
+
+// Solo recolecta y puntúa (sin Claude). Lo usa Claude Code: `node fabrica.js recolectar`
+export async function soloDatos(avisar = () => {}) {
+  if (!CFG.apifyToken) throw new Error("Para recolectar métricas hace falta APIFY_TOKEN en el .env. Sin él, Claude Code puede investigar con búsqueda web.");
+  const cfg = leerConfig();
+  const { lista, errores } = await recolectar(cfg, avisar);
+  const ranking = lista.map(puntuar).sort((a, b) => b.puntaje - a.puntaje).slice(0, 40);
+  const archivo = `datos-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-")}.json`;
+  fs.writeFileSync(path.join(DIR_INV, archivo), JSON.stringify({ fecha: new Date().toISOString(), config: cfg, errores, publicaciones: ranking }, null, 2));
+  return { archivo: path.join("investigacion", archivo), total: lista.length };
 }
 
 // ---------------- análisis con Claude ----------------

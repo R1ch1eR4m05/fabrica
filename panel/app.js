@@ -329,7 +329,7 @@ async function investigador(archivo) {
   $("#main").innerHTML = `
     <h1>Investigador de virales</h1>
     <p class="sub">Revisa lo que está funcionando en tu nicho y te propone frases originales con su clip para Flow (9:16).</p>
-    ${!d.ia ? `<div class="nota">Necesita <code>ANTHROPIC_API_KEY</code> en el <code>.env</code>.</div>` : ""}
+    ${!d.ia ? `<div class="nota">Sin <code>ANTHROPIC_API_KEY</code> (que se cobra aparte), pídeselo a <b>Claude Code</b> en la carpeta de la fábrica: <code>investiga mi nicho y dame frases virales</code>. Usa tus métricas de Apify si las tienes y deja aquí el resultado; recarga esta página al terminar.</div>` : ""}
     ${!d.apify ? `<div class="nota">Sin <code>APIFY_TOKEN</code> investiga con búsqueda web: sirve, pero <b>sin métricas reales</b> (vistas, guardados, compartidos). Con Apify mide de verdad lo viral en TikTok e Instagram.</div>` : ""}
     <details class="card" ${inv ? "" : "open"} style="margin-bottom:16px"><summary style="cursor:pointer;font-weight:600">Tu nicho y fuentes</summary>
       <div class="fila" style="align-items:flex-start">

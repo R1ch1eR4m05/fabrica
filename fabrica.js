@@ -9,6 +9,7 @@
 //   node fabrica.js fotos <id> [seg,seg,…]        saca fotogramas para revisar (proyectos/<id>/revision/)
 //   node fabrica.js render <id> [--formato 16:9]  saca el video final (también en listos/)
 //   node fabrica.js todo <id>                     voz + render
+//   node fabrica.js recolectar                    junta y puntúa publicaciones virales (Apify) para que Claude Code las analice
 import path from "node:path";
 import { exec } from "node:child_process";
 import { CFG } from "./core/config.js";
@@ -65,6 +66,11 @@ async function main() {
       const { render } = await import("./core/render.js");
       const r = await render(id, avisar); P.marcar(id, "render", "listo");
       console.log(`\nVideo listo en ${r.archivo} (${r.segundos} s)`); return;
+    }
+    case "recolectar": {
+      const { soloDatos } = await import("./core/investigador.js");
+      const r = await soloDatos(avisar);
+      console.log(`\nListo: ${r.total} publicaciones. Las 40 mejores están en ${r.archivo}`); return;
     }
     default: console.log("Orden desconocida. Mira la cabecera de fabrica.js.");
   }
