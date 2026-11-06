@@ -53,7 +53,7 @@ export async function musicaIA(id, avisar = () => {}, { prompt, reusar, desdePan
   });
   if (!r.ok) {
     const err = (await r.text()).slice(0, 300);
-    if (/missing_permissions|music_generation/i.test(err)) throw new Error("Tu llave de ElevenLabs no tiene permiso de música. En elevenlabs.io → Developers → API Keys, edita la llave y activa \"Music Generation\" (no hace falta cambiar el .env).");
+    if (/missing_permissions|music_generation/i.test(err)) throw new Error("Tu llave de ElevenLabs no tiene permiso de música. En elevenlabs.io → Developers → API Keys, edita la llave y activa \"Music Generation\" (no hace falta cambiar el .env). Si usas otra llave nueva, ponla en el .env y reinicia la fábrica. Llave usada: …" + CFG.elevenKey.slice(-4) + ". Detalle: " + err.slice(0, 160));
     if (r.status === 401 || r.status === 403 || /plan|subscription|paid/i.test(err)) throw new Error(`ElevenLabs no dejó generar música (la música solo está en planes de pago): ${err}`);
     throw new Error(`ElevenLabs Music respondió ${r.status}: ${err}`);
   }
