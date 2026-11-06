@@ -27,6 +27,9 @@ Habla con Richie en español de México, directo y sin rodeos.
 ### "Escribe los guiones pendientes"
 `node fabrica.js guiones-pendientes` los lista (suelen ser los que el investigador creó cuando Gemini no respondió; la idea, el tema y el ángulo están en `proyecto.json` → `idea`). Escribe cada uno con el proceso de arriba, `node fabrica.js listo <id>`, y si Richie lo pide, hazlos completos con `node fabrica.js todo <id>`.
 
+### Copy para publicar (GHL)
+Cada video tiene `proyectos/<id>/copys.json` ({instagram, facebook, tiktok, youtube:{titulo, descripcion}}), editable en el panel. Si Richie pide el copy, escríbelo ahí: gancho en la primera línea, cierre solo de los autorizados, "Contenido creado con apoyo de IA." al final, 3-5 hashtags.
+
 ## Cuando pida un estilo nuevo
 Sigue ESTILOS.md: carpeta nueva con `estilo.json`, `GUION.md`, `plantilla.html` e `ideas.json`.
 Pruébalo con un proyecto de prueba y `node fabrica.js fotos`, en 9:16 y 16:9. Mira las imágenes y corrige lo que se encime o se salga del cuadro.

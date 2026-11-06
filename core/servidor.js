@@ -19,6 +19,7 @@ import * as ACT from "./actualizar.js";
 import { musicaIA, promptMusica } from "./musica.js";
 import { crearDesdePropuesta } from "./propuestas.js";
 import * as HIS from "./historia.js";
+import * as COPY from "./copy.js";
 
 let investigando = null;
 function correrInvestigacion() {
@@ -295,6 +296,12 @@ async function api(req, res, partes) {
     const esMotion = leerEstilo(p.estilo)?.tipo === "motion";
     encolar(id, "render", (av) => (esMotion ? MOT.renderMotion(id, av) : render(id, av)));
     return json(res, 200, { ok: true });
+  }
+  if (accion === "copys") { // copy por red para GHL
+    if (m === "GET") return json(res, 200, COPY.leerCopys(id));
+    if (m === "PUT") return json(res, 200, COPY.guardarCopys(id, await cuerpo(req)));
+    if (m === "POST") { try { return json(res, 200, await COPY.copysConIA(id)); } catch (e) { return json(res, 502, { error: e.message }); } }
+    if (m === "DELETE") { fs.rmSync(path.join(P.dirProyecto(id), "copys.json"), { force: true }); return json(res, 200, COPY.leerCopys(id)); }
   }
   if (accion === "subir" && m === "GET") {
     const g = P.leer(id, "guion.json");

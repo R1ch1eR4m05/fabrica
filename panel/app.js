@@ -245,14 +245,14 @@ function pintarProyecto() {
               <div class="barra oculto" id="bar-render"><div></div></div>
               ${p.tieneFinal ? `
                 <video controls src="/proyectos/${h(p.id)}/final.mp4?v=${Date.now()}"></video>
-                <div class="fila" style="margin:10px 0"><a class="btn peq" href="/proyectos/${h(p.id)}/final.mp4" download="${h(p.id)}.mp4">Descargar video</a><a class="btn peq" href="/proyectos/${h(p.id)}/portada.jpg" download="${h(p.id)}.jpg">Portada</a><button class="btn peq" id="copiar">Copiar texto para subir</button></div>
-                <pre class="subir" id="subir">…</pre>
+                <div class="fila" style="margin:10px 0"><a class="btn peq" href="/proyectos/${h(p.id)}/final.mp4" download="${h(p.id)}.mp4">Descargar video</a><a class="btn peq" href="/proyectos/${h(p.id)}/portada.jpg" download="${h(p.id)}.jpg">Portada</a></div>
                 <div class="estado">También queda guardado en la carpeta <b>listos</b>.</div>`
               : `<div class="estado">Cuando tengas la voz, revisa la vista previa y pulsa "Sacar el video".</div>`}
             </div>
           </div>
         </div></section>
       ${est?.musicaIA ? panelMusica(p, est) : ""}
+      ${p.tieneFinal ? panelCopys() : ""}
     </div>`;
 
   pintarEscenas();
@@ -286,10 +286,7 @@ function pintarProyecto() {
   if ($("#muGenerar")) eventosMusica(p, est);
   $("#rTodo").onclick = () => api(`/api/proyectos/${p.id}/todo`, "POST").catch((e) => avisar(e.message, true));
   $("#rHacer").onclick = () => api(`/api/proyectos/${p.id}/render`, "POST").catch((e) => avisar(e.message, true));
-  if ($("#copiar")) {
-    api(`/api/proyectos/${p.id}/subir`).then((t) => ($("#subir").textContent = t));
-    $("#copiar").onclick = () => navigator.clipboard.writeText($("#subir").textContent).then(() => avisar("Copiado."));
-  }
+  if (p.tieneFinal) cargarCopys(p);
   for (const k of Object.keys(PASOS)) if (S.progreso[p.id]?.[k]) mostrarProgreso(k, S.progreso[p.id][k]);
   if (p.guion) montarVista();
 }
@@ -354,6 +351,7 @@ function pintarMotion(p, est, ocupado) {
           : `<div class="estado">Cuando Claude Code termine, renderiza aquí (o él mismo te lo deja listo).</div>`}
         </div></section>
       ${est?.musicaIA ? panelMusica(p, est) : ""}
+      ${p.tieneFinal ? panelCopys() : ""}
     </div>`;
 
   for (const v of document.querySelectorAll(".mot video")) { const c = v.closest(".mot"); c.onmouseenter = () => v.play().catch(() => {}); c.onmouseleave = () => { v.pause(); }; }
@@ -376,6 +374,36 @@ function pintarMotion(p, est, ocupado) {
   for (const bt of document.querySelectorAll("#pFormato button")) bt.onclick = async () => { await api(`/api/proyectos/${p.id}`, "PATCH", { formato: bt.dataset.v }); abrir(p.id, { mantener: true }); };
   if (S.progreso[p.id]?.render) mostrarProgreso("render", S.progreso[p.id].render);
   if ($("#muGenerar")) eventosMusica(p, est);
+  if (p.tieneFinal) cargarCopys(p);
+}
+
+// ---------- copy para publicar (GoHighLevel) ----------
+const REDES_COPY = [["instagram", "Instagram"], ["facebook", "Facebook"], ["tiktok", "TikTok"]];
+function panelCopys() {
+  return `<section class="paso"><div class="cab"><div class="num listo">✎</div><div><h2>Copy para publicar</h2><div class="estado" id="cpEstado">Para pegar en GoHighLevel (Social Planner): un texto por red</div></div>
+      <div class="der"><button class="btn peq" id="cpIA" ${S.info.ia ? "" : "disabled title='Falta la llave de Gemini'"}>Mejorar con IA</button><button class="btn peq" id="cpGuardar">Guardar cambios</button><button class="mini" id="cpReset" title="Volver al texto armado con el guion">Restablecer</button></div></div>
+    <div class="cont"><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">
+      ${REDES_COPY.map(([k, n]) => `<div><div class="fila" style="justify-content:space-between"><label>${n}</label><button class="mini" data-cpcopiar="${k}">Copiar</button></div><textarea id="cp-${k}" style="min-height:170px;font-size:13.5px"></textarea><div class="estado" id="cpn-${k}"></div></div>`).join("")}
+      <div><div class="fila" style="justify-content:space-between"><label>YouTube Shorts · título</label><button class="mini" data-cpcopiar="yt-titulo">Copiar</button></div><input id="cp-yt-titulo">
+        <div class="fila" style="justify-content:space-between;margin-top:6px"><label>YouTube · descripción</label><button class="mini" data-cpcopiar="yt-desc">Copiar</button></div><textarea id="cp-yt-desc" style="min-height:110px;font-size:13.5px"></textarea></div>
+    </div></div></section>`;
+}
+async function cargarCopys(p) {
+  if (!$("#cp-instagram")) return;
+  const poner = (c) => {
+    for (const [k] of REDES_COPY) $("#cp-" + k).value = c[k] || "";
+    $("#cp-yt-titulo").value = c.youtube?.titulo || ""; $("#cp-yt-desc").value = c.youtube?.descripcion || "";
+    $("#cpEstado").textContent = c.hecho === "ia" ? "Escrito con IA (revísalo antes de publicar)" : c.editado ? "Editado por ti" : "Armado con el guion: dale \"Mejorar con IA\" para uno por red";
+    contar();
+  };
+  const contar = () => { const lim = { instagram: 2200, facebook: 63206, tiktok: 2200 }; for (const [k] of REDES_COPY) { const n = $("#cp-" + k).value.length; $("#cpn-" + k).textContent = `${n} caracteres${n > lim[k] ? " · demasiado largo" : ""}`; } };
+  const leerForm = () => ({ ...Object.fromEntries(REDES_COPY.map(([k]) => [k, $("#cp-" + k).value])), youtube: { titulo: $("#cp-yt-titulo").value, descripcion: $("#cp-yt-desc").value } });
+  poner(await api(`/api/proyectos/${p.id}/copys`));
+  for (const [k] of REDES_COPY) $("#cp-" + k).oninput = contar;
+  for (const b of document.querySelectorAll("[data-cpcopiar]")) b.onclick = () => navigator.clipboard.writeText($("#cp-" + b.dataset.cpcopiar).value).then(() => avisar("Copiado. Pégalo en GHL."));
+  $("#cpGuardar").onclick = async () => { poner(await api(`/api/proyectos/${p.id}/copys`, "PUT", leerForm())); avisar("Copy guardado."); };
+  $("#cpReset").onclick = async () => { if (confirm("¿Volver al texto armado con el guion? Se pierden tus cambios.")) poner(await api(`/api/proyectos/${p.id}/copys`, "DELETE")); };
+  $("#cpIA").onclick = async () => { $("#cpIA").disabled = true; $("#cpIA").textContent = "Escribiendo…"; try { poner(await api(`/api/proyectos/${p.id}/copys`, "POST")); } catch (e) { avisar(e.message, true); } $("#cpIA").disabled = false; $("#cpIA").textContent = "Mejorar con IA"; };
 }
 
 // ---------- historia con Flow: un clip por escena ----------
