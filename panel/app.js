@@ -351,7 +351,7 @@ function pintarMotion(p, est, ocupado) {
         <div class="cont">
           <div class="barra oculto" id="bar-render"><div></div></div>
           ${p.tieneFinal ? `<video controls src="/proyectos/${h(p.id)}/final.mp4?v=${Date.now()}" style="max-height:520px"></video>
-            <div class="fila" style="margin:10px 0"><a class="btn peq" href="/proyectos/${h(p.id)}/final.mp4" download="${h(p.id)}.mp4">Descargar video</a></div>`
+            <div class="fila" style="margin:10px 0"><a class="btn peq" href="/proyectos/${h(p.id)}/final.mp4" download="${h(p.id)}.mp4">Descargar video</a><button class="btn peq" id="mMezclar" title="Le pone la voz y la música (tuya, de ElevenLabs o de tu biblioteca) sin volver a renderizar">Poner audio (voz + música)</button></div>`
           : `<div class="estado">Cuando Claude Code termine, renderiza aquí (o él mismo te lo deja listo).</div>`}
         </div></section>
       ${est?.musicaIA ? panelMusica(p, est) : ""}
@@ -379,6 +379,7 @@ function pintarMotion(p, est, ocupado) {
   if (S.progreso[p.id]?.render) mostrarProgreso("render", S.progreso[p.id].render);
   if ($("#muGenerar")) eventosMusica(p, est);
   if (p.tieneFinal) cargarCopys(p);
+  if ($("#mMezclar")) $("#mMezclar").onclick = () => api(`/api/proyectos/${p.id}/remezclar`, "POST").then(() => avisar("Mezclando el audio…")).catch((e) => avisar(e.message, true));
   if ($("#mVoz")) $("#mVoz").onclick = async () => { await $("#mGuardar")?.onclick?.(); api(`/api/proyectos/${p.id}/voz-motion`, "POST").then(() => avisar("Haciendo la voz…")).catch((e) => avisar(e.message, true)); };
 }
 
