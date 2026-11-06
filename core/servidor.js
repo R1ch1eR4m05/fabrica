@@ -21,6 +21,7 @@ import { crearDesdePropuesta } from "./propuestas.js";
 import * as HIS from "./historia.js";
 import * as COPY from "./copy.js";
 import * as GHL from "./ghl.js";
+import { flowSkillListo, MODELOS_VIDEO, MODELOS_IMAGEN } from "./flowskill.js";
 import { leerAjustes, guardarAjustes, MODELOS_VOZ } from "./ajustes.js";
 
 let investigando = null;
@@ -93,7 +94,7 @@ async function api(req, res, partes) {
     catch (e) { return json(res, 502, { error: e.message }); }
   }
   if (recurso === "ajustes") {
-    if (m === "GET") return json(res, 200, { ...leerAjustes(), modelosVoz: MODELOS_VOZ, modeloVozEnv: CFG.elevenModelo });
+    if (m === "GET") return json(res, 200, { ...leerAjustes(), modelosVoz: MODELOS_VOZ, modeloVozEnv: CFG.elevenModelo, modelosFlowVideo: MODELOS_VIDEO, modelosFlowImagen: MODELOS_IMAGEN });
     if (m === "PUT") return json(res, 200, guardarAjustes(await cuerpo(req)));
   }
   if (recurso === "actualizacion") {
@@ -155,7 +156,7 @@ async function api(req, res, partes) {
   }
 
   if (recurso === "info") return json(res, 200, {
-    flow: await flowDisponible(), apify: !!CFG.apifyToken, ghl: GHL.ghlListo(),
+    flow: await flowDisponible(), flowSkill: flowSkillListo(), apify: !!CFG.apifyToken, ghl: GHL.ghlListo(),
     estilos: listarEstilos(), formatos: FORMATOS, efectos: EFECTOS,
     ia: INV.hayIA(), motorIA: CFG.anthropicKey ? "Claude" : CFG.geminiKey ? "Gemini" : null, voz: !!CFG.elevenKey, pexels: !!(CFG.pexelsKey || CFG.pixabayKey), gemini: !!CFG.geminiKey, apimart: !!CFG.apimartKey, trabajando: actual ? { id: actual.id, paso: actual.paso } : null,
   });
@@ -302,7 +303,7 @@ async function api(req, res, partes) {
   }
   if (accion === "clips" && m === "POST") { // historia: genera en Flow los clips que faltan
     const b = await cuerpo(req);
-    encolar(id, "fondo", (av) => HIS.clipsDeFlow(id, (a) => av({ ...a, paso: "fondo" }), { maxCreditos: Number(b.maxCreditos) || 25, soloFaltantes: b.todos !== true }));
+    encolar(id, "fondo", (av) => HIS.clipsDeFlow(id, (a) => av({ ...a, paso: "fondo" }), { maxCreditos: Number(b.maxCreditos) || 25, soloFaltantes: b.todos !== true, conCuadros: b.conCuadros !== false }));
     return json(res, 200, { ok: true });
   }
   if (accion === "voz-motion" && m === "POST") { encolar(id, "voz", (av) => MOT.vozMotion(id, av)); return json(res, 200, { ok: true }); }

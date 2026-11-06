@@ -26,7 +26,7 @@ async function cargar() {
     `<span class="chip ${S.info.voz ? "ok" : "am"}">${S.info.voz ? "Voz ElevenLabs ✓" : "Voz de prueba (sin llave)"}</span>`,
     `<span class="chip ${S.info.pexels ? "ok" : ""}">${S.info.pexels ? "Pexels ✓" : "Sin Pexels"}</span>`,
     `<span class="chip ${S.info.apify ? "ok" : ""}">${S.info.apify ? "Apify ✓" : "Sin Apify"}</span>`,
-    `<span class="chip ${S.info.flow ? "ok" : ""}" title="flow-mcp en ${location.hostname}:8787">${S.info.flow ? "Flow conectado ✓" : "Flow cerrado"}</span>`,
+    `<span class="chip ${S.info.flow ? "ok" : ""}" title="${S.info.flowSkill ? "Google Flow Skill (en esta compu)" : "flow-mcp en " + location.hostname + ":8787"}">${S.info.flowSkill ? "Flow (skill) ✓" : S.info.flow ? "Flow conectado ✓" : "Flow cerrado"}</span>`,
     `<span id="chipAct"></span>`,
   ].join("");
   pintarLista();
@@ -473,7 +473,9 @@ function panelClips(p) {
     <div class="barra oculto" id="bar-fondo"><div></div></div>
     <div class="fila" style="margin:8px 0">
       <button class="btn peq primario" id="cFlow" ${S.info.flow && faltan ? "" : "disabled"} title="${S.info.flow ? "Genera en Flow los que faltan" : "Abre Flow Studio (flow-mcp)"}">Generar en Flow los que faltan</button>
-      <span class="estado">Tope de créditos por clip</span><input id="cMax" type="number" value="25" min="1" style="width:80px">
+      ${S.info.flowSkill ? `<select id="cModelo" style="width:auto" title="Modelo de video de Flow (más caro = mejor)"></select>
+        <label class="estado" style="display:flex;gap:6px;align-items:center" title="Primero hace una imagen de los personajes y el primer cuadro de cada escena con ella; luego anima. Gasta un poco más pero la familia sale igual en todas."><input type="checkbox" id="cCuadros" style="width:auto" checked> personajes iguales (imagen → video)</label>`
+        : `<span class="estado">Tope de créditos por clip</span><input id="cMax" type="number" value="25" min="1" style="width:80px">`}
       ${S.info.flow ? "" : `<span class="estado">Flow cerrado: copia cada prompt, hazlo en Flow y súbelo aquí.</span>`}
     </div>
     <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(230px,1fr))">${cs.map((x) => `
@@ -485,7 +487,8 @@ function panelClips(p) {
   </div>`;
 }
 function eventosClips(p) {
-  if ($("#cFlow")) $("#cFlow").onclick = () => { if (confirm("Esto gasta créditos de tu cuenta de Flow (un clip por escena que falte) y usa automatización no oficial. ¿Seguir?")) api(`/api/proyectos/${p.id}/clips`, "POST", { maxCreditos: $("#cMax").value }).catch((e) => avisar(e.message, true)); };
+  if ($("#cModelo")) api("/api/ajustes").then((a) => { $("#cModelo").innerHTML = a.modelosFlowVideo.map((m) => `<option ${m === (a.flowVideo || "Veo 3.1 - Lite") ? "selected" : ""}>${h(m)}</option>`).join(""); $("#cModelo").onchange = () => api("/api/ajustes", "PUT", { flowVideo: $("#cModelo").value }); });
+  if ($("#cFlow")) $("#cFlow").onclick = () => { if (confirm("Esto gasta créditos de tu cuenta de Flow (un clip por escena que falte, más las imágenes si dejas 'personajes iguales') y usa automatización no oficial de la página de Flow. ¿Seguir?")) api(`/api/proyectos/${p.id}/clips`, "POST", { maxCreditos: $("#cMax")?.value, conCuadros: $("#cCuadros") ? $("#cCuadros").checked : true }).catch((e) => avisar(e.message, true)); };
   for (const b of document.querySelectorAll("[data-csub]")) b.onclick = () => subir(p.id, `clip&n=${b.dataset.csub}`, "video/*,image/*");
   for (const b of document.querySelectorAll("[data-cdel]")) b.onclick = async () => { await api(`/api/proyectos/${p.id}/archivo?tipo=clip&n=${b.dataset.cdel}`, "DELETE"); abrir(p.id, { mantener: true }); };
   for (const b of document.querySelectorAll("[data-cprom]")) b.onclick = () => { const g = S.guion || {}, e = g.escenas?.[b.dataset.cprom - 1] || {};

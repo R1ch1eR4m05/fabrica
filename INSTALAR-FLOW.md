@@ -1,3 +1,14 @@
+# Google Flow en la fábrica
+
+## Opción recomendada: Google Flow Skill (en tu laptop)
+Repositorio: https://github.com/BRPLia/google-flow-skill-v1 (MIT). Maneja Flow en tu Chrome y descarga los clips solo.
+1. En PowerShell: `cd C:\Users\jr_ra` y `git clone https://github.com/BRPLia/google-flow-skill-v1 flow-skill`
+2. `cd flow-skill` → `python setup.py` → `python flow.py login` (se abre Chrome: entra con tu cuenta de Google y cierra cuando veas Flow).
+3. En `C:\Users\jr_ra\fabrica\.env`: `FLOW_SKILL_DIR=C:\Users\jr_ra\flow-skill` y reinicia la fábrica. El aviso de arriba dirá "Flow (skill) ✓".
+4. En Historia con Flow: "Generar en Flow los que faltan" (con "personajes iguales" hace imagen de personajes → cuadro por escena → video).
+Gasta créditos de Flow. Automatiza la página de Flow: puede romperse si Google la cambia y puede ir contra sus términos.
+
+## Opción anterior: flow-mcp
 # Conectar Google Flow (flow-mcp) — opcional
 
 flow-mcp (https://github.com/GTAI-1/flow-mcp, licencia ISC) abre su propio Chrome con tu sesión de Google y maneja Flow por ti.

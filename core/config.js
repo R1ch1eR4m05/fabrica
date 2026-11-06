@@ -37,6 +37,7 @@ export const CFG = {
   geminiModelos: (e.GEMINI_MODEL || "gemini-flash-latest,gemini-flash-lite-latest,gemini-2.5-flash").split(",").map((x) => x.trim()).filter(Boolean),
   apimartKey: e.APIMART_API_KEY || "",
   apifyToken: e.APIFY_TOKEN || "",
+  flowSkillDir: e.FLOW_SKILL_DIR || "", python: e.PYTHON || "",
   ghlToken: e.GHL_TOKEN || "", ghlLocation: e.GHL_LOCATION_ID || "", ghlUsuario: e.GHL_USER_ID || "",
   flowUrl: (e.FLOW_MCP_URL || "http://127.0.0.1:8787").replace(/\/$/, ""),
   hilos: Math.max(1, Number(e.RENDER_HILOS || Math.min(4, os.cpus().length))),

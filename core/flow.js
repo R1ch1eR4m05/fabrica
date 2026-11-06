@@ -6,6 +6,7 @@ import path from "node:path";
 import { CFG } from "./config.js";
 import { dirProyecto, leer, guardar } from "./proyectos.js";
 import { prepararFondo } from "./fondos.js";
+import { flowSkillListo, lote } from "./flowskill.js";
 
 export async function llamar(metodo, datos, ms = 60000) {
   const r = await fetch(`${CFG.flowUrl}/api/${metodo}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(datos || {}), signal: AbortSignal.timeout(ms) });
@@ -15,11 +16,22 @@ export async function llamar(metodo, datos, ms = 60000) {
 }
 
 export async function flowDisponible() {
+  if (flowSkillListo()) return true;
   try { const r = await fetch(`${CFG.flowUrl}/api/health`, { signal: AbortSignal.timeout(1200) }); return r.ok; } catch { return false; }
 }
 
 // Genera un clip con el prompt, lo descarga y lo deja como fondo del proyecto
 export async function clipDeFlow(id, prompt, avisar = () => {}, { maxCreditos = 25, modelo } = {}) {
+  if (flowSkillListo()) { // con Google Flow Skill: un trabajo de video y se deja como fondo
+    avisar({ msg: "Pidiendo el clip a Flow (skill)…", progreso: 0.05 });
+    const { archivos, fallos } = await lote(id, `fondo-${Date.now()}`, [{ type: "video", name: "fondo", prompt }], avisar);
+    if (!archivos.fondo) throw new Error("Flow no entregó el clip: " + fallos.join(" | "));
+    const dir = dirProyecto(id);
+    for (const n of fs.readdirSync(dir)) if (n.startsWith("fondo-propio.")) fs.rmSync(path.join(dir, n));
+    fs.copyFileSync(archivos.fondo, path.join(dir, "fondo-propio" + path.extname(archivos.fondo).toLowerCase()));
+    const pr = leer(id, "proyecto.json"); pr.flowPrompt = prompt; guardar(id, "proyecto.json", pr);
+    return prepararFondo(id, avisar);
+  }
   if (!(await flowDisponible())) throw new Error("No encuentro flow-mcp abierto. Abre 'Flow Studio' (o 'npm run studio' en su carpeta) y vuelve a intentar.");
   const p = leer(id, "proyecto.json");
   const escena = { prompt, type: "video", aspect_ratio: p.formato === "16:9" ? "16:9" : "9:16", max_credits: maxCreditos, retries: 1 };

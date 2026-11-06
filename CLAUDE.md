@@ -40,6 +40,9 @@ Si el estilo ya existía como "pronto", quítale `"estado": "pronto"`.
 - Las dos versiones de un video (Instagram/Facebook y TikTok/YouTube) son el mismo proyecto con la opción Cierre distinta; la voz del cierre de TikTok va en `vozTT`.
 - Piezas 3D literales a la medida (Three.js) no caben en el estilo: hazlas aparte con el patrón de `referencia/video-3d_*.html` (`renderAt(t)`) y storyboard aprobado antes.
 
+## Google Flow Skill (clips de Flow en la laptop)
+Si `FLOW_SKILL_DIR` está en el .env, la fábrica usa esa skill (https://github.com/BRPLia/google-flow-skill-v1) para Flow: fondos de Frases y clips de Historia (imagen de personajes → cuadro por escena → video). Tú también puedes usarla directo con `python flow.py batch <lote.json>` desde esa carpeta, siguiendo su SKILL.md. Gasta créditos de Flow: no la uses sin que Richie lo pida.
+
 ## Historia con Flow (`historia-flow`)
 - Guion según `estilos/historia-flow/GUION.md`: `estiloVisual` y `personajes` (inglés, iguales para todas las escenas) y en cada escena `voz`, `texto` opcional, `flowPrompt` (inglés) y `buscar`.
 - Clips: `proyectos/<id>/clips/escena-N.mp4` (el panel los sube o los genera en Flow con "Generar en Flow los que faltan"). Si flow-mcp está conectado como MCP y Richie lo autoriza, puedes generarlos tú y guardarlos ahí con ese nombre. Sin clip, la escena usa Pexels (`buscar`) o un dibujo animado.
