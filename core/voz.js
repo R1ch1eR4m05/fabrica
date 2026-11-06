@@ -18,12 +18,18 @@ function palabrasCon(texto) {
 
 // si el modelo del .env no existe (p. ej. un nombre mal escrito), se usa el estable y se avisa una vez
 let modeloBueno = null;
+// "eleven_multilingual_v4" no existe: la versión 4 se llama "eleven_v4"
+const modeloPedido = () => String(CFG.elevenModelo).replace(/^eleven_multilingual_v(3|4)$/, "eleven_v$1");
+// v3 y v4 no aceptan previous_text/next_text (esos solo sirven en v2 y flash): sin ellos cada escena va sola
+const esNuevo = (m) => /^eleven_v[3-9]/.test(m);
 async function ttsEscena(voz, texto, anterior, siguiente, salida) {
-  let r = await pedirTTS(voz, texto, anterior, siguiente, modeloBueno || CFG.elevenModelo);
+  const m = modeloBueno || modeloPedido();
+  let r = await pedirTTS(voz, texto, esNuevo(m) ? null : anterior, esNuevo(m) ? null : siguiente, m);
+  if (r.status === 400 && !esNuevo(m) && /previous_text|next_text/i.test(await r.clone().text())) r = await pedirTTS(voz, texto, null, null, m);
   if (r.status === 400 && !modeloBueno) {
     const t = await r.clone().text();
-    if (/model_not_found|model with model id/i.test(t) && CFG.elevenModelo !== "eleven_multilingual_v2") {
-      console.warn(`ElevenLabs: el modelo "${CFG.elevenModelo}" no existe; uso eleven_multilingual_v2. Corrige ELEVENLABS_MODEL en el .env.`);
+    if (/model_not_found|model with model id/i.test(t) && m !== "eleven_multilingual_v2") {
+      console.warn(`ElevenLabs: el modelo "${m}" no existe o tu cuenta no lo tiene; uso eleven_multilingual_v2. Revisa ELEVENLABS_MODEL en el .env.`);
       modeloBueno = "eleven_multilingual_v2";
       r = await pedirTTS(voz, texto, anterior, siguiente, modeloBueno);
     }
