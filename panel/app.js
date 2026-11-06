@@ -386,6 +386,7 @@ function panelCopys() {
       ${REDES_COPY.map(([k, n]) => `<div><div class="fila" style="justify-content:space-between"><label>${n}</label><button class="mini" data-cpcopiar="${k}">Copiar</button></div><textarea id="cp-${k}" style="min-height:170px;font-size:13.5px"></textarea><div class="estado" id="cpn-${k}"></div></div>`).join("")}
       <div><div class="fila" style="justify-content:space-between"><label>YouTube Shorts · título</label><button class="mini" data-cpcopiar="yt-titulo">Copiar</button></div><input id="cp-yt-titulo">
         <div class="fila" style="justify-content:space-between;margin-top:6px"><label>YouTube · descripción</label><button class="mini" data-cpcopiar="yt-desc">Copiar</button></div><textarea id="cp-yt-desc" style="min-height:110px;font-size:13.5px"></textarea></div>
+      <div style="grid-column:1/-1;border-top:1px dashed var(--b);padding-top:12px" id="ghlCaja"></div>
     </div></div></section>`;
 }
 async function cargarCopys(p) {
@@ -403,7 +404,34 @@ async function cargarCopys(p) {
   for (const b of document.querySelectorAll("[data-cpcopiar]")) b.onclick = () => navigator.clipboard.writeText($("#cp-" + b.dataset.cpcopiar).value).then(() => avisar("Copiado. Pégalo en GHL."));
   $("#cpGuardar").onclick = async () => { poner(await api(`/api/proyectos/${p.id}/copys`, "PUT", leerForm())); avisar("Copy guardado."); };
   $("#cpReset").onclick = async () => { if (confirm("¿Volver al texto armado con el guion? Se pierden tus cambios.")) poner(await api(`/api/proyectos/${p.id}/copys`, "DELETE")); };
+  pintarGHL(p, leerForm, async () => { await api(`/api/proyectos/${p.id}/copys`, "PUT", leerForm()); });
   $("#cpIA").onclick = async () => { $("#cpIA").disabled = true; $("#cpIA").textContent = "Escribiendo…"; try { poner(await api(`/api/proyectos/${p.id}/copys`, "POST")); } catch (e) { avisar(e.message, true); } $("#cpIA").disabled = false; $("#cpIA").textContent = "Mejorar con IA"; };
+}
+
+async function pintarGHL(p, leerForm, guardarAntes) {
+  const caja = $("#ghlCaja"); if (!caja) return;
+  const prog = (p.ghl?.programados || []).slice(-6).reverse();
+  const hechos = prog.length ? `<div class="estado" style="margin-top:6px">Ya programado: ${prog.map((x) => `${h(x.plataforma)} · ${new Date(x.fecha).toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" })}`).join(" | ")}</div>` : "";
+  if (!S.info.ghl) { caja.innerHTML = `<b>Programar en GoHighLevel</b><div class="estado">Para programarlo desde aquí, pon <code>GHL_TOKEN</code> y <code>GHL_LOCATION_ID</code> en el .env (cómo sacarlos: .env.example) y reinicia la fábrica. Mientras, copia y pega cada texto en el Social Planner.</div>${hechos}`; return; }
+  caja.innerHTML = `<b>Programar en GoHighLevel</b> <span class="estado" id="ghlEst">cargando tus cuentas…</span>${hechos}`;
+  let cs; try { cs = await api("/api/ghl/cuentas"); } catch (e) { $("#ghlEst").textContent = e.message; return; }
+  const guardadas = JSON.parse(localStorage.getItem("ghlCuentas") || "[]");
+  const manana = new Date(Date.now() + 864e5); manana.setHours(19, 0, 0, 0);
+  const local = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 16);
+  caja.innerHTML = `<b>Programar en GoHighLevel</b> <span class="estado">un post por red, cada uno con su texto de arriba</span>${hechos}
+    <div class="fila" style="margin:8px 0;flex-wrap:wrap">${cs.length ? cs.map((a) => `<label class="estado" style="display:flex;gap:6px;align-items:center;${a.caducada ? "opacity:.5" : ""}"><input type="checkbox" value="${h(a.id)}" data-ghlc style="width:auto" ${guardadas.includes(a.id) && !a.caducada ? "checked" : ""} ${a.caducada ? "disabled title='Reconéctala en GHL'" : ""}>${h(a.plataforma)} · ${h(a.nombre)}</label>`).join("") : `<span class="estado">No hay redes conectadas en el Social Planner de esa subcuenta.</span>`}</div>
+    <div class="fila"><label class="estado">Cuándo</label><input type="datetime-local" id="ghlFecha" value="${local(manana)}" style="width:auto"><button class="btn primario peq" id="ghlIr" ${cs.length ? "" : "disabled"}>Programar en GHL</button></div>`;
+  $("#ghlIr").onclick = async () => {
+    const ids = [...document.querySelectorAll("[data-ghlc]:checked")].map((x) => x.value);
+    if (!ids.length) return avisar("Elige al menos una red.", true);
+    const f = new Date($("#ghlFecha").value);
+    const redes = cs.filter((a) => ids.includes(a.id)).map((a) => a.plataforma).join(", ");
+    if (!confirm(`Se programará este video en: ${redes}\nEl ${f.toLocaleString("es-MX", { dateStyle: "full", timeStyle: "short" })}\ncon el texto de cada red tal como está arriba. ¿Seguir?`)) return;
+    localStorage.setItem("ghlCuentas", JSON.stringify(ids));
+    $("#ghlIr").disabled = true; $("#ghlIr").textContent = "Subiendo y programando…";
+    try { await guardarAntes(); const r = await api(`/api/proyectos/${p.id}/ghl`, "POST", { cuentas: ids, fecha: f.toISOString() }); avisar(`Listo: programado en ${r.programados.map((x) => x.plataforma).join(", ")}. Revísalo en el Social Planner de GHL.`); abrir(p.id, { mantener: true }); }
+    catch (e) { avisar(e.message, true); $("#ghlIr").disabled = false; $("#ghlIr").textContent = "Programar en GHL"; }
+  };
 }
 
 // ---------- historia con Flow: un clip por escena ----------

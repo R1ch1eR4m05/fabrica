@@ -20,6 +20,7 @@ import { musicaIA, promptMusica } from "./musica.js";
 import { crearDesdePropuesta } from "./propuestas.js";
 import * as HIS from "./historia.js";
 import * as COPY from "./copy.js";
+import * as GHL from "./ghl.js";
 
 let investigando = null;
 function correrInvestigacion() {
@@ -86,6 +87,10 @@ async function api(req, res, partes) {
   const [, , recurso, id, accion] = partes; // /api/<recurso>/<id>/<accion>
   const m = req.method;
 
+  if (recurso === "ghl" && id === "cuentas" && m === "GET") {
+    try { return json(res, 200, await GHL.cuentas({ forzar: new URL(req.url, "http://x").searchParams.has("forzar") })); }
+    catch (e) { return json(res, 502, { error: e.message }); }
+  }
   if (recurso === "actualizacion") {
     if (m === "GET") return json(res, 200, await ACT.hayNovedad({ forzar: id === "revisar" }));
     if (m === "POST") {
@@ -145,7 +150,7 @@ async function api(req, res, partes) {
   }
 
   if (recurso === "info") return json(res, 200, {
-    flow: await flowDisponible(), apify: !!CFG.apifyToken,
+    flow: await flowDisponible(), apify: !!CFG.apifyToken, ghl: GHL.ghlListo(),
     estilos: listarEstilos(), formatos: FORMATOS, efectos: EFECTOS,
     ia: INV.hayIA(), motorIA: CFG.anthropicKey ? "Claude" : CFG.geminiKey ? "Gemini" : null, voz: !!CFG.elevenKey, pexels: !!(CFG.pexelsKey || CFG.pixabayKey), gemini: !!CFG.geminiKey, apimart: !!CFG.apimartKey, trabajando: actual ? { id: actual.id, paso: actual.paso } : null,
   });
@@ -296,6 +301,11 @@ async function api(req, res, partes) {
     const esMotion = leerEstilo(p.estilo)?.tipo === "motion";
     encolar(id, "render", (av) => (esMotion ? MOT.renderMotion(id, av) : render(id, av)));
     return json(res, 200, { ok: true });
+  }
+  if (accion === "ghl" && m === "POST") { // programar en el Social Planner de GHL
+    const b = await cuerpo(req);
+    try { return json(res, 200, { ok: true, programados: await GHL.programar(id, { cuentasIds: b.cuentas || [], fecha: b.fecha }) }); }
+    catch (e) { return json(res, 502, { error: e.message }); }
   }
   if (accion === "copys") { // copy por red para GHL
     if (m === "GET") return json(res, 200, COPY.leerCopys(id));
