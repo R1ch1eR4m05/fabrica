@@ -16,16 +16,32 @@ function palabrasCon(texto) {
   return out;
 }
 
+// si el modelo del .env no existe (p. ej. un nombre mal escrito), se usa el estable y se avisa una vez
+let modeloBueno = null;
 async function ttsEscena(voz, texto, anterior, siguiente, salida) {
-  const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voz}/with-timestamps?output_format=mp3_44100_128`, {
+  let r = await pedirTTS(voz, texto, anterior, siguiente, modeloBueno || CFG.elevenModelo);
+  if (r.status === 400 && !modeloBueno) {
+    const t = await r.clone().text();
+    if (/model_not_found|model with model id/i.test(t) && CFG.elevenModelo !== "eleven_multilingual_v2") {
+      console.warn(`ElevenLabs: el modelo "${CFG.elevenModelo}" no existe; uso eleven_multilingual_v2. Corrige ELEVENLABS_MODEL en el .env.`);
+      modeloBueno = "eleven_multilingual_v2";
+      r = await pedirTTS(voz, texto, anterior, siguiente, modeloBueno);
+    }
+  }
+  return terminarTTS(r, salida);
+}
+async function pedirTTS(voz, texto, anterior, siguiente, modelo) {
+  return fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voz}/with-timestamps?output_format=mp3_44100_128`, {
     method: "POST",
     headers: { "xi-api-key": CFG.elevenKey, "content-type": "application/json" },
     body: JSON.stringify({
-      text: texto, model_id: CFG.elevenModelo,
+      text: texto, model_id: modelo,
       previous_text: anterior || undefined, next_text: siguiente || undefined,
       voice_settings: { stability: 0.5, similarity_boost: 0.8, style: 0.2, speed: 1.0 },
     }),
   });
+}
+async function terminarTTS(r, salida) {
   if (!r.ok) throw new Error(`ElevenLabs respondió ${r.status}: ${(await r.text()).slice(0, 300)}`);
   const j = await r.json();
   fs.writeFileSync(salida, Buffer.from(j.audio_base64, "base64"));
