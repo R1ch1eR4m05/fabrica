@@ -19,7 +19,9 @@ Cada escena es una frase corta (6 a 18 palabras) con lo que pasa en el mapa en e
   - `centro`: [lon, lat] y `zoom` (1 = mundo, 4 = país grande, 7 = ciudad) para una vista exacta. `acercar`: +0.5 para acercarse más.
   - `estados`: ["MEX"] para dibujar las divisiones de estados de ese país.
   - `etiquetas`: [{ "texto": "Estrecho de Gibraltar", "en": [-5.6, 36.0] }, { "en": "Ceuta" }]. Con `"etiquetas": false` no rotula lo resaltado.
-  - `ruta`: { "puntos": ["Acapulco", "Manila"], "icono": "barco" | "avion" | "coche", "km": 14500 (opcional) }. `seguir`: true para que la cámara siga la punta.
+  - `ruta`: { "puntos": ["Acapulco", "Manila"], "icono": "barco" | "avion" | "coche", "km": 14500 (opcional) }. Con avión o barco la cámara se acerca y sigue la punta y al final se aleja para ver la ruta entera (`"seguir": false` para no seguirla).
+    **Ciudades:** usa el nombre en inglés (Mexico City, Tokyo, New York) o mejor un punto exacto: `{"nombre": "Ciudad de México", "lon": -99.13, "lat": 19.43}`. Si un lugar no se encuentra, la ruta sale vacía (0 km).
+  - `flechas`: [{ "de": "MEX", "a": "JPN", "texto": "la línea recta", "color": "#f5c518", "curva": 0.25, "punteada": true }] flechas animadas que se dibujan solas; úsalas para comparar caminos o señalar.
   - `comparar`: { "pais": "MEX", "a": "DEU" } mueve México, con su tamaño real, encima de Alemania. "a" también acepta [lon, lat].
   Si una escena no trae `mapa`, la cámara se queda donde estaba.
 - `banderas`: [{ "pais": "ESP", "cara": "enojado" | "feliz" | "triste" | "sorprendido" | "neutral", "mira": "GBR" }]. Salen sobre su país (si se ve) o arriba en fila. Úsalas en 2-4 escenas, no en todas.
@@ -28,4 +30,5 @@ Cada escena es una frase corta (6 a 18 palabras) con lo que pasa en el mapa en e
 ## Reglas
 - Cada dato histórico (fechas, tratados, cifras, km²) verificado en 2 fuentes fiables, listadas en "fuentes".
 - El `titulo` del guion sale arriba todo el video: la pregunta-gancho en 4-8 palabras.
-- Cambia de encuadre casi en cada escena: el movimiento es lo que retiene.
+- Cambia de encuadre casi en cada escena: el movimiento es lo que retiene. Usa `zoom` 4-7 para acercarte a lo importante; el mundo entero solo en 1-2 escenas.
+- En vertical el mapa siempre llena la pantalla: si quieres ver dos lugares muy lejanos a la vez, usa una ruta o flechas y deja que la cámara viaje.

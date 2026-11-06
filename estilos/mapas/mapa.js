@@ -61,6 +61,21 @@
   function radioDe(f) { const b = d3.geoBounds(f); let dl = b[1][0] - b[0][0]; if (dl < 0) dl += 360; return Math.max(dl, b[1][1] - b[0][1]) / 2; }
   function codigoA2(a3) { for (const k in G.nombres) if (G.nombres[k].a3 === a3) return G.nombres[k].a2; return null; }
 
+  // nombres en español de ciudades que en los datos vienen en inglés
+  const ALIAS = Object.fromEntries(Object.entries({
+    "ciudad de mexico": "Mexico City", "cdmx": "Mexico City", "df": "Mexico City", "tokio": "Tokyo", "nueva york": "New York", "londres": "London", "pekin": "Beijing", "beijing": "Beijing",
+    "moscu": "Moscow", "seul": "Seoul", "el cairo": "Cairo", "estambul": "Istanbul", "ginebra": "Geneva", "atenas": "Athens", "roma": "Rome", "paris": "Paris", "berlin": "Berlin", "viena": "Vienna",
+    "varsovia": "Warsaw", "praga": "Prague", "lisboa": "Lisbon", "copenhague": "Copenhagen", "estocolmo": "Stockholm", "bruselas": "Brussels", "amsterdam": "Amsterdam", "zurich": "Zurich",
+    "munich": "Munich", "milan": "Milan", "napoles": "Naples", "florencia": "Florence", "venecia": "Venice", "marsella": "Marseille", "sevilla": "Seville", "la habana": "Havana",
+    "nueva orleans": "New Orleans", "filadelfia": "Philadelphia", "los angeles": "Los Angeles", "san francisco": "San Francisco", "san diego": "San Diego", "miami": "Miami",
+    "washington": "Washington, D.C.", "montreal": "Montréal", "toronto": "Toronto", "vancouver": "Vancouver", "sao paulo": "São Paulo", "rio de janeiro": "Rio de Janeiro",
+    "bogota": "Bogota", "lima": "Lima", "santiago de chile": "Santiago", "buenos aires": "Buenos Aires", "nueva delhi": "New Delhi", "bombay": "Mumbai", "singapur": "Singapore",
+    "hong kong": "Hong Kong", "shanghai": "Shanghai", "sidney": "Sydney", "sydney": "Sydney", "melbourne": "Melbourne", "dubai": "Dubai", "la meca": "Mecca", "jerusalen": "Jerusalem",
+    "teheran": "Tehran", "bagdad": "Baghdad", "manila": "Manila", "yakarta": "Jakarta", "bangkok": "Bangkok", "hanoi": "Hanoi", "anchorage": "Anchorage", "honolulu": "Honolulu",
+    "reikiavik": "Reykjavík", "ciudad del cabo": "Cape Town", "johannesburgo": "Johannesburg", "nairobi": "Nairobi", "lagos": "Lagos", "monterrey": "Monterrey", "guadalajara": "Guadalajara",
+    "tijuana": "Tijuana", "cancun": "Cancún", "morelia": "Morelia", "acapulco": "Acapulco", "veracruz": "Veracruz", "merida": "Mérida", "puebla": "Puebla", "oaxaca": "Oaxaca",
+  }).map(([k, v]) => [k, v]));
+
   // "MEX", "MX-MIC", "Gibraltar", "Michoacán", [lon, lat]  →  { tipo, f?, punto, nombre }
   function buscar(ref) {
     if (!ref) return null;
@@ -72,7 +87,9 @@
     const n = norm(s);
     const pais = G.paises10.find((f) => norm(f.nombre) === n || norm(f.properties?.name) === n);
     if (pais) return { tipo: "pais", f: pais, punto: pais.centro, nombre: pais.nombre };
-    const lugar = G.lugares.filter((l) => norm(l.properties.name) === n || norm(l.properties.nameascii) === n).sort((a, b) => b.properties.pop_max - a.properties.pop_max)[0];
+    const n2 = ALIAS[n] ? norm(ALIAS[n]) : n;
+    let lugar = G.lugares.filter((l) => norm(l.properties.name) === n2 || norm(l.properties.nameascii) === n2).sort((a, b) => b.properties.pop_max - a.properties.pop_max)[0];
+    if (!lugar && n2.length > 4) lugar = G.lugares.filter((l) => norm(l.properties.nameascii).startsWith(n2) || n2.startsWith(norm(l.properties.nameascii) + " ")).sort((a, b) => b.properties.pop_max - a.properties.pop_max)[0];
     if (lugar) return { tipo: "ciudad", punto: lugar.geometry.coordinates, nombre: lugar.properties.name };
     const est = G.estados.find((f) => norm(f.nombre) === n || norm(f.properties.name) === n);
     if (est) return { tipo: "estado", f: est, punto: est.centro, nombre: est.nombre };
@@ -142,6 +159,17 @@
     });
   }
 
+  // el mundo mide 256·2^zoom px de alto: en vertical (1920 px) hace falta zoom ≥ ~2.9 para que no queden franjas vacías
+  function llenarPantalla(cam) {
+    const zMin = Math.log2(M.H / 256) + 0.05;
+    if (cam.zoom < zMin) cam.zoom = zMin;
+    const mundo = 256 * Math.pow(2, cam.zoom), yLat = (lat) => mundo * (0.5 - Math.log(Math.tan(Math.PI / 4 + (lat * RAD) / 2)) / TAU);
+    const latDe = (y) => (2 * Math.atan(Math.exp((0.5 - y / mundo) * TAU)) - Math.PI / 2) / RAD;
+    const y = Math.max(M.H / 2, Math.min(mundo - M.H / 2, yLat(cam.lat)));
+    cam.lat = latDe(y);
+    return cam;
+  }
+
   function camaraEn(t) {
     const i = M.escenaEn(t), k = camaras[i];
     const sig = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
@@ -156,13 +184,21 @@
       const dip = Math.max(0, zMin - Math.min(zMin, zLejos));
       cam = { lon: c[0], lat: c[1], zoom: M.lerp(k.desde.zoom, k.cam.zoom, e) - dip * Math.sin(Math.PI * e) };
     }
-    // acercamiento lento mientras se queda quieta
+    // acercamiento lento mientras se queda quieta (más marcado: el movimiento retiene)
     const quieto = Math.max(0, t - (k.ini + k.dur));
-    cam.zoom += Math.min(0.22, quieto * 0.03);
+    cam.zoom += Math.min(0.5, quieto * 0.07);
+    // "golpe" de acercamiento en los datos
+    const esc = M.guion.escenas[i];
+    if (esc.tipo === "dato" || esc.tipo === "gancho") cam.zoom += 0.35 * M.suave(M.clamp((t - k.ini - k.dur) / 0.6));
     // seguir la punta de una ruta
     const m = M.guion.escenas[i].mapa || {};
-    if (m.ruta && m.seguir) { const tip = puntaRuta(i, t); if (tip) { const e2 = M.suave(M.clamp((t - k.ini - k.dur) / 0.8)); cam.lon = M.lerp(cam.lon, tip[0], e2); cam.lat = M.lerp(cam.lat, tip[1], e2); } }
-    return cam;
+    // con avión o barco, la cámara se acerca y sigue la punta; al final se aleja para ver la ruta completa
+    if (m.ruta && (m.seguir ?? true)) { const tip = puntaRuta(i, t); if (tip) {
+      const a = avanceRuta(i, t), ida = M.suave(M.clamp((t - k.ini - k.dur) / 0.8)), vuelta = M.suave(M.clamp((a - 0.85) / 0.15));
+      const e2 = ida * (1 - vuelta);
+      cam.lon = M.lerp(cam.lon, tip[0], e2); cam.lat = M.lerp(cam.lat, tip[1], e2); cam.zoom += 0.9 * e2;
+    } }
+    return llenarPantalla(cam);
   }
 
   // ---------------- satélite (teselas EOX, preparadas con antelación) ----------------
@@ -366,7 +402,10 @@
       c.beginPath(); pts.forEach((q, j) => (j ? c.lineTo(q[0], q[1]) : c.moveTo(q[0], q[1])));
       c.strokeStyle = r.color; c.lineWidth = 8 * u; c.lineCap = "round"; c.lineJoin = "round"; c.stroke();
       const a = pts[pts.length - 1], b = pts[Math.max(0, pts.length - 4)];
-      icono(c, r.icono, a[0], a[1], Math.atan2(a[1] - b[1], a[0] - b[0]), 74 * u, r.color);
+      // estela brillante detrás
+      c.save(); c.globalAlpha = 0.35; c.beginPath(); pts.slice(-14).forEach((q, j) => (j ? c.lineTo(q[0], q[1]) : c.moveTo(q[0], q[1]))); c.strokeStyle = "#fff"; c.lineWidth = 16 * u; c.stroke(); c.restore();
+      c.save(); c.shadowColor = "rgba(0,0,0,0.55)"; c.shadowBlur = 24 * u; c.shadowOffsetY = 14 * u;
+      icono(c, r.icono, a[0], a[1], Math.atan2(a[1] - b[1], a[0] - b[0]), 118 * u, r.color); c.restore();
     }
     return { km: Math.round(r.km * k), total: r.km, k };
   }
@@ -459,6 +498,12 @@
       } else p = [p[0], p[1] - w * 0.55];
       return { bb, p, w };
     });
+    // separarlas si se enciman, y que no se salgan de la pantalla
+    for (let vuelta = 0; vuelta < 6; vuelta++) for (let a = 0; a < posiciones.length; a++) for (let b = a + 1; b < posiciones.length; b++) {
+      const A = posiciones[a], B = posiciones[b], dx = B.p[0] - A.p[0], dy = B.p[1] - A.p[1], min = (A.w + B.w) * 0.56;
+      if (Math.abs(dx) < min && Math.abs(dy) < (A.w + B.w) * 0.4) { const em = (min - Math.abs(dx)) / 2 + 1, s = dx >= 0 ? 1 : -1; A.p = [A.p[0] - s * em, A.p[1]]; B.p = [B.p[0] + s * em, B.p[1]]; }
+    }
+    for (const P of posiciones) P.p = [Math.max(P.w * 0.6, Math.min(M.W - P.w * 0.6, P.p[0])), P.p[1]];
     posiciones.forEach(({ bb, p, w }, j) => {
       const otro = posiciones[bb.mira != null ? lista.findIndex((x) => (x.pais || x) === bb.mira) : (j + 1) % posiciones.length];
       bandera(c, String(bb.pais).toUpperCase(), p[0], p[1], w, t, te.ini + 0.3 + j * 0.25, { cara: bb.cara || "feliz", mira: otro && otro !== posiciones[j] ? otro.p : null });
@@ -477,5 +522,26 @@
     }
   }
 
-  window.MAPA = { cargar, camaraEn, dibujarMapa, etiquetas, dibujarRuta, dibujarComparar, dibujarBanderas, dibujarPegatinas, cargarTeselas, dibujarTeselas, teselasNecesarias, look: () => look, LOOK: () => LOOK, textura: () => textura };
+  // ---------------- flechas: "flechas": [{ "de": "MEX", "a": "JPN", "texto": "la recta", "color": "#f5c518", "curva": 0.25 }] ----------------
+  function dibujarFlechas(c, t, proj, i, te) {
+    const lista = [].concat(M.guion.escenas[i].flechas || []); const u = M.u;
+    lista.forEach((f, j) => {
+      const A = buscar(f.de), B = buscar(f.a); if (!A || !B) return;
+      const p = proj(A.punto), q = proj(B.punto); if (!p || !q) return;
+      const k = M.suave(M.clamp((t - te.ini - 0.4 - j * 0.5) / 0.8)); if (k <= 0) return;
+      const mx = (p[0] + q[0]) / 2, my = (p[1] + q[1]) / 2, dx = q[0] - p[0], dy = q[1] - p[1], L = Math.hypot(dx, dy) || 1;
+      const cu = f.curva ?? 0.25, cx = mx - (dy / L) * L * cu, cy = my + (dx / L) * L * cu;
+      const pt = (s) => [(1 - s) * (1 - s) * p[0] + 2 * (1 - s) * s * cx + s * s * q[0], (1 - s) * (1 - s) * p[1] + 2 * (1 - s) * s * cy + s * s * q[1]];
+      const col = f.color || "#f5c518";
+      c.save(); c.lineCap = "round"; c.lineJoin = "round";
+      c.beginPath(); for (let s = 0; s <= k + 1e-6; s += 0.02) { const z = pt(Math.min(s, k)); s ? c.lineTo(z[0], z[1]) : c.moveTo(z[0], z[1]); }
+      c.strokeStyle = "rgba(0,0,0,0.55)"; c.lineWidth = 16 * u; c.stroke(); c.strokeStyle = col; c.lineWidth = 9 * u; if (f.punteada) c.setLineDash([18 * u, 14 * u]); c.stroke(); c.setLineDash([]);
+      const z1 = pt(k), z0 = pt(Math.max(0, k - 0.04)), ang = Math.atan2(z1[1] - z0[1], z1[0] - z0[0]), cab = 34 * u;
+      c.translate(z1[0], z1[1]); c.rotate(ang); c.beginPath(); c.moveTo(cab * 0.6, 0); c.lineTo(-cab * 0.6, -cab * 0.55); c.lineTo(-cab * 0.35, 0); c.lineTo(-cab * 0.6, cab * 0.55); c.closePath();
+      c.fillStyle = col; c.strokeStyle = "rgba(0,0,0,0.6)"; c.lineWidth = 4 * u; c.stroke(); c.fill(); c.restore();
+      if (f.texto && k > 0.6) { const m = pt(0.5); etiqueta(c, f.texto, m[0], m[1] - 30 * u, { tam: 40, alfa: M.clamp((k - 0.6) / 0.3) }); }
+    });
+  }
+
+  window.MAPA = { cargar, dibujarFlechas, camaraEn, dibujarMapa, etiquetas, dibujarRuta, dibujarComparar, dibujarBanderas, dibujarPegatinas, cargarTeselas, dibujarTeselas, teselasNecesarias, look: () => look, LOOK: () => LOOK, textura: () => textura };
 })();

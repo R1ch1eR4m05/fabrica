@@ -26,6 +26,7 @@ Motor.iniciar({
     const proj = MAPA.dibujarMapa(c, t, cam, i, te);
     MAPA.dibujarComparar(c, t, proj, i, te);
     const ruta = MAPA.dibujarRuta(c, t, proj, i);
+    MAPA.dibujarFlechas(c, t, proj, i, te);
     MAPA.etiquetas(c, t, proj, i, te);
     MAPA.dibujarPegatinas(c, t, proj, i, te);
     MAPA.dibujarBanderas(c, t, proj, i, te);

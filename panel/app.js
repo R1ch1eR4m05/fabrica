@@ -231,6 +231,7 @@ function pintarProyecto() {
           <div class="fila" style="margin-bottom:10px">
             ${est?.vozOpcional ? `<div class="seg" id="vModo"><button data-v="si" class="${p.conVoz !== false ? "on" : ""}">Con voz</button><button data-v="no" class="${p.conVoz === false ? "on" : ""}">Solo música</button></div>` : ""}
             ${p.conVoz !== false ? `<input id="vId" placeholder="ID de voz de ElevenLabs para este video (opcional)" value="${h(p.vozId || "")}" style="max-width:380px">` : ""}
+            ${p.conVoz !== false && S.info.voz ? `<button class="mini" id="vTodos" title="Guarda el ID de voz de arriba como la voz de todos los videos de este estilo">Usar esta voz en todos los de ${h(est?.nombre || "este estilo")}</button>` : ""}
             ${p.conVoz !== false && S.info.voz ? `<select id="vModelo" title="Modelo de voz para todos los videos" style="max-width:340px"><option>Modelo de voz…</option></select>` : ""}
           </div>
           ${p.conVoz !== false && !S.info.voz ? `<div class="nota">Sin llave de ElevenLabs se genera una <b>voz de prueba muda</b> con tiempos estimados, para ensayar el video. Pon <code>ELEVENLABS_API_KEY</code> y <code>ELEVENLABS_VOICE_ID</code> en el <code>.env</code> para la voz real.${est?.vozSugerida ? "<br>Voz sugerida: " + h(est.vozSugerida) : ""}</div>` : ""}
@@ -286,7 +287,9 @@ function pintarProyecto() {
   if ($("#gGuardar")) $("#gGuardar").onclick = guardarGuion;
   for (const sel of document.querySelectorAll("[data-pop]")) sel.onchange = async () => { await api(`/api/proyectos/${p.id}`, "PATCH", { opciones: { [sel.dataset.pop]: sel.value } }); abrir(p.id, { mantener: true }); };
   for (const b of document.querySelectorAll("#vModo button")) b.onclick = async () => { await api(`/api/proyectos/${p.id}`, "PATCH", { conVoz: b.dataset.v === "si" }); abrir(p.id, { mantener: true }); };
+  if ($("#vTodos")) $("#vTodos").onclick = async () => { const v = $("#vId").value.trim(); if (!v) return avisar("Pega primero el ID de la voz (ElevenLabs → Voices → ⋯ → Copy voice ID).", true); await api("/api/ajustes", "PUT", { vozPorEstilo: { [p.estilo]: v } }); avisar(`Listo: los videos de ${est?.nombre} usarán esa voz.`); };
   if ($("#vModelo")) api("/api/ajustes").then((a) => {
+    if ($("#vId") && !$("#vId").value && a.vozPorEstilo?.[p.estilo]) $("#vId").placeholder = `Voz del estilo: ${a.vozPorEstilo[p.estilo]} (pon otra solo para este video)`;
     const actual = a.modeloVoz || String(a.modeloVozEnv).replace(/^eleven_multilingual_v(3|4)$/, "eleven_v$1");
     $("#vModelo").innerHTML = Object.entries(a.modelosVoz).map(([k, n]) => `<option value="${h(k)}" ${k === actual ? "selected" : ""}>Voz: ${h(n)}</option>`).join("");
     $("#vModelo").onchange = async () => { await api("/api/ajustes", "PUT", { modeloVoz: $("#vModelo").value }); avisar("Modelo de voz guardado para todos los videos. Dale \"Rehacer voz\" para oírlo."); };

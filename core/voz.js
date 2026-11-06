@@ -63,7 +63,7 @@ export async function hacerVoz(id, avisar = () => {}) {
   const pausaBase = (estilo.pausaEntreEscenas ?? 0.5) / ({ rapido: 1.35, pausado: 0.78 }[(proyecto.opciones || {}).ritmo] || 1);
   const dir = dirProyecto(id);
   const tmp = path.join(dir, "_voz"); fs.rmSync(tmp, { recursive: true, force: true }); fs.mkdirSync(tmp);
-  const vozId = proyecto.vozId || vozDeEstilo(estilo.id);
+  const vozId = proyecto.vozId || leerAjustes().vozPorEstilo?.[estilo.id] || vozDeEstilo(estilo.id);
   const sinVoz = proyecto.conVoz === false;          // el usuario eligió video sin voz (solo música)
   const prueba = sinVoz || !(CFG.elevenKey && vozId);
   // ritmo del texto cuando va sin voz: Normal / Rápido / Pausado (opción del proyecto)

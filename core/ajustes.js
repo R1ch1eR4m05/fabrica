@@ -9,6 +9,7 @@ export function leerAjustes() { try { return JSON.parse(fs.readFileSync(F, "utf8
 export function guardarAjustes(cambios) {
   const a = { ...leerAjustes(), ...cambios };
   if (a.modeloVoz && !MODELOS_VOZ[a.modeloVoz]) delete a.modeloVoz;
+  if (cambios.vozPorEstilo) a.vozPorEstilo = { ...(leerAjustes().vozPorEstilo || {}), ...cambios.vozPorEstilo };
   fs.writeFileSync(F, JSON.stringify(a, null, 2));
   return a;
 }
