@@ -96,7 +96,8 @@ async function main() {
       let sinCrear = [];
       if (ultima) {
         const inv = INV.leerInvestigacion(ultima.archivo);
-        const hechas = new Set(ps.filter((p) => p.desdeInvestigacion?.archivo === ultima.archivo).map((p) => p.desdeInvestigacion.n));
+        const base = (a) => String(a || "").split(/[\\/]/).pop(); // "investigacion/x.json" y "x.json" son la misma
+        const hechas = new Set(ps.filter((p) => base(p.desdeInvestigacion?.archivo) === base(ultima.archivo)).map((p) => p.desdeInvestigacion.n));
         sinCrear = (inv.propuestas || []).filter((x) => !hechas.has(x.n) && (x.viral ?? (x.inspiradaEn || []).length > 0)).map((x) => ({ n: x.n, estilo: x.estilo || "frases-desenfocado", tema: x.tema || x.frase }));
       }
       const lin = (t, l, f) => console.log(`\n${t} (${l.length})` + (l.length ? "\n" + l.map(f).join("\n") : ""));
