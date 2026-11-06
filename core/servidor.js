@@ -263,7 +263,12 @@ async function api(req, res, partes) {
     const b = await cuerpo(req).catch(() => ({}));
     const est = leerEstilo(p.estilo);
     if (est?.tipo === "motion") { // se construye en Claude Code; si ya está construido, se renderiza
-      if (!MOT.estadoMotion(id).construido) return json(res, 200, { ok: true, motionPendiente: true });
+      if (!MOT.estadoMotion(id).construido) {
+        // primero la voz (si hay narración y llave), para que Claude Code anime al ritmo de la voz
+        const vozEnCamino = !!(p.motion?.narracion?.trim() && !p.motionVoz && CFG.elevenKey);
+        if (vozEnCamino) encolar(id, "voz", (av) => MOT.vozMotion(id, av));
+        return json(res, 200, { ok: true, motionPendiente: true, vozEnCamino });
+      }
       encolar(id, "render", (av) => MOT.renderMotion(id, av)); return json(res, 200, { ok: true });
     }
     // fondo con Google Flow antes de la voz (solo si lo pidieron, hay prompt y Flow está abierto; si falla, sigue con Pexels)

@@ -122,7 +122,7 @@ export async function terminar(id) {
     const D = await duracion(limpio), fade = `afade=t=out:st=${Math.max(0, D - 1.5).toFixed(2)}:d=1.5`;
     const ent = ["-i", limpio], fil = [];
     let k = 1;
-    if (musica) { ent.push("-stream_loop", "-1", "-i", path.join(dir, musica)); fil.push(`[${k}:a]atrim=0:${D.toFixed(2)},volume=${voz ? 0.16 : 0.9},${fade}[m]`); k++; }
+    if (musica) { ent.push("-stream_loop", "-1", "-i", path.join(dir, musica)); fil.push(`[${k}:a]atrim=0:${D.toFixed(2)},loudnorm=I=-16:TP=-1.5:LRA=11,aresample=48000,volume=${voz ? 0.16 : 0.9},${fade}[m]`); k++; }
     if (voz) { ent.push("-i", voz); fil.push(`[${k}:a]apad,atrim=0:${D.toFixed(2)},volume=1.0[v]`); }
     const sal = musica && voz ? `${fil.join(";")};[m][v]amix=inputs=2:duration=first:normalize=0[a]` : `${fil[0].replace(/\[(m|v)\]$/, "[a]")}`;
     await ffmpeg([...ent, "-filter_complex", sal, "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-t", D.toFixed(2), final]);

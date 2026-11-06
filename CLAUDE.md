@@ -20,7 +20,7 @@ Habla con Richie en español de México, directo y sin rodeos.
 1. `node fabrica.js pendientes` muestra todo lo que falta, en 4 grupos.
 2. **Propuestas sin crear** de la última investigación: `node fabrica.js crear-propuesta <archivo> <n> --sin-ia` por cada una (crea el proyecto en su estilo; frases ya sale con guion).
 3. **Videos sin guion**: escribe cada guion (sección de abajo) y `node fabrica.js listo <id>`.
-4. **Motion graphics sin construir**: construye cada uno (sección Motion graphics). Si Richie dijo "sin preguntarme", sáltate las aprobaciones y revisa tú los fotogramas.
+4. **Motion graphics sin construir**: si salen en "necesitan voz", primero `node fabrica.js voz-motion <id>` (gasta voz de ElevenLabs, es parte normal del video); luego construye cada uno al ritmo de `tiempos.json` (sección Motion graphics). Si Richie dijo "sin preguntarme", sáltate las aprobaciones y revisa tú los fotogramas.
 5. **Con guion pero sin video (o con error)**: `node fabrica.js todo <id>` (voz + video). Si hay error, léelo y arréglalo antes de reintentar.
 6. Al final, `node fabrica.js pendientes` otra vez y dile a Richie qué quedó listo (en `listos/`) y qué no y por qué. No gastes créditos de Flow ni de música de ElevenLabs sin que él lo pida.
 

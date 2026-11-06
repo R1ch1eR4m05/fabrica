@@ -297,7 +297,7 @@ function pintarMotion(p, est, ocupado) {
   const b = p.motion || {}, me = p.motionEstado || {}, cat = est.catalogo || [];
   const sel = b.estiloMotion || "";
   const familias = [...new Set(cat.map((c) => c.familia))];
-  const cmd = `construye el motion de ${p.id}`;
+  const cmd = "haz los pendientes";
   $("#main").innerHTML = `
     <div class="fila" style="justify-content:space-between">
       <div style="flex:1;min-width:260px"><input id="pTitulo" value="${h(p.titulo)}" style="font-size:20px;font-weight:700;background:none;border-color:transparent;padding-left:0"></div>
@@ -341,7 +341,7 @@ function pintarMotion(p, est, ocupado) {
       <section class="paso">${pasoCab(2, "voz", "Construir con Claude Code")}
         <div class="cont">
           ${!me.brief ? `<div class="estado">Primero elige el estilo y guarda el brief.</div>` : `
-          <p class="estado" style="margin-top:0">Cada pieza se diseña a mano (por eso queda de estudio). Abre <b>Claude Code</b> en la carpeta de la fábrica en tu laptop (mejor con Opus) y escríbele:</p>
+          ${b.narracion?.trim() && !p.motionVoz ? `<p class="estado" style="margin-top:0;color:var(--am)"><b>Primero la voz:</b> dale "Hacer la voz" en el brief (arriba). Cuando esté, pídele a Claude Code los pendientes.</p>` : `<p class="estado" style="margin-top:0">${p.motionVoz ? "<b style='color:var(--ok)'>✓ La voz ya está.</b> " : ""}Ya puede construirse. Abre <b>Claude Code</b> en la carpeta de la fábrica en tu laptop y escríbele:</p>`}
           <div class="fila"><code style="background:var(--f);border:1px solid var(--b);padding:8px 12px;border-radius:8px">${h(cmd)}</code><button class="btn peq" id="mCopiar">Copiar</button></div>
           <p class="estado">Te va a enseñar tarjetas y fotogramas para aprobar antes de renderizar. ${me.construido ? "<b style='color:var(--ok)'>✓ Ya está construido.</b>" : "Todavía no está construido."}</p>
           ${me.frames?.length ? `<div class="fila">${me.frames.slice(0, 6).map((f) => `<img src="/${h(f)}" style="height:140px;border-radius:8px;border:1px solid var(--b)">`).join("")}</div>` : ""}`}
@@ -724,7 +724,7 @@ async function investigador(archivo) {
       catch (e) { fallos.push(`#${pr.n}: ${e.message}`); }
     }
     S.proyectos = await api("/api/proyectos"); pintarLista();
-    avisar(`Quedaron en fila ${ok} de ${virales.length}. Míralos en la lista de la izquierda.${motion ? ` ${motion} motion graphics esperan a Claude Code: dile "construye los motion pendientes".` : ""}${sinGuion ? ` ${sinGuion} quedaron creados sin guion (Gemini no respondió): dile a Claude Code "escribe los guiones pendientes".` : ""}${fallos.length ? " No se pudo: " + fallos.join(" | ") : ""}`, !!fallos.length);
+    avisar(`Quedaron en fila ${ok} de ${virales.length}. Míralos en la lista de la izquierda.${motion ? ` ${motion} motion graphics: la fábrica les hace la voz primero; cuando termine, dile a Claude Code "haz los pendientes".` : ""}${sinGuion ? ` ${sinGuion} quedaron creados sin guion (Gemini no respondió): dile a Claude Code "escribe los guiones pendientes".` : ""}${fallos.length ? " No se pudo: " + fallos.join(" | ") : ""}`, !!fallos.length);
   };
   if ($("#iRehacer")) $("#iRehacer").onclick = async () => { await $("#iGuardar").onclick(); api(`/api/investigacion/${archivo}/reproponer`, "POST").then(() => avisar("Volviendo a proponer… (aparecen aquí solas)")).catch((e) => avisar(e.message, true)); };
   if ($("#iHist")) $("#iHist").onchange = (e) => investigador(e.target.value);
@@ -734,7 +734,7 @@ async function investigador(archivo) {
     try {
       const p = await api(`/api/investigacion/${archivo}/crear`, "POST", { n: Number(b.dataset.crear ?? b.dataset.hacer), formato: "9:16", canal: localStorage.getItem("canal") || "" });
       if (p.guionPendiente) avisar(`Creado sin guion (${p.aviso}). En Claude Code di: escribe el guion de ${p.id}`, true);
-      else if (hacer && !(await hacerTodo(p.id))) avisar(`Brief listo. En Claude Code di: construye los motion pendientes`);
+      else if (hacer && !(await hacerTodo(p.id))) avisar(`Brief listo. La fábrica está haciendo la voz; cuando termine (punto de voz en verde), dile a Claude Code: haz los pendientes`);
       S.proyectos = await api("/api/proyectos"); S.vista = null; abrir(p.id);
     } catch (e) { avisar(e.message, true); b.disabled = false; b.textContent = hacer ? "Crear y hacer 9:16" : "Solo crear"; }
   };

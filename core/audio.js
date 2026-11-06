@@ -88,7 +88,9 @@ export async function mezclar({ estilo, guion, tiempos, voz, salida, tmp, dirPro
   if (amb && fs.existsSync(amb)) {
     entradas.push("-stream_loop", "-1", "-i", amb);
     const vol = (propia || deBiblioteca) ? (tiempos.sinVoz ? s.volumenMusicaSinVoz ?? 0.9 : s.volumenMusica ?? 0.16) : ((tiempos.sinVoz ? s.volumenSinVoz : null) ?? s.volumenAmbiente ?? 0.35);
-    filtros.push(`[${n}]atrim=0:${D.toFixed(2)},volume=${vol},afade=t=out:st=${Math.max(0, D - 3).toFixed(2)}:d=3[v${n}]`);
+    // las pistas reales vienen a volúmenes muy distintos (de -7 a -18 LUFS): se igualan antes de bajarlas
+    const iguala = propia || deBiblioteca ? "loudnorm=I=-16:TP=-1.5:LRA=11,aresample=48000," : "";
+    filtros.push(`[${n}]atrim=0:${D.toFixed(2)},${iguala}volume=${vol},afade=t=out:st=${Math.max(0, D - 3).toFixed(2)}:d=3[v${n}]`);
     etiquetas.push(`[v${n}]`); n++;
   }
 

@@ -11,6 +11,7 @@
 //   node fabrica.js todo <id>                     voz + render
 //   node fabrica.js pendientes                    (Claude Code) TODO lo que falta: propuestas sin crear, guiones, motion y videos sin sacar
 //   node fabrica.js crear-propuesta <archivo> <n> [--sin-ia]   crea el video de una propuesta del investigador
+//   node fabrica.js voz-motion <id>               voz en off de un motion (narración del brief)
 //   node fabrica.js guiones-pendientes            (Claude Code) lista los videos que esperan guion
 //   node fabrica.js motion-pendientes             (Claude Code) lista los motion graphics con brief que faltan por construir
 //   node fabrica.js listo-motion <id>             (Claude Code) marca terminado un motion graphics y lo copia a listos/
@@ -89,6 +90,7 @@ async function main() {
       const ps = P.listarProyectos();
       const sinGuion = ps.filter((p) => p.estilo !== "motion" && p.estado?.guion !== "listo");
       const motion = ps.filter((p) => p.estilo === "motion" && p.motion?.estiloMotion && p.estado?.render !== "listo" && !MOT.estadoMotion(p.id).construido);
+      const sinVozM = motion.filter((p) => p.motion?.narracion?.trim() && !p.motionVoz);
       const sinVideo = ps.filter((p) => p.estilo !== "motion" && p.estado?.guion === "listo" && p.estado?.render !== "listo" && !["trabajando", "en-fila"].includes(p.estado?.render));
       const ultima = INV.listarInvestigaciones()[0];
       let sinCrear = [];
@@ -100,7 +102,8 @@ async function main() {
       const lin = (t, l, f) => console.log(`\n${t} (${l.length})` + (l.length ? "\n" + l.map(f).join("\n") : ""));
       lin(`Propuestas sin crear de ${ultima?.archivo || "(ninguna investigación)"}`, sinCrear, (x) => `  #${x.n} · ${x.estilo} · ${x.tema}`);
       lin("Videos sin guion", sinGuion, (p) => `  ${p.id} · ${p.estilo} · ${p.titulo}`);
-      lin("Motion graphics sin construir", motion, (p) => `  ${p.id} · ${p.motion.estiloMotion} · ${p.titulo}`);
+      lin("Motion que necesitan voz antes de construir (node fabrica.js voz-motion <id>)", sinVozM, (p) => `  ${p.id} · ${p.titulo}`);
+      lin("Motion graphics sin construir", motion, (p) => `  ${p.id} · ${p.motion.estiloMotion} · ${p.titulo}${p.motionVoz ? " · con voz (" + p.motionVoz.duracion.toFixed(1) + " s)" : ""}`);
       lin("Con guion pero sin video (o con error)", sinVideo, (p) => `  ${p.id} · ${p.estilo} · voz ${p.estado.voz} · video ${p.estado.render}${p.error ? " · error: " + p.error : ""}`);
       return;
     }
@@ -108,6 +111,12 @@ async function main() {
       const { crearDesdePropuesta } = await import("./core/propuestas.js");
       const r = await crearDesdePropuesta(libres[0], Number(libres[1]), { formato: opc("formato", "9:16"), sinIA: args.includes("--sin-ia") });
       console.log(`${r.id}  ·  ${r.estilo}${r.guionPendiente ? "  ·  SIN GUION: escríbelo tú" : r.estilo === "motion" ? "  ·  brief listo: constrúyelo" : "  ·  guion listo"}`);
+      return;
+    }
+    case "voz-motion": { // node fabrica.js voz-motion <id>: voz en off del motion (narración del brief) con sus tiempos
+      const MOT = await import("./core/motion.js");
+      const r = await MOT.vozMotion(libres[0], (a) => a.msg && console.log(a.msg));
+      console.log(`Voz lista: ${r.duracion.toFixed(1)} s. Tiempos en proyectos/${libres[0]}/tiempos.json`);
       return;
     }
     case "guiones-pendientes": {
