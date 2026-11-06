@@ -56,6 +56,9 @@ La skill vive en `motion/` (claude-video, MIT, textos en portugués; tú hablas 
 5. Render final con `bash motion/scripts/render.sh proyectos/<id>/motion/proj proyectos/<id>/final.mp4 high` y luego `node fabrica.js listo-motion <id>` (lo copia a `listos/`).
 Requisitos en la laptop: Node 22+, ffmpeg, Python 3 y Git Bash (`bash motion/scripts/checar.sh` lo revisa).
 
+### Motion con voz
+Si el brief trae **Voz en off**, la pieza se sincroniza con `proyectos/<id>/tiempos.json` (una escena por línea de narración; cada palabra con su tiempo): dura lo que la voz + 1 s, cada escena entra cuando empieza su línea y la palabra clave aparece cuando se dice. No metas el audio en el render: `listo-motion` mezcla voz y música. Si el brief trae narración pero aún no hay voz, pídele a Richie que le dé "Hacer la voz" en el panel antes de construir.
+
 ### "Construye los motion pendientes"
 `node fabrica.js motion-pendientes` lista los que dejó el investigador con su brief. Constrúyelos uno por uno con el proceso de arriba.
 Si Richie dice que los hagas sin preguntarle, puedes saltarte las aprobaciones: revisa tú mismo tarjetas y fotogramas, corrige lo que se encime y renderiza. No gastes créditos de Flow sin su permiso.

@@ -20,6 +20,7 @@ export async function crearDesdePropuesta(archivo, n, b = {}) {
         MOT.guardarBrief(p.id, { estiloMotion: c.id, formato: b.formato || "9:16", para: "Reels / TikTok", segundos: Math.max(15, Math.round(c.seg || 15)), // en Reels: 15-25 s para que haya gancho, desarrollo y remate loop: false,
           textos: [...(prop.beats?.length ? prop.beats : [prop.frase]).map((x) => String(x).replace(/\*/g, "")), INV.cierreValido(prop.cierre)].filter(Boolean).join("\n"),
           marca: /levania/i.test(cfg.nombre) ? "Levania: rosa #C4837A, salvia #8FA58A, crema #F6EEE4, tinta #3D3230. Tipografías Cormorant Garamond (títulos) y Jost (texto). Logo: estilos/render-datos/marca/levania_logo.png" : cfg.marca || "",
+          narracion: (prop.beats?.length ? prop.beats : [prop.frase]).map((x) => String(x).replace(/\*/g, "")).join("\n"),
           medios: "ninguno, solo gráfico", notas: [prop.idea, prop.porque, prop.adaptacion && `Adaptación: ${prop.adaptacion}`,
             (prop.inspiradaEn || []).length ? `Inspiración (míralas antes de diseñar; copia el ritmo y la estructura, nunca el texto): ${prop.inspiradaEn.join(" · ")}` : "Sin publicación de referencia: es una hipótesis, diseña con las reglas de Reels.",
             "REGLAS DE REEL: el primer cuadro ya trae el gancho en letra grande; algo cambia cada 1.5 s en los primeros 6 s y luego cada 2-3 s; cada momento de 'Texto en pantalla' es una escena; termina con un remate claro; densidad de estudio (capas, texturas, micro-movimientos), nunca una sola frase flotando."].filter(Boolean).join("\n") });

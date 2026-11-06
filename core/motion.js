@@ -41,12 +41,30 @@ export function guardarBrief(id, b) {
 - **Marca:** ${b.marca?.trim() ? b.marca : "(colores y fuentes del estilo)"}
 - **Medios:** ${b.medios || "ninguno, solo gráfico"}
 - **Notas:** ${b.notas || "-"}
+${p.motionVoz ? `- **Voz en off:** \`proyectos/${id}/voz.mp3\` (${p.motionVoz.duracion.toFixed(1)} s, ${p.motionVoz.lineas} escenas). Los tiempos de cada escena y de cada palabra están en \`proyectos/${id}/tiempos.json\`: cada línea de la narración es una escena; haz que cada escena entre cuando empieza su línea y que la palabra clave aparezca cuando se dice. La pieza dura lo que la voz + 1 s. No metas el audio en el render: la fábrica lo mezcla al final con la música.` : b.narracion?.trim() ? `- **Narración (aún sin voz):** ${b.narracion.replace(/\n/g, " / ")}` : ""}
 
 Carpeta de trabajo: \`proyectos/${id}/motion/\` (el proyecto HyperFrames va en \`proyectos/${id}/motion/proj/\`).
 Al terminar: \`node fabrica.js listo-motion ${id}\`.
 `;
   fs.writeFileSync(path.join(dirProyecto(id), "BRIEF.md"), md);
   return p;
+}
+
+// voz en off para un motion: la narración del brief (una línea por escena) se convierte en voz con ElevenLabs
+// y deja los tiempos de cada palabra en tiempos.json, para que Claude Code anime cada escena al ritmo de la voz.
+export async function vozMotion(id, avisar = () => {}) {
+  const p = leer(id, "proyecto.json");
+  const lineas = String(p.motion?.narracion || "").split(/\n+/).map((x) => x.trim()).filter(Boolean);
+  if (!lineas.length) throw new Error("Escribe la narración en el brief (una línea por escena) y guárdalo.");
+  guardar(id, "guion.json", { titulo: p.titulo, escenas: lineas.map((l) => ({ tipo: "escena", voz: l })) });
+  const antes = p.estado.voz; p.conVoz = true; guardar(id, "proyecto.json", p);
+  const { hacerVoz } = await import("./voz.js");
+  await hacerVoz(id, avisar);
+  const q = leer(id, "proyecto.json"), t = leer(id, "tiempos.json");
+  q.estado.voz = antes; q.motionVoz = { duracion: t.duracion, fecha: new Date().toISOString(), lineas: lineas.length };
+  guardar(id, "proyecto.json", q);
+  guardarBrief(id, q.motion);
+  return q.motionVoz;
 }
 
 export function estadoMotion(id) {
@@ -99,10 +117,15 @@ export async function terminar(id) {
   const propia = fs.readdirSync(dir).find((n) => /^musica\.(mp3|m4a|wav)$/i.test(n));
   const deBib = !propia && musicaDeBiblioteca("motion", dir);
   const musica = propia || (deBib && path.relative(dir, deBib));
-  if (musica) {
-    const D = await duracion(limpio);
-    await ffmpeg(["-i", limpio, "-i", path.join(dir, musica), "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
-      "-af", `atrim=0:${D.toFixed(2)},volume=0.9,afade=t=out:st=${Math.max(0, D - 1.5).toFixed(2)}:d=1.5`, "-t", D.toFixed(2), final]);
+  const voz = p.motionVoz && fs.existsSync(path.join(dir, "voz.mp3")) ? path.join(dir, "voz.mp3") : null;
+  if (musica || voz) {
+    const D = await duracion(limpio), fade = `afade=t=out:st=${Math.max(0, D - 1.5).toFixed(2)}:d=1.5`;
+    const ent = ["-i", limpio], fil = [];
+    let k = 1;
+    if (musica) { ent.push("-stream_loop", "-1", "-i", path.join(dir, musica)); fil.push(`[${k}:a]atrim=0:${D.toFixed(2)},volume=${voz ? 0.16 : 0.9},${fade}[m]`); k++; }
+    if (voz) { ent.push("-i", voz); fil.push(`[${k}:a]apad,atrim=0:${D.toFixed(2)},volume=1.0[v]`); }
+    const sal = musica && voz ? `${fil.join(";")};[m][v]amix=inputs=2:duration=first:normalize=0[a]` : `${fil[0].replace(/\[(m|v)\]$/, "[a]")}`;
+    await ffmpeg([...ent, "-filter_complex", sal, "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-t", D.toFixed(2), final]);
   } else fs.copyFileSync(limpio, final);
   p.motionMezcla = fs.statSync(final).mtimeMs;
   await ffmpeg(["-ss", "1.5", "-i", final, "-frames:v", "1", "-q:v", "2", path.join(dir, "portada.jpg")]).catch(() => {});

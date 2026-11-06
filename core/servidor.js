@@ -285,6 +285,7 @@ async function api(req, res, partes) {
     encolar(id, "fondo", (av) => HIS.clipsDeFlow(id, (a) => av({ ...a, paso: "fondo" }), { maxCreditos: Number(b.maxCreditos) || 25, soloFaltantes: b.todos !== true }));
     return json(res, 200, { ok: true });
   }
+  if (accion === "voz-motion" && m === "POST") { encolar(id, "voz", (av) => MOT.vozMotion(id, av)); return json(res, 200, { ok: true }); }
   if (accion === "remezclar" && m === "POST") { encolar(id, "render", () => MOT.terminar(id)); return json(res, 200, { ok: true }); } // motion: vuelve a mezclar la música (o la quita)
   if (accion === "musica" && m === "GET") return json(res, 200, { prompt: promptMusica(id) });
   if (accion === "musica" && m === "POST") {

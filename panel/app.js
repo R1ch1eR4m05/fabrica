@@ -329,6 +329,10 @@ function pintarMotion(p, est, ocupado) {
               <textarea id="mTextos" placeholder="Las palabras exactas, una idea por línea">${h(b.textos || "")}</textarea>
               <label>Marca: colores, fuentes, logo <button class="mini" id="mLevania" style="margin-left:6px">Usar Levania</button></label>
               <textarea id="mMarca" placeholder="Vacío = las del estilo">${h(b.marca || "")}</textarea>
+              <label>Narración · voz en off (una línea por escena; vacío = sin voz)</label>
+              <textarea id="mNarracion" placeholder="Lo que dice la voz en cada escena">${h(b.narracion || "")}</textarea>
+              ${b.narracion ? `<div class="fila" style="margin:4px 0 8px">${S.info.voz ? `<button class="btn peq" id="mVoz">${p.motionVoz ? "Rehacer la voz" : "Hacer la voz"}</button>` : `<span class="estado">Pon tu llave de ElevenLabs para la voz.</span>`}${p.motionVoz ? `<audio controls src="/proyectos/${h(p.id)}/voz.mp3?v=${Date.now()}" style="flex:1;min-width:180px"></audio><span class="estado">${p.motionVoz.duracion.toFixed(1)} s</span>` : ""}</div>
+                <div class="estado">Haz la voz <b>antes</b> de que Claude Code construya: así anima cada escena al ritmo de lo que se dice.</div>` : ""}
               <label>Notas para Claude</label><textarea id="mNotas" style="min-height:44px">${h(b.notas || "")}</textarea>
             </div>
           </div>
@@ -365,7 +369,7 @@ function pintarMotion(p, est, ocupado) {
   $("#mGuardar").onclick = async () => {
     if (!elegido) return avisar("Elige un estilo de la galería.", true);
     await api(`/api/proyectos/${p.id}/brief`, "PUT", { estiloMotion: elegido, formato: p.formato, para: $("#mPara").value, segundos: Number($("#mSeg").value),
-      loop: $("#mLoop").checked, textos: $("#mTextos").value, marca: $("#mMarca").value, medios: $("#mMedios").value, notas: $("#mNotas").value });
+      loop: $("#mLoop").checked, textos: $("#mTextos").value, narracion: $("#mNarracion").value, marca: $("#mMarca").value, medios: $("#mMedios").value, notas: $("#mNotas").value });
     avisar("Brief guardado."); S.proyectos = await api("/api/proyectos"); abrir(p.id, { mantener: true });
   };
   if ($("#mCopiar")) $("#mCopiar").onclick = () => navigator.clipboard.writeText(cmd).then(() => avisar("Copiado. Pégalo en Claude Code."));
@@ -375,6 +379,7 @@ function pintarMotion(p, est, ocupado) {
   if (S.progreso[p.id]?.render) mostrarProgreso("render", S.progreso[p.id].render);
   if ($("#muGenerar")) eventosMusica(p, est);
   if (p.tieneFinal) cargarCopys(p);
+  if ($("#mVoz")) $("#mVoz").onclick = async () => { await $("#mGuardar")?.onclick?.(); api(`/api/proyectos/${p.id}/voz-motion`, "POST").then(() => avisar("Haciendo la voz…")).catch((e) => avisar(e.message, true)); };
 }
 
 // ---------- copy para publicar (GoHighLevel) ----------
