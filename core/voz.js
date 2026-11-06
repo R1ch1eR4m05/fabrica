@@ -1,6 +1,7 @@
 // Voz con ElevenLabs (con marcas de tiempo por letra → sabemos en qué segundo se dice cada palabra).
 // Sin llave de ElevenLabs genera una "voz de prueba" muda con tiempos estimados, para ensayar el video.
 import fs from "node:fs";
+import { leerAjustes } from "./ajustes.js";
 import path from "node:path";
 import { CFG, vozDeEstilo } from "./config.js";
 import { dirProyecto, leer, guardar, textoEscena } from "./proyectos.js";
@@ -19,7 +20,7 @@ function palabrasCon(texto) {
 // si el modelo del .env no existe (p. ej. un nombre mal escrito), se usa el estable y se avisa una vez
 let modeloBueno = null;
 // "eleven_multilingual_v4" no existe: la versión 4 se llama "eleven_v4"
-const modeloPedido = () => String(CFG.elevenModelo).replace(/^eleven_multilingual_v(3|4)$/, "eleven_v$1");
+const modeloPedido = () => String(leerAjustes().modeloVoz || CFG.elevenModelo).replace(/^eleven_multilingual_v(3|4)$/, "eleven_v$1");
 // v3 y v4 no aceptan previous_text/next_text (esos solo sirven en v2 y flash): sin ellos cada escena va sola
 const esNuevo = (m) => /^eleven_v[3-9]/.test(m);
 async function ttsEscena(voz, texto, anterior, siguiente, salida) {

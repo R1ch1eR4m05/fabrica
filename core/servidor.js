@@ -21,6 +21,7 @@ import { crearDesdePropuesta } from "./propuestas.js";
 import * as HIS from "./historia.js";
 import * as COPY from "./copy.js";
 import * as GHL from "./ghl.js";
+import { leerAjustes, guardarAjustes, MODELOS_VOZ } from "./ajustes.js";
 
 let investigando = null;
 function correrInvestigacion() {
@@ -90,6 +91,10 @@ async function api(req, res, partes) {
   if (recurso === "ghl" && id === "cuentas" && m === "GET") {
     try { return json(res, 200, await GHL.cuentas({ forzar: new URL(req.url, "http://x").searchParams.has("forzar") })); }
     catch (e) { return json(res, 502, { error: e.message }); }
+  }
+  if (recurso === "ajustes") {
+    if (m === "GET") return json(res, 200, { ...leerAjustes(), modelosVoz: MODELOS_VOZ, modeloVozEnv: CFG.elevenModelo });
+    if (m === "PUT") return json(res, 200, guardarAjustes(await cuerpo(req)));
   }
   if (recurso === "actualizacion") {
     if (m === "GET") return json(res, 200, await ACT.hayNovedad({ forzar: id === "revisar" }));
