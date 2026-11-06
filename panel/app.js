@@ -215,6 +215,12 @@ function pintarProyecto() {
           ${S.info.ia ? `<textarea id="gCambios" placeholder="${S.guion ? "Ej.: haz el gancho más fuerte y agrega una regla sobre las ventanas" : "Indicaciones extra (opcional): tono, número de reglas, un dato que quieras usar…"}" style="min-height:44px"></textarea>`
             : `<div class="nota">Para escribirlo con IA desde aquí, pon <code>GEMINI_API_KEY</code> (gratis en aistudio.google.com) en el archivo <code>.env</code>. O abre Claude Code en la carpeta de la fábrica y dile: <code>escribe el guion de ${h(p.id)}</code>. También puedes escribirlo tú abajo.</div>`}
           <div class="barra oculto" id="bar-guion"><div></div></div>
+          <details style="margin-top:8px" ${!S.guion ? "open" : ""}><summary class="estado" style="cursor:pointer"><b>Sin cuota de Gemini (o sin IA): pídeselo a Claude</b> en su app o en claude.ai</summary>
+            <div class="estado" style="margin:6px 0">1) Copia el pedido. 2) Pégalo en Claude y espera su respuesta. 3) Copia lo que te responda y pégalo aquí abajo.</div>
+            <div class="fila"><button class="btn peq" id="gPedido">Copiar pedido para Claude</button>${S.guion ? `<label class="estado" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="gConActual" style="width:auto"> que cambie el guion actual (usa las indicaciones de arriba)</label>` : ""}</div>
+            <textarea id="gPegado" placeholder="Pega aquí la respuesta de Claude (el JSON del guion)" style="min-height:70px;margin-top:6px;font:12px/1.4 ui-monospace,monospace"></textarea>
+            <button class="btn primario peq" id="gUsarPegado" style="margin-top:6px">Usar este guion</button>
+          </details>
           <div id="escenas" style="margin-top:8px"></div>
           <div class="fila" style="margin-top:10px"><button class="mini" id="gAgregar">+ Agregar escena</button>${!S.guion ? `<button class="mini" id="gVacio">Empezar a mano</button>` : ""}</div>
           ${S.guion?.fuentes?.length ? `<label>Fuentes del guion</label><div class="estado">${S.guion.fuentes.map((f) => `· ${h(f.dato)} — <a href="${h(f.url)}" target="_blank" style="color:var(--t2)">${h(f.url)}</a>`).join("<br>")}</div>` : ""}
@@ -263,6 +269,16 @@ function pintarProyecto() {
     if (S.sucio && !confirm("La IA va a reescribir el guion y perderás tus cambios sin guardar. ¿Seguir?")) return;
     S.sucio = false;
     await api(`/api/proyectos/${p.id}/guion`, "POST", { cambios: $("#gCambios")?.value || "" }).catch((e) => avisar(e.message, true));
+  };
+  $("#gPedido").onclick = async () => {
+    const r = await api(`/api/proyectos/${p.id}/pedido-guion`, "POST", { cambios: $("#gCambios")?.value || "", conActual: !!$("#gConActual")?.checked });
+    try { await navigator.clipboard.writeText(r.texto); avisar("Pedido copiado. Pégalo en Claude (app o claude.ai)."); }
+    catch { $("#gPegado").value = r.texto; $("#gPegado").select(); avisar("No pude copiar solo: selecciona el texto del cuadro y cópialo.", true); }
+  };
+  $("#gUsarPegado").onclick = async () => {
+    const t = $("#gPegado").value.trim(); if (!t) return avisar("Pega primero la respuesta de Claude.", true);
+    try { await api(`/api/proyectos/${p.id}/guion-pegado`, "POST", { texto: t }); S.sucio = false; avisar("Guion listo."); abrir(p.id); }
+    catch (e) { avisar(e.message, true); }
   };
   $("#gAgregar").onclick = () => { S.guion = S.guion || { titulo: p.titulo, escenas: [] }; S.guion.escenas.push({ tipo: "narracion", texto: "", visual: est?.visuales?.[0] || "" }); marcarSucio(); };
   if ($("#gVacio")) $("#gVacio").onclick = () => { S.guion = { titulo: p.titulo, escenas: [{ tipo: "gancho", texto: "", visual: "oscuridad" }] }; marcarSucio(); };

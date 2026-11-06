@@ -13,8 +13,18 @@ Devuelve SOLO un objeto JSON válido (sin texto antes ni después, sin \`\`\`), 
 }
 Agrega también los campos extra que pidan las instrucciones del estilo (en el guion o en cada escena), con esos mismos nombres.`;
 
-export async function escribirGuion(proyecto, { cambios = "", guionActual = null } = {}) {
-  if (!hayIA()) throw new Error("Falta GEMINI_API_KEY (gratis) o ANTHROPIC_API_KEY en el .env. También puedes pedirle el guion a Claude Code.");
+// el mismo pedido que se le hace a la IA, para pegarlo en Claude (app o web) cuando no hay IA o se acabó la cuota
+export function pedidoParaCopiar(proyecto, { cambios = "", guionActual = null } = {}) {
+  const { sistema, pedido } = armar(proyecto, { cambios, guionActual });
+  return `${sistema}
+
+---
+${pedido}
+
+Responde SOLO con el JSON.`;
+}
+
+function armar(proyecto, { cambios = "", guionActual = null } = {}) {
   const estilo = leerEstilo(proyecto.estilo);
   const sistema = [
     `Eres guionista de videos para redes en español de México (neutro, natural, nada de España: nada de "vosotros", "vale", "ordenador").`,
@@ -28,6 +38,12 @@ export async function escribirGuion(proyecto, { cambios = "", guionActual = null
   const pedido = guionActual
     ? `Este es el guion actual:\n${JSON.stringify(guionActual)}\n\nCámbialo así: ${cambios}\nMantén el resto igual.`
     : `Tema o idea del video: ${proyecto.idea || proyecto.titulo}${cambios ? `\nIndicaciones extra: ${cambios}` : ""}`;
+  return { sistema, pedido };
+}
+
+export async function escribirGuion(proyecto, { cambios = "", guionActual = null } = {}) {
+  if (!hayIA()) throw new Error("Falta GEMINI_API_KEY (gratis) o ANTHROPIC_API_KEY en el .env. También puedes pedirle el guion a Claude Code.");
+  const { sistema, pedido } = armar(proyecto, { cambios, guionActual });
 
   const r = await pedir(sistema, pedido, { buscar: true });
   const g = extraerJSON(r.texto);

@@ -5,7 +5,7 @@ import { CFG, FORMATOS } from "./config.js";
 import { listarEstilos, leerEstilo } from "./estilos.js";
 import * as P from "./proyectos.js";
 import { servirArchivo } from "./estatico.js";
-import { escribirGuion } from "./ia.js";
+import { escribirGuion, pedidoParaCopiar, extraerJSON } from "./ia.js";
 import { hacerVoz } from "./voz.js";
 import { render, textoParaSubir } from "./render.js";
 import { EFECTOS } from "./audio.js";
@@ -201,6 +201,16 @@ async function api(req, res, partes) {
     return json(res, 200, P.detalle(id));
   }
 
+  if (accion === "pedido-guion" && m === "POST") { // el pedido para pegarlo en Claude (sin API)
+    const b = await cuerpo(req).catch(() => ({}));
+    return json(res, 200, { texto: pedidoParaCopiar(p, { cambios: b.cambios || "", guionActual: b.conActual ? P.leer(id, "guion.json") : null }) });
+  }
+  if (accion === "guion-pegado" && m === "POST") { // guion que te dio Claude (o cualquier IA): se acepta aunque venga con texto alrededor
+    const b = await cuerpo(req);
+    let g; try { g = extraerJSON(String(b.texto || "")); } catch (e) { return json(res, 400, { error: "No encontré un guion válido en lo que pegaste (tiene que ser el JSON con \"escenas\"). " + e.message }); }
+    P.guardar(id, "guion.json", g); P.marcar(id, "guion", "listo");
+    return json(res, 200, P.detalle(id));
+  }
   if (accion === "guion" && m === "PUT") { // guardar guion editado a mano
     const g = await cuerpo(req);
     if (!Array.isArray(g.escenas)) return json(res, 400, { error: "El guion necesita escenas." });
