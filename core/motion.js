@@ -7,6 +7,7 @@ import { RAIZ, DIR_LISTOS } from "./config.js";
 import { dirProyecto, leer, guardar } from "./proyectos.js";
 import { leerEstilo } from "./estilos.js";
 import { ffmpeg, duracion } from "./ff.js";
+import { musicaDeBiblioteca } from "./audio.js";
 import { CFG } from "./config.js";
 import { chromium } from "playwright";
 
@@ -94,7 +95,10 @@ export async function terminar(id) {
   const limpio = path.join(dir, "final-sin-musica.mp4");
   const mt = fs.statSync(final).mtimeMs;
   if (!fs.existsSync(limpio) || p.motionMezcla !== mt) fs.copyFileSync(final, limpio); // render nuevo (de aquí o de Claude Code)
-  const musica = fs.readdirSync(dir).find((n) => /^musica\.(mp3|m4a|wav)$/i.test(n));
+  // la tuya o la de ElevenLabs; si no hay, una de tu biblioteca musica/ (así nunca sale mudo)
+  const propia = fs.readdirSync(dir).find((n) => /^musica\.(mp3|m4a|wav)$/i.test(n));
+  const deBib = !propia && musicaDeBiblioteca("motion", dir);
+  const musica = propia || (deBib && path.relative(dir, deBib));
   if (musica) {
     const D = await duracion(limpio);
     await ffmpeg(["-i", limpio, "-i", path.join(dir, musica), "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",

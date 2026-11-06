@@ -64,7 +64,6 @@
   },
   "portadaEn": 1.2,
   "vozSugerida": "Mamá mexicana cálida, no locutora (Levania usa Monica Mendez: pon su Voice ID en VOZ_RENDER_DATOS del .env).",
-  "creditos": "Contenido creado con apoyo de IA.",
   "musicaIA": {
     "prompt": "Light, warm and curious instrumental for an educational parenting video: soft plucked strings, marimba and gentle percussion, steady pulse around 100 bpm, friendly and calm, low in the mix under a female voice.",
     "reusar": false,

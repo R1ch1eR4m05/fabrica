@@ -63,7 +63,7 @@ Este archivo es el contexto del proyecto. Léelo completo antes de trabajar. Res
 
 ## Reglas fijas (no negociables)
 - Solo datos con fuente real y verificable, citada en pantalla. Nunca inventar cifras.
-- Declarar que el contenido se hizo con apoyo de IA.
+- Declarar que el contenido se hizo con apoyo de IA con la etiqueta de la app al publicar (no como leyenda dentro del video ni en el texto).
 - Nada de testimonios ni reseñas falsas, ni avatares de IA presentados como clientas.
 - Ningún niño generado con IA mostrado como resultado real.
 - Nada de promesas médicas: no decir que el kit trata TEA, TDAH ni ninguna condición.

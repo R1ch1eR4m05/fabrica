@@ -63,7 +63,6 @@ Motor.iniciar({
 
     // ---- capa fija ----
     if (conMarca && logo?.naturalWidth && e.tipo !== "cierre") { const w = 170 * u, h = w * (logo.height / logo.width); c.globalAlpha = 0.85; c.drawImage(logo, (W - w) / 2, 52 * u, w, h); c.globalAlpha = 1; }
-    if (conMarca) { c.font = `400 ${19 * u}px Jost`; c.fillStyle = C.suave; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("Contenido creado con apoyo de IA", W / 2, H - 52 * u); }
     subtitulos(c, M, t, te);
   },
 });

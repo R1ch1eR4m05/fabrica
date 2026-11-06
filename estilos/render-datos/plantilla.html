@@ -53,7 +53,6 @@ Motor.iniciar({
     const chip = e.chip || M.guion.chip;
     if (chip) pastilla(c, chip, W - 60 * u, 70 * u, { tam: 26, fondo: C.rosa, color: "#2A211F", derecha: true });
     if (M.guion.fuente && t >= primerDato) { c.font = `400 ${22 * u}px Jost`; c.fillStyle = C.suave; c.fillText(`Fuente: ${M.guion.fuente}`, W / 2, H - 92 * u); }
-    c.font = `400 ${18 * u}px Jost`; c.fillStyle = C.suave; c.globalAlpha = 0.7; c.fillText("Contenido creado con apoyo de IA", W / 2, H - 56 * u); c.globalAlpha = 1;
     subtitulos(c, M, t, te);
   },
 });

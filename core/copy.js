@@ -16,7 +16,7 @@ function base(id) {
   const cfg = INV.leerConfig();
   const cierre = INV.cierreValido(prop?.cierre) || (cfg.cierres || [])[0] || "";
   const hashtags = [...new Set([...(s.hashtags || []), ...(prop?.hashtags || [])].map((h) => "#" + String(h).replace(/^#/, "").replace(/\s+/g, "")))].filter((h) => h.length > 1);
-  const ia = /levania/i.test(cfg.nombre) || est.creditos?.includes("IA") ? "Contenido creado con apoyo de IA." : "";
+  const ia = ""; // la etiqueta de IA se marca en la app al publicar (regla de Levania), no en el texto
   const fuentes = (g.fuentes || []).map((f) => f.dato ? `${f.dato}${f.url ? " (" + f.url + ")" : ""}` : "").filter(Boolean);
   return { p, g, est, prop, cfg, titulo: s.titulo || prop?.tituloPost || g.titulo || p.titulo, desc: s.descripcion || prop?.descripcion || p.idea || "", cierre, hashtags, ia, fuentes };
 }
@@ -45,7 +45,7 @@ export async function copysConIA(id) {
 Escribe el copy para publicar UN video corto en cada red, en español de México, cálido y directo, sin clichés de IA ni exceso de emojis (máximo 2).
 Reglas: la primera línea es un gancho que se entiende sola (no repitas literal el texto del video). Nada de promesas médicas.
 ${b.cierre ? `El llamado a la acción es EXACTAMENTE este (cópialo tal cual): "${b.cierre}". No inventes otra palabra para comentar.` : "No pongas 'comenta una palabra': la marca no autorizó ninguno. Puedes invitar a guardar o compartir."}
-${b.ia ? 'Termina con la línea "Contenido creado con apoyo de IA."' : ""}${b.fuentes.length ? ` Si citas el dato, menciona la fuente: ${b.fuentes.join("; ")}.` : ""}
+${b.fuentes.length ? ` Si citas el dato, menciona la fuente: ${b.fuentes.join("; ")}.` : ""}
 Devuelve SOLO JSON: {"instagram":"3-6 líneas + 3-5 hashtags","facebook":"parecido a Instagram, un poco más conversacional, 2-3 hashtags","tiktok":"1-3 líneas cortas + 3-5 hashtags","youtube":{"titulo":"máx. 70 caracteres, con #shorts al final","descripcion":"2-4 líneas + 3 hashtags"}}`;
   const pedido = `Título: ${b.titulo}\nDe qué trata: ${b.desc}\nLo que dice el video: ${voz}\nHashtags sugeridos: ${b.hashtags.join(" ")}`;
   const j = jsonDe(await pedir(sistema, pedido));
