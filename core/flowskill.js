@@ -4,6 +4,7 @@
 // Ojo: automatiza la página web de Flow; puede romperse si Google la cambia y puede ir contra sus términos.
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 import { CFG } from "./config.js";
 import { dirProyecto } from "./proyectos.js";
@@ -15,19 +16,61 @@ export const MODELOS_IMAGEN = ["Nano Banana 2 Lite", "Nano Banana 2", "Nano Bana
 export const flowSkillListo = () => !!(CFG.flowSkillDir && fs.existsSync(path.join(CFG.flowSkillDir, "flow.py")));
 export const modelos = () => { const a = leerAjustes(); return { video: a.flowVideo || "Veo 3.1 - Lite", imagen: a.flowImagen || "Nano Banana 2 Lite" }; };
 
-// Arreglos a la skill (MIT) para la página actual de Flow: ahora hay dos botones de ajustes en la página y la skill
-// pedía "el" botón, así que Playwright se negaba (strict mode). Se aplican solos antes de cada lote; si la skill ya
-// los trae, no se toca nada.
+// Arreglos a la skill (MIT) para el Flow nuevo (noviembre 2026: se genera desde el panel del agente).
+// Se copian core/flow-compat/agente.py a la skill y se enganchan 5 puntos. Se aplican solos antes de cada lote;
+// si ya están, no se toca nada. Si Google vuelve a cambiar Flow, los selectores están juntos en agente.py.
+const COMPAT = path.join(path.dirname(fileURLToPath(import.meta.url)), "flow-compat", "agente.py");
+const VIS = (s) => `", ".join(x.strip() + ":visible" for x in ${s}.split(","))`;
 const PARCHES = [
-  ["flow_provider/configure.py", "await page.locator(SEL_PANEL_TRIGGER).click(timeout=10_000)", 'await page.locator(", ".join(x.strip() + ":visible" for x in SEL_PANEL_TRIGGER.split(","))).first.click(timeout=10_000)'],
-  ["flow_provider/browser.py", "await page.locator(SEL_SETTINGS_TRIGGER).wait_for(state=\"visible\", timeout=45_000)", 'await page.locator(", ".join(x.strip() + ":visible" for x in SEL_SETTINGS_TRIGGER.split(","))).first.wait_for(state="visible", timeout=45_000)'],
-  ["flow_provider/project.py", "await page.locator(SEL_SETTINGS_TRIGGER).first.wait_for(", 'await page.locator(", ".join(x.strip() + ":visible" for x in SEL_SETTINGS_TRIGGER.split(","))).first.wait_for('],
+  // página lista: también vale el panel del agente
+  ["flow_provider/project.py", [`await page.locator(SEL_SETTINGS_TRIGGER).first.wait_for(state="visible", timeout=15_000)`, `await page.locator(${VIS("SEL_SETTINGS_TRIGGER")}).first.wait_for(state="visible", timeout=15_000)`],
+    `from .agente import esperar_listo; await esperar_listo(page, timeout=30_000)`],
+  ["flow_provider/browser.py", [`await page.locator(SEL_SETTINGS_TRIGGER).wait_for(state="visible", timeout=45_000)`, `await page.locator(${VIS("SEL_SETTINGS_TRIGGER")}).first.wait_for(state="visible", timeout=45_000)`],
+    `from .agente import esperar_listo; await esperar_listo(page, timeout=45_000)`],
+  // el botón de ajustes viejo, si aparece dos veces
+  ["flow_provider/configure.py", [`await page.locator(SEL_PANEL_TRIGGER).click(timeout=10_000)`], `await page.locator(${VIS("SEL_PANEL_TRIGGER")}).first.click(timeout=10_000)`],
+  // imagen y video: con agente se configura desde "Configuración de agentes"
+  ["flow_provider/configure.py", [`"""Abre el panel y configura modo IMAGE usando los selectores exactos del DOM de Flow. Debe llamarse con lock."""
+    page = await get_page()`],
+    `"""Abre el panel y configura modo IMAGE usando los selectores exactos del DOM de Flow. Debe llamarse con lock."""
+    page = await get_page()
+    from .agente import es_agente, configurar
+    if await es_agente(page):
+        return await configurar(page, "imagen", aspect_ratio, count, model)`],
+  ["flow_provider/configure.py", [`    from playwright.async_api import expect
+    page = await get_page()
+    panel = await _open_settings(page)`],
+    `    from playwright.async_api import expect
+    page = await get_page()
+    from .agente import es_agente, configurar
+    if await es_agente(page):
+        if mode != "texto":
+            raise RuntimeError("El Flow nuevo (con agente) todavía no está adaptado para video desde fotogramas o ingredientes; solo video de texto.")
+        return await configurar(page, "video", aspect_ratio, count, model)
+    panel = await _open_settings(page)`],
+  // con agente, el prompt va envuelto para que genere 1 sin reescribirlo
+  ["flow_provider/prompt.py", [`"""Escribe el prompt y hace click en submit. Debe llamarse con lock."""
+    page = await get_page()`],
+    `"""Escribe el prompt y hace click en submit. Debe llamarse con lock."""
+    page = await get_page()
+    from .agente import envolver
+    prompt = await envolver(page, prompt)`],
 ];
 export function parcharSkill() {
   let n = 0;
-  for (const [rel, viejo, nuevo] of PARCHES) {
+  try { // agente.py siempre en su última versión
+    const dest = path.join(CFG.flowSkillDir, "flow_provider", "agente.py");
+    const nuevo = fs.readFileSync(COMPAT, "utf8");
+    if (!fs.existsSync(dest) || fs.readFileSync(dest, "utf8") !== nuevo) { fs.writeFileSync(dest, nuevo); n++; }
+  } catch (e) { console.warn("Flow compat:", e.message); }
+  for (const [rel, viejos, nuevo] of PARCHES) {
     const f = path.join(CFG.flowSkillDir, rel);
-    try { const s = fs.readFileSync(f, "utf8"); if (s.includes(viejo)) { fs.writeFileSync(f, s.split(viejo).join(nuevo)); n++; } } catch {}
+    try {
+      let s = fs.readFileSync(f, "utf8").replace(/\r\n/g, "\n");
+      if (s.includes(nuevo)) continue;
+      const v = viejos.find((x) => s.includes(x)); if (!v) { console.warn(`Flow compat: no encontré dónde parchar ${rel}`); continue; }
+      fs.writeFileSync(f, s.split(v).join(nuevo)); n++;
+    } catch {}
   }
   return n;
 }
@@ -66,7 +109,9 @@ export function lote(id, nombre, jobs, avisar = () => {}, { minutos = 60 } = {})
       clearTimeout(reloj);
       const rep = path.join(dir, nombre, "batch_report.json");
       try { fs.writeFileSync(path.join(dir, `${nombre}.log`), salida); } catch {}
-      if (!fs.existsSync(rep)) return mal(new Error(`Flow falló: ${errorLegible(salida)} (detalle completo en proyectos/${id}/flow/${nombre}.log)`));
+      // casi siempre que Flow falla así es porque Google cambió la página: se avisa para adaptarla
+      const cambio = /Timeout|locator|selector|no encontr|strict mode|not visible|intercepts/i.test(salida);
+      if (!fs.existsSync(rep)) return mal(new Error(`Flow falló: ${errorLegible(salida)}.${cambio ? " Parece que Google cambió la página de Flow: abre Claude Code en la fábrica y dile \"adapta Flow\"." : ""} (detalle en proyectos/${id}/flow/${nombre}.log)`));
       const r = JSON.parse(fs.readFileSync(rep, "utf8"));
       const archivos = Object.fromEntries(r.filter((x) => x.ok && x.file).map((x) => [x.name, path.isAbsolute(x.file) ? x.file : path.join(CFG.flowSkillDir, x.file)]));
       ok({ archivos, fallos: r.filter((x) => !x.ok).map((x) => `${x.name}: ${x.error}`) });

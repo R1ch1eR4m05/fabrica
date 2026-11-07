@@ -43,6 +43,14 @@ Si el estilo ya existía como "pronto", quítale `"estado": "pronto"`.
 ## Google Flow Skill (clips de Flow en la laptop)
 Si `FLOW_SKILL_DIR` está en el .env, la fábrica usa esa skill (https://github.com/BRPLia/google-flow-skill-v1) para Flow: fondos de Frases y clips de Historia (imagen de personajes → cuadro por escena → video). Tú también puedes usarla directo con `python flow.py batch <lote.json>` desde esa carpeta, siguiendo su SKILL.md. Gasta créditos de Flow: no la uses sin que Richie lo pida.
 
+### "Adapta Flow" (cuando Google cambia la página de Flow)
+La skill maneja la página de Flow con selectores; cuando Google la rediseña, falla con Timeout/locator. Para adaptarla:
+1. Lee el último `proyectos/<id>/flow/*.log` y el diagnóstico de la skill (`<FLOW_SKILL_DIR>/scratch/*.png|html` y `<carpeta del lote>/_debug/`).
+2. Abre Flow en el Chrome de Richie (Claude in Chrome), crea un proyecto y revisa el DOM nuevo (javascript_tool). Una imagen de prueba con Nano Banana 2 Lite está bien; nada de lotes.
+3. Corrige los selectores en `core/flow-compat/agente.py` (o agrega un parche en `PARCHES` de `core/flowskill.js`). La fábrica los copia/aplica sola a la skill antes de cada lote.
+4. Sube los cambios y pídele a Richie que actualice y vuelva a dar "Generar en Flow".
+Estado: noviembre 2026, Flow genera desde el panel del agente ("Configuración de agentes": Confirmar = Nunca, 9:16, x1, modelo). Imágenes y video de texto adaptados; video desde fotogramas/ingredientes aún no.
+
 ## Historia con Flow (`historia-flow`)
 - Guion según `estilos/historia-flow/GUION.md`: `estiloVisual` y `personajes` (inglés, iguales para todas las escenas) y en cada escena `voz`, `texto` opcional, `flowPrompt` (inglés) y `buscar`.
 - Clips: `proyectos/<id>/clips/escena-N.mp4` (el panel los sube o los genera en Flow con "Generar en Flow los que faltan"). Si flow-mcp está conectado como MCP y Richie lo autoriza, puedes generarlos tú y guardarlos ahí con ese nombre. Sin clip, la escena usa Pexels (`buscar`) o un dibujo animado.
