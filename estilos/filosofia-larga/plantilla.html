@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><title>Filosofía larga</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}canvas{display:block;width:100vw;height:100vh;object-fit:contain}</style>
+</head><body><canvas id="lienzo"></canvas>
+<script src="../_comun/motor.js"></script>
+<script>
+// Filosofía larga: cada escena es una ilustración con un movimiento de cámara lento y subtítulos abajo.
+// El video final lo saca core/render-ffmpeg.js con los MISMOS movimientos; esta plantilla es la vista previa del panel.
+const F = "../_comun/fuentes/";
+const PAPEL = "#EDE6D8";
+const MOV = ["acercar", "derecha", "alejar", "izquierda", "acercar", "subir"], ZOOM = 0.13;
+let info = [], cache = new Map(), actual = null, conSubs = true;
+
+const movimiento = (e, n) => (e?.camara && MOV.concat("quieto").includes(e.camara) ? e.camara : MOV[(n * 7 + 3) % MOV.length]);
+function camara(mov, p) {
+  const z1 = 1 + ZOOM;
+  switch (mov) {
+    case "acercar": return { z: 1 + ZOOM * p, x: 0.5, y: 0.45 };
+    case "alejar": return { z: z1 - ZOOM * p, x: 0.5, y: 0.5 };
+    case "derecha": return { z: z1, x: p, y: 0.5 };
+    case "izquierda": return { z: z1, x: 1 - p, y: 0.5 };
+    case "subir": return { z: z1, x: 0.5, y: 1 - p };
+    default: return { z: 1.04, x: 0.5, y: 0.5 };
+  }
+}
+// mismas frases que los subtítulos del render (core/render-ffmpeg.js → frasesSubtitulo)
+function frases(palabras, max) {
+  const out = []; let cur = [], largo = 0;
+  for (const p of palabras) {
+    if (cur.length && largo + p.w.length + 1 > max) {
+      const pasa = cur.length > 2 && cur[cur.length - 1].w.length <= 3 && !/[,.;:]$/.test(cur[cur.length - 1].w) ? [cur.pop()] : [];
+      out.push(cur); cur = pasa; largo = pasa.reduce((a, x) => a + x.w.length + 1, 0);
+    }
+    cur.push(p); largo += p.w.length + 1;
+    if (/[.!?…]$/.test(p.w) || (/[,;:]$/.test(p.w) && largo > max * 0.45)) { out.push(cur); cur = []; largo = 0; }
+  }
+  if (cur.length) out.push(cur);
+  // una o dos palabras sueltas ("de ti.") se juntan con la línea anterior si cabe
+  const lg = (f) => f.reduce((a, x) => a + x.w.length + 1, 0);
+  for (let j = out.length - 1; j > 0; j--) if (out[j].length <= 2 && !/[.!?…]$/.test(out[j - 1].at(-1).w) && lg(out[j - 1]) + lg(out[j]) <= max * 1.25) { out[j - 1].push(...out[j]); out.splice(j, 1); }
+  return out;
+}
+
+Motor.iniciar({
+  fuentes: [["Montserrat", F + "montserrat-latin-600-normal.woff2", { weight: "600" }]],
+  async preparar(M) {
+    conSubs = (M.proyecto.opciones || {}).subtitulos !== "no";
+    try { const r = await fetch(`/proyectos/${encodeURIComponent(M.proyecto.id)}/clips/historia.json?v=${Date.now()}`); if (r.ok) info = await r.json(); } catch {}
+    M.antesDeDibujar = async (t) => {
+      const i = M.escenaEn(t), c = info[i]; actual = null;
+      if (!c || c.tipo === "ninguno" || !c.frames) return;
+      actual = await cuadro(M, i + 1);
+      if (info[i + 1]?.frames) cuadro(M, i + 2);
+    };
+  },
+
+  dibujar(c, t, M) {
+    const W = M.W, H = M.H, u = M.u, n = M.tiempos.escenas.length;
+    const i = M.escenaEn(t), e = M.guion.escenas[i] || {}, te = M.tiempos.escenas[i];
+    const ini = i === 0 ? 0 : te.ini, fin = i < n - 1 ? M.tiempos.escenas[i + 1].ini : M.duracion;
+    const p = M.clamp((t - ini) / Math.max(0.1, fin - ini));
+    c.fillStyle = PAPEL; c.fillRect(0, 0, W, H);
+    if (actual) {
+      const k = camara(movimiento(e, i + 1), p), iw = actual.width, ih = actual.height;
+      const s = Math.max(W / iw, H / ih), cw = W / s, ch = H / s, cx = (iw - cw) / 2, cy = (ih - ch) / 2;
+      const sw = cw / k.z, sh = ch / k.z;
+      c.drawImage(actual, cx + (cw - sw) * k.x, cy + (ch - sh) * k.y, sw, sh, 0, 0, W, H);
+    } else {
+      const v = c.createRadialGradient(W / 2, H / 2, H * 0.2, W / 2, H / 2, H * 0.8); v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(60,45,30,0.25)"); c.fillStyle = v; c.fillRect(0, 0, W, H);
+    }
+    if (conSubs && e.subtitulos !== false) subtitulos(c, M, t, te);
+  },
+});
+
+async function cuadro(M, n) {
+  if (cache.has(n)) return cache.get(n);
+  const pr = (async () => { const r = await fetch(`/proyectos/${encodeURIComponent(M.proyecto.id)}/clips/${n}/00001.jpg`); return createImageBitmap(await r.blob()); })();
+  cache.set(n, pr);
+  if (cache.size > 12) cache.delete(cache.keys().next().value);
+  return pr;
+}
+
+function subtitulos(c, M, t, te) {
+  const W = M.W, H = M.H, vertical = M.vertical;
+  const fr = frases(te.palabras || [], vertical ? 30 : 46);
+  let cur = null;
+  fr.forEach((f, j) => {
+    const a = f[0].t0 - 0.05, sig = fr[j + 1]?.[0].t0 ?? Infinity, b = Math.min(f[f.length - 1].t1 + 0.35, sig - 0.02, te.fin);
+    if (t >= a && t < b) cur = f;
+  });
+  if (!cur) return;
+  const tam = vertical ? 64 * (W / 1080) : 56 * (H / 1080), margen = vertical ? H * 0.2 : 62 * (H / 1080);
+  c.font = `600 ${tam}px Montserrat`; c.textAlign = "center"; c.textBaseline = "alphabetic";
+  const lineas = M.lineas(c, cur.map((p) => p.w).join(" "), W * 0.84), al = tam * 1.22;
+  const y0 = H - margen - (lineas.length - 1) * al - tam * 0.18;
+  c.lineJoin = "round";
+  lineas.forEach((l, k) => {
+    const y = y0 + k * al;
+    c.fillStyle = "rgba(0,0,0,0.55)"; c.fillText(l, W / 2 + 1.6 * M.u, y + 1.6 * M.u);
+    c.lineWidth = 5.2 * M.u; c.strokeStyle = "#141414"; c.strokeText(l, W / 2, y);
+    c.fillStyle = "#FFFFFF"; c.fillText(l, W / 2, y);
+  });
+}
+</script>
+</body></html>

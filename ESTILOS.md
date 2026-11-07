@@ -33,6 +33,7 @@ Mientras no tenga `plantilla.html`, o si tiene `"estado": "pronto"`, sale en el 
   "opciones": [ { "clave": "tema", "nombre": "Tema", "valores": { "noche": "Noche", "claro": "Claro" } } ],  // salen como menús en el panel → M.proyecto.opciones
   "camposAvanzados": ["mapa", "banderas"],   // el panel muestra un cuadro JSON por escena para estos campos
   "preparar": "mapas",      // paso extra antes del render (core/<nombre>.js), p. ej. bajar teselas de satélite
+  "render": "ffmpeg",       // estilos de imagen fija por escena (preparar "historia"): render directo con ffmpeg, sin navegador (videos largos)
   "portadaEn": 1.5,
   "vozSugerida": "…",
   "creditos": "texto de créditos que va en la descripción, si la música lo pide"

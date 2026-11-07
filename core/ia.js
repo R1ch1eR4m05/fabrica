@@ -45,6 +45,10 @@ function armar(proyecto, { cambios = "", guionActual = null } = {}) {
 
 export async function escribirGuion(proyecto, { cambios = "", guionActual = null } = {}) {
   if (!hayIA()) throw new Error("Falta GEMINI_API_KEY (gratis) o ANTHROPIC_API_KEY en el .env. También puedes pedirle el guion a Claude Code.");
+  const est = leerEstilo(proyecto.estilo);
+  const minutos = proyecto.segundos > 0 ? proyecto.segundos / 60 : proyecto.duracion === "largo" ? est.minutosLargo || 0 : 0;
+  // videos largos (20-40 min): primero el índice de capítulos y luego cada capítulo, para no rebasar el tope de la IA
+  if (est.guionPorPartes && minutos > 6 && !guionActual) return escribirLargo(proyecto, est, minutos, cambios);
   const { sistema, pedido } = armar(proyecto, { cambios, guionActual });
 
   const r = await pedir(sistema, pedido, { buscar: true });
@@ -60,4 +64,28 @@ export function extraerJSON(texto) {
   try { g = jsonDe(texto); } catch (e) { try { g = jsonDe(String(texto).replace(/[“”„«»]/g, '"')); } catch { throw e; } }
   if (!Array.isArray(g.escenas) || !g.escenas.length) throw new Error("El guion llegó sin escenas.");
   return g;
+}
+
+async function escribirLargo(proyecto, est, minutos, cambios) {
+  const base = [
+    `Eres guionista de videos largos de YouTube en español de México (neutro, natural, nada de España).`,
+    `Estilo del video: ${est.nombre}.`, instruccionesGuion(proyecto.estilo),
+    `Nunca inventes una cifra, estudio, fecha ni cita. Si citas un texto clásico, que sea real y verificado con la búsqueda web.`,
+  ].join("\n\n");
+  const nCap = Math.max(3, Math.round(minutos / 5));
+  const ind = jsonDe((await pedir(base + `\n\nAhora solo el ÍNDICE. Devuelve SOLO JSON: { "titulo", "estiloVisual" (inglés), "capitulos": [ { "titulo", "idea" (3-4 líneas: qué se cuenta, qué escena cotidiana o parábola, qué enseñanza), "minutos" } ], "fuentes": [ { "dato", "url" } ], "subir": { "titulo", "descripcion", "hashtags" } }`,
+    `Tema o idea del video: ${proyecto.idea || proyecto.titulo}${cambios ? `\nIndicaciones extra: ${cambios}` : ""}\nDuración total: ${Math.round(minutos)} minutos de voz, en ${nCap} capítulos (el primero es la introducción con el gancho; el último, el cierre).`,
+    { buscar: true })).texto);
+  const escenas = [];
+  for (const [k, c] of ind.capitulos.entries()) {
+    const previas = escenas.slice(-3).map((e) => e.voz).join(" ");
+    const r = await pedir(base + `\n\nEscribe SOLO el capítulo que se pide. Devuelve SOLO JSON: { "escenas": [ ... ] } con los campos de escena de las instrucciones. La primera escena lleva "capitulo": "${String(c.titulo).replace(/"/g, "'")}".`,
+      `Video: ${ind.titulo}\nÍndice completo:\n${ind.capitulos.map((x, j) => `${j + 1}. ${x.titulo}: ${x.idea}`).join("\n")}\n\nEscribe el capítulo ${k + 1} de ${ind.capitulos.length}: "${c.titulo}" — ${c.idea}\nDuración: ${c.minutos || Math.round(minutos / ind.capitulos.length)} minutos de voz (unas ${Math.round((c.minutos || minutos / ind.capitulos.length) * 125)} palabras).${previas ? `\nAsí terminó el capítulo anterior (continúa sin repetir): "${previas}"` : ""}`,
+      { maxTokens: 16000 });
+    const cap = jsonDe(r.texto).escenas || [];
+    if (cap[0]) cap[0].capitulo = cap[0].capitulo || c.titulo;
+    escenas.push(...cap);
+  }
+  if (!escenas.length) throw new Error("La IA no devolvió escenas.");
+  return { titulo: ind.titulo, estiloVisual: ind.estiloVisual || est.estiloVisual, escenas, fuentes: ind.fuentes || [], subir: ind.subir };
 }

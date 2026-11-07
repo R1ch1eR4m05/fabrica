@@ -24,7 +24,7 @@ export function clipDeEscena(id, n) {
 export function estadoClips(id) {
   const g = leer(id, "guion.json") || { escenas: [] };
   let org = {}; try { org = JSON.parse(fs.readFileSync(path.join(dirClips(id), "origen.json"), "utf8")); } catch {}
-  return g.escenas.map((e, k) => { const f = clipDeEscena(id, k + 1); return { n: k + 1, tipo: e.tipo, archivo: f ? path.basename(f) : null, origen: f ? org[k + 1] || "" : "", flowPrompt: e.flowPrompt || "", buscar: e.buscar || "" }; });
+  return g.escenas.map((e, k) => { const f = clipDeEscena(id, k + 1); return { n: k + 1, tipo: e.tipo, archivo: f ? path.basename(f) : null, origen: f ? org[k + 1] || "" : "", flowPrompt: e.flowPrompt || "", buscar: e.buscar || "", misma: !!e.misma && !f }; });
 }
 
 // prompt de Flow de una escena: estilo visual y personajes del guion + la acción de la escena (así los personajes salen iguales)
@@ -41,15 +41,17 @@ async function clipsConSkill(id, avisar, { soloFaltantes = true, conCuadros = tr
   // anuncios: la foto de la escena va en "imagen"; se anima solo si el anuncio es video y pidieron clips
   if (est?.anuncios) for (const e of g.escenas) if (!e.flowPrompt && e.imagen) e.flowPrompt = e.imagen;
   const soloImagen = est?.clipsFlow === "imagen" || (est?.anuncios && !(pr.opciones?.tipo === "video" && pr.opciones?.animar === "si"));
-  const pend = g.escenas.map((e, k) => ({ e, n: k + 1 })).filter(({ e, n }) => (est?.anuncios || e.tipo !== "cierre") && e.flowPrompt && (!soloFaltantes || !clipDeEscena(id, n)));
+  const pend = g.escenas.map((e, k) => ({ e, n: k + 1 })).filter(({ e, n }) => (est?.anuncios || e.tipo !== "cierre" || soloImagen) && !e.misma && e.flowPrompt && (!soloFaltantes || !clipDeEscena(id, n)));
   if (!pend.length) return { generados: 0 };
-  const estilo = [g.estiloVisual, "vertical 9:16"].filter(Boolean).join(", ");
+  // proporción de Flow: la del proyecto (16:9 para YouTube largo); 4:5 y 1:1 se piden en 9:16 y se recortan
+  const ratio = pr.formato === "16:9" ? "16:9" : "9:16";
+  const estilo = [g.estiloVisual || est?.estiloVisual, ratio === "16:9" ? "horizontal 16:9 widescreen" : "vertical 9:16"].filter(Boolean).join(", ");
   const jobs = [];
   // estilos de imagen fija con movimiento de cámara (p. ej. Reflexión · Estatuas): solo imágenes, mucho más barato
   if (soloImagen) {
     for (const { e, n } of pend) jobs.push({ type: "image", name: `escena-${n}`, prompt: `${estilo}. ${String(e.flowPrompt).trim()} No text, no letters, no logos, no watermark.` });
     avisar({ paso: "fondo", progreso: 0.02, msg: `Flow: ${jobs.length} imágenes…` });
-    const { archivos, fallos } = await lote(id, `imagenes-${Date.now()}`, jobs, (a) => avisar({ ...a, paso: "fondo" }));
+    const { archivos, fallos } = await lote(id, `imagenes-${Date.now()}`, jobs, (a) => avisar({ ...a, paso: "fondo" }), { ratio, minutos: Math.max(60, jobs.length * 2) });
     fs.mkdirSync(dirClips(id), { recursive: true });
     let generados = 0;
     for (const { n } of pend) { const f = archivos[`escena-${n}`]; if (!f) continue;
@@ -68,7 +70,7 @@ async function clipsConSkill(id, avisar, { soloFaltantes = true, conCuadros = tr
     } else jobs.push({ type: "video", name: `escena-${n}`, prompt: promptFlow(g, e) });
   }
   avisar({ paso: "fondo", progreso: 0.02, msg: `Flow: ${jobs.length} trabajos (${pend.length} escenas)…` });
-  const { archivos, fallos } = await lote(id, `historia-${Date.now()}`, jobs, (a) => avisar({ ...a, paso: "fondo" }));
+  const { archivos, fallos } = await lote(id, `historia-${Date.now()}`, jobs, (a) => avisar({ ...a, paso: "fondo" }), { ratio });
   fs.mkdirSync(dirClips(id), { recursive: true });
   let generados = 0;
   for (const { n } of pend) {
@@ -124,12 +126,15 @@ export async function prepararHistoria(id, avisar = () => {}, { formato } = {}) 
   const info = [];
   const est = leerEstilo(p.estilo), B = est?.banco ? await import("./banco.js") : null;
   const usados = new Set();
+  let ultima = null;
   if (B) { await B.guardarDeProyecto(id).catch(() => {}); }
   const nicho = B ? await B.nichoDeProyecto(p) : null;
   for (const [k, e] of g.escenas.entries()) {
     const n = k + 1, te = t.escenas[k], D = Math.max(1, te.fin - te.ini + 0.4);
     const sal = path.join(dirClips(id), String(n)); fs.rmSync(sal, { recursive: true, force: true }); fs.mkdirSync(sal, { recursive: true });
     let fuente = clipDeEscena(id, n), credito = "", origen = fuente ? (B?.origenes(id)[n] || "tuyo/Flow") : "";
+    // "misma": true → la escena sigue con la imagen de la anterior (otro movimiento de cámara); ahorra imágenes en videos largos
+    if (!fuente && e.misma && ultima) { fuente = ultima.fuente; origen = ultima.origen; credito = ultima.credito; }
     // banco de imágenes de videos anteriores: si hay una que se parezca, va antes que Pexels
     if (!fuente && B) { const x = B.delBanco(est.id, e, usados, { nicho }); if (x) { fuente = B.archivoBanco(est.id, x.archivo); usados.add(x.archivo); origen = "banco"; } }
     if (!fuente && e.buscar && (CFG.pexelsKey || CFG.pixabayKey)) {
@@ -143,15 +148,16 @@ export async function prepararHistoria(id, avisar = () => {}, { formato } = {}) 
     // Pexels no dio nada: cualquier imagen del banco que no se haya usado en este video
     if (!fuente && B) { const x = B.cualquieraDelBanco(est.id, usados, n * 7 + id.length); if (x) { fuente = B.archivoBanco(est.id, x.archivo); usados.add(x.archivo); origen = "banco"; } }
     if (!fuente) { info.push({ n, tipo: "ninguno" }); continue; }
+    ultima = { fuente, origen, credito };
     avisar({ paso: "render", msg: `Preparando el clip de la escena ${n}…` });
     if (VIDEO.test(fuente)) {
       const dv = await duracion(fuente).catch(() => D);
       const usa = Math.min(dv, D), pingpong = usa < D ? `,split[a][b];[b]reverse[r];[a][r]concat=n=2:v=1:a=0` : "";
       await ffmpeg(["-t", usa.toFixed(2), "-i", fuente, "-an", "-filter_complex", `[0:v]fps=${FPS},${filtro},eq=saturation=1.05${pingpong}[o]`, "-map", "[o]", "-q:v", "3", path.join(sal, "%05d.jpg")]);
-      info.push({ n, tipo: "video", fps: FPS, frames: fs.readdirSync(sal).length, credito, origen });
+      info.push({ n, tipo: "video", fps: FPS, frames: fs.readdirSync(sal).length, credito, origen, archivo: path.relative(dirProyecto(id), fuente).startsWith("..") ? fuente : path.relative(dirProyecto(id), fuente) });
     } else {
       await ffmpeg(["-i", fuente, "-vf", filtro, "-frames:v", "1", "-q:v", "2", path.join(sal, "00001.jpg")]);
-      info.push({ n, tipo: "imagen", frames: 1, credito, origen });
+      info.push({ n, tipo: "imagen", frames: 1, credito, origen, archivo: path.relative(dirProyecto(id), fuente).startsWith("..") ? fuente : path.relative(dirProyecto(id), fuente) });
     }
   }
   guardar(id, path.join("clips", "historia.json"), info);

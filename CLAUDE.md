@@ -64,6 +64,12 @@ Estado: noviembre 2026, Flow genera desde el panel del agente ("Configuración d
 - Banco de imágenes (`banco/<estilo>/`, con `indice.json`): las imágenes de Flow o subidas de cada video entran solas. Si una escena no tiene imagen: banco (la que más se parezca) → Pexels → cualquier imagen del banco no usada en ese video. En el panel cada escena tiene "Banco" y "Pexels".
 - Voz de hombre grave: en el panel "Usar esta voz en todos los de Reflexión · Estatuas".
 
+## Filosofía larga (`filosofia-larga`)
+- Video largo de YouTube (3-35 min) de filosofía oriental/estoica: ilustración de acuarela y tinta por escena, cámara lenta (acercar/alejar/paneos), voz pausada, subtítulos y capítulos.
+- Guion según `estilos/filosofia-larga/GUION.md`: por escena `voz` (15-22 palabras), `flowPrompt`, `buscar`, opcional `misma: true` (reusa la imagen anterior), `camara` y `capitulo`. Con la API, los largos se escriben por capítulos (`guionPorPartes`).
+- Render con ffmpeg (`"render": "ffmpeg"` → `core/render-ffmpeg.js`), sin navegador: ~1/3 del tiempo real con 2 núcleos. La plantilla.html es solo la vista previa (mismos movimientos).
+- Imágenes: Flow (16:9), APIMart o banco. Cada imagen de Flow/APIMart gasta: no las generes desde Claude Code sin que Richie lo pida.
+
 ## Anuncios (`anuncios`) — ver ANUNCIOS.md
 - 8 plantillas (oferta, advertorial, dato, testimonio, versus, antes-despues, notificaciones, ugc) como imágenes (cada escena = una variación) o video, en 9:16, 4:5 y 1:1.
 - Guion según `estilos/anuncios/GUION.md`. Testimonios SOLO con reseñas reales del brief; datos con 2 fuentes; nada de promesas de salud/dinero.

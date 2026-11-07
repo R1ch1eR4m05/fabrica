@@ -87,14 +87,14 @@ function errorLegible(salida) {
 let flowActivo = null;
 export function matarFlow() { try { flowActivo?.kill(); } catch {} flowActivo = null; }
 
-export function lote(id, nombre, jobs, avisar = () => {}, { minutos = 60 } = {}) {
+export function lote(id, nombre, jobs, avisar = () => {}, { minutos = 60, ratio = "9:16" } = {}) {
   return new Promise((ok, mal) => {
     if (!flowSkillListo()) return mal(new Error("No encuentro Google Flow Skill. Pon FLOW_SKILL_DIR en el .env (la carpeta donde está flow.py) y haz 'python flow.py login' una vez."));
     try { parcharSkill(); } catch {}
     const m = modelos(), dir = path.join(dirProyecto(id), "flow");
     fs.mkdirSync(dir, { recursive: true });
     const archivo = path.join(dir, `${nombre}.json`);
-    fs.writeFileSync(archivo, JSON.stringify({ project: nombre, defaults: { ratio: "9:16", image_model: m.imagen, video_model: m.video, video_duration: "8s" }, jobs }, null, 2));
+    fs.writeFileSync(archivo, JSON.stringify({ project: nombre, defaults: { ratio, image_model: m.imagen, video_model: m.video, video_duration: "8s" }, jobs }, null, 2));
     const p = spawn(CFG.python || (process.platform === "win32" ? "python" : "python3"), ["flow.py", "batch", archivo, "--out", dir], { cwd: CFG.flowSkillDir, env: { ...process.env, PYTHONIOENCODING: "utf-8" } });
     flowActivo = p;
     let salida = "", hechos = 0;

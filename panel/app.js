@@ -526,9 +526,9 @@ function panelProductoAPIMart(p, faltan) {
       <button class="mini" id="cProd">Subir foto</button></div>`;
 }
 function panelClips(p) {
-  const cs = p.clips || [], faltan = cs.filter((x) => x.tipo !== "cierre" && !x.archivo).length, est = estiloDe(p.estilo) || {}, img = est.clipsFlow === "imagen";
+  const cs = p.clips || [], faltan = cs.filter((x) => (x.tipo !== "cierre" || estiloDe(p.estilo)?.clipsFlow === "imagen") && !x.archivo && !x.misma).length, est = estiloDe(p.estilo) || {}, img = est.clipsFlow === "imagen";
   return `<div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--b)">
-    <div class="estado" id="est-fondo">Clips por escena: ${cs.length - faltan - cs.filter((x) => x.tipo === "cierre").length} listos · ${faltan} sin ${img ? "imagen" : "clip"} (${est.banco ? "al hacer el video se llenan solas: banco de videos anteriores → Pexels → banco" : 'sin clip usa Pexels con "buscar" o un dibujo animado'})</div>
+    <div class="estado" id="est-fondo">Clips por escena: ${cs.filter((x) => x.archivo).length} listos${cs.some((x) => x.misma) ? ` · ${cs.filter((x) => x.misma).length} siguen con la imagen anterior` : ""} · ${faltan} sin ${img ? "imagen" : "clip"} (${est.banco ? "al hacer el video se llenan solas: banco de videos anteriores → Pexels → banco" : 'sin clip usa Pexels con "buscar" o un dibujo animado'})</div>
     <div class="barra oculto" id="bar-fondo"><div></div></div>
     ${est.anuncios ? panelProductoAPIMart(p, faltan) : ""}
     <div class="fila" style="margin:8px 0;${est.anuncios && p.opciones?.generador !== "flow" ? "display:none" : ""}">
@@ -543,7 +543,7 @@ function panelClips(p) {
     </div>
     <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(230px,1fr))">${cs.map((x) => `
       <div class="card" style="padding:10px">
-        <div class="estado"><b style="color:var(--t)">Escena ${x.n}</b> · ${x.tipo === "cierre" && !img ? "cierre (sin clip)" : x.archivo ? `<span style="color:var(--ok)">✓ ${ORIGEN_CLIP[x.origen] || (img ? "imagen" : "clip")}</span>` : "<span style='color:var(--am)'>sin clip</span>"}</div>
+        <div class="estado"><b style="color:var(--t)">Escena ${x.n}</b> · ${x.tipo === "cierre" && !img ? "cierre (sin clip)" : x.archivo ? `<span style="color:var(--ok)">✓ ${ORIGEN_CLIP[x.origen] || (img ? "imagen" : "clip")}</span>` : x.misma ? "<span class='estado'>misma imagen que la anterior</span>" : "<span style='color:var(--am)'>sin clip</span>"}</div>
         ${x.archivo && /\.(mp4|mov|webm|m4v)$/i.test(x.archivo) ? `<video src="/proyectos/${h(p.id)}/clips/${h(x.archivo)}" muted loop playsinline preload="metadata" style="width:100%;max-height:200px;border-radius:8px;background:#000;margin-top:6px" onmouseenter="this.play()" onmouseleave="this.pause()"></video>` : x.archivo ? `<img src="/proyectos/${h(p.id)}/clips/${h(x.archivo)}" style="width:100%;max-height:200px;object-fit:cover;border-radius:8px;margin-top:6px">` : ""}
         ${x.buscar ? `<div class="estado" style="font-size:12px">buscar: ${h(x.buscar)}</div>` : ""}
         ${x.tipo !== "cierre" || img ? `<div class="fila" style="margin-top:6px"><button class="mini" data-csub="${x.n}">${x.archivo ? "Cambiar" : "Subir"}</button>${est.banco ? `<button class="mini" data-cbanco="${x.n}" title="Imágenes de videos anteriores de este estilo">Banco</button>` : ""}<button class="mini" data-cpex="${x.n}" ${S.info.pexels ? "" : "disabled title='Pon PEXELS_API_KEY en el .env (gratis en pexels.com/api)'"}>Pexels</button>${x.flowPrompt ? `<button class="mini" data-cprom="${x.n}">Copiar prompt</button>` : ""}${x.archivo ? `<button class="mini" data-cdel="${x.n}">Quitar</button>` : ""}</div>` : ""}
@@ -580,7 +580,7 @@ function eventosClips(p) {
     try { await api(`/api/proyectos/${p.id}/flow-laptop`, "POST", {}); avisar("Listo, la laptop ya está generando. Cuando termine, las imágenes llegan solas: recarga en unos minutos."); }
     catch (e) { avisar(e.message, true); $("#cLaptop").disabled = false; }
   };
-  if ($("#cAPIhist")) $("#cAPIhist").onclick = () => { if (confirm("Generar con APIMart las imágenes que faltan (unos centavos por imagen). ¿Seguir?")) api(`/api/proyectos/${p.id}/apimart`, "POST", { max: 30 }).catch((e) => avisar(e.message, true)); };
+  if ($("#cAPIhist")) $("#cAPIhist").onclick = () => { const n = (p.clips || []).filter((x) => !x.archivo && !x.misma && (x.flowPrompt || x.buscar)).length; if (confirm(`Generar con APIMart ${n} imágenes (unos centavos cada una). ¿Seguir?`)) api(`/api/proyectos/${p.id}/apimart`, "POST", { max: Math.max(1, n) }).catch((e) => avisar(e.message, true)); };
   if ($("#cAPI")) $("#cAPI").onclick = () => api(`/api/proyectos/${p.id}/apimart`, "POST", { max: Number($("#cAPImax").value) || 8 }).catch((e) => avisar(e.message, true));
   if ($("#cAPItodas")) $("#cAPItodas").onclick = () => { if (confirm("Esto vuelve a generar TODAS las imágenes con APIMart (gasta créditos). ¿Seguir?")) api(`/api/proyectos/${p.id}/apimart`, "POST", { max: Number($("#cAPImax").value) || 8, todas: true }).catch((e) => avisar(e.message, true)); };
   if ($("#cProd")) $("#cProd").onclick = () => subir(p.id, "producto", "image/*");

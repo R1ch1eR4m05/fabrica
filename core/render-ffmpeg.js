@@ -1,0 +1,147 @@
+// Render rápido para estilos de imagen fija (p. ej. Filosofía larga, 20-40 min): sin navegador.
+// Cada escena = su imagen con movimiento de cámara lento (zoompan) + subtítulos (libass), en tramos paralelos
+// que luego se juntan sin volver a codificar. Mucho más rápido que dibujar fotograma por fotograma.
+// El movimiento de cámara se calcula igual que en la plantilla.html del estilo (vista previa del panel).
+import fs from "node:fs";
+import path from "node:path";
+import { CFG, RAIZ } from "./config.js";
+import { dirProyecto, leer } from "./proyectos.js";
+import { ffmpeg } from "./ff.js";
+
+// movimientos de cámara: "acercar", "alejar", "derecha", "izquierda", "subir", "quieto"
+export const MOVIMIENTOS = ["acercar", "derecha", "alejar", "izquierda", "acercar", "subir"];
+export function movimiento(e, n) {
+  if (e?.camara && MOVIMIENTOS.concat("quieto").includes(e.camara)) return e.camara;
+  return MOVIMIENTOS[(n * 7 + 3) % MOVIMIENTOS.length];
+}
+
+const ZOOM = 0.13; // cuánto se acerca en toda la escena (13 %)
+// zoom, x e y (fracciones del espacio libre) en el avance p (0→1) de la escena
+export function camara(mov, p) {
+  const z1 = 1 + ZOOM;
+  switch (mov) {
+    case "acercar": return { z: 1 + ZOOM * p, x: 0.5, y: 0.45 };
+    case "alejar": return { z: z1 - ZOOM * p, x: 0.5, y: 0.5 };
+    case "derecha": return { z: z1, x: p, y: 0.5 };
+    case "izquierda": return { z: z1, x: 1 - p, y: 0.5 };
+    case "subir": return { z: z1, x: 0.5, y: 1 - p };
+    default: return { z: 1.04, x: 0.5, y: 0.5 };
+  }
+}
+// lo mismo como expresión de ffmpeg (on = fotograma, N = total)
+function exprCamara(mov, N) {
+  const p = `(on/${Math.max(1, N - 1)})`, z1 = (1 + ZOOM).toFixed(4);
+  const zz = { acercar: `1+${ZOOM}*${p}`, alejar: `${z1}-${ZOOM}*${p}`, quieto: "1.04" }[mov] || z1;
+  const fx = { derecha: p, izquierda: `(1-${p})` }[mov] || "0.5";
+  const fy = { subir: `(1-${p})`, acercar: "0.45" }[mov] || "0.5";
+  return { z: zz, x: `(iw-iw/zoom)*${fx}`, y: `(ih-ih/zoom)*${fy}` };
+}
+
+// ---------- subtítulos (ASS) ----------
+const tc = (s) => { s = Math.max(0, s); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return `${h}:${String(m).padStart(2, "0")}:${x.toFixed(2).padStart(5, "0")}`; };
+const limpia = (w) => String(w).replace(/[{}\\]/g, "");
+// junta las palabras en frases cortas: corta en punto/coma o al llegar a ~maxLetras
+export function frasesSubtitulo(palabras, maxLetras = 44) {
+  const out = []; let cur = [], largo = 0;
+  for (const p of palabras) {
+    if (cur.length && largo + p.w.length + 1 > maxLetras) {
+      // no dejar colgando "el", "que", "de"… al final de la línea: pasan a la siguiente
+      const pasa = cur.length > 2 && cur[cur.length - 1].w.length <= 3 && !/[,.;:]$/.test(cur[cur.length - 1].w) ? [cur.pop()] : [];
+      out.push(cur); cur = pasa; largo = pasa.reduce((a, x) => a + x.w.length + 1, 0);
+    }
+    cur.push(p); largo += p.w.length + 1;
+    if (/[.!?…]$/.test(p.w) || (/[,;:]$/.test(p.w) && largo > maxLetras * 0.45)) { out.push(cur); cur = []; largo = 0; }
+  }
+  if (cur.length) out.push(cur);
+  // una o dos palabras sueltas ("de ti.") se juntan con la línea anterior si cabe
+  const lg = (f) => f.reduce((a, x) => a + x.w.length + 1, 0);
+  for (let j = out.length - 1; j > 0; j--) if (out[j].length <= 2 && !/[.!?…]$/.test(out[j - 1].at(-1).w) && lg(out[j - 1]) + lg(out[j]) <= maxLetras * 1.25) { out[j - 1].push(...out[j]); out.splice(j, 1); }
+  return out;
+}
+export function archivoASS(guion, tiempos, fmt, { fuente = "Montserrat SemiBold" } = {}) {
+  const vertical = fmt.h > fmt.w, u = fmt.h / 1080;
+  const tam = Math.round((vertical ? 64 : 56) * (vertical ? fmt.w / 1080 : u));
+  const margen = Math.round(vertical ? fmt.h * 0.2 : 62 * u);
+  const lin = [];
+  for (const [k, te] of tiempos.escenas.entries()) {
+    const e = guion.escenas[k] || {};
+    if (e.subtitulos === false) continue;
+    const fr = frasesSubtitulo(te.palabras || [], vertical ? 30 : 46);
+    fr.forEach((f, j) => {
+      const ini = f[0].t0 - 0.05, sig = fr[j + 1]?.[0].t0 ?? Infinity;
+      const fin = Math.min(f[f.length - 1].t1 + 0.35, sig - 0.02, te.fin);
+      if (fin > ini) lin.push(`Dialogue: 0,${tc(ini)},${tc(fin)},S,,0,0,0,,${f.map((p) => limpia(p.w)).join(" ")}`);
+    });
+  }
+  return `[Script Info]
+ScriptType: v4.00+
+PlayResX: ${fmt.w}
+PlayResY: ${fmt.h}
+WrapStyle: 0
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: S,${fuente},${tam},&H00FFFFFF,&H00FFFFFF,&H00141414,&H96000000,0,0,0,0,100,100,0.5,0,1,${(2.6 * u).toFixed(1)},${(1.6 * u).toFixed(1)},2,${Math.round(fmt.w * 0.08)},${Math.round(fmt.w * 0.08)},${margen},1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+${lin.join("\n")}
+`;
+}
+
+// ruta para filtros de ffmpeg (Windows: C\:/…; comillas escapadas)
+const rutaFiltro = (f) => f.replace(/\\/g, "/").replace(/:/g, "\\:").replace(/'/g, "\\'");
+
+async function enParalelo(tareas, hilos) {
+  let i = 0; const err = [];
+  await Promise.all(Array.from({ length: Math.max(1, hilos) }, async () => {
+    while (i < tareas.length && !err.length) { const t = tareas[i++]; try { await t(); } catch (e) { err.push(e); } }
+  }));
+  if (err.length) throw err[0];
+}
+
+// devuelve la ruta del video sin audio con subtítulos
+export async function renderImagenes({ id, guion, tiempos, estilo, fmt, tmp, avisar = () => {} }) {
+  const dir = dirProyecto(id), fps = estilo.fps || 24;
+  const info = leer(id, path.join("clips", "historia.json")) || [];
+  const ass = path.join(tmp, "subs.ass");
+  const conSubs = (leer(id, "proyecto.json")?.opciones || {}).subtitulos !== "no";
+  fs.writeFileSync(ass, archivoASS(guion, tiempos, fmt));
+  const fuentes = path.join(RAIZ, "estilos", "_comun", "fuentes");
+  const fondo = (estilo.colorFondo || "#EDE6D8").replace("#", "0x");
+  // escala de trabajo para que el movimiento lento no tiemble (zoompan redondea a píxeles enteros)
+  const W2 = fmt.w * 2, H2 = fmt.h * 2;
+  const n = tiempos.escenas.length, segs = [];
+  const tareas = tiempos.escenas.map((te, k) => async () => {
+    const ini = k === 0 ? 0 : te.ini, fin = k < n - 1 ? tiempos.escenas[k + 1].ini : tiempos.duracion;
+    const f0 = Math.round(ini * fps), f1 = Math.round(fin * fps), N = f1 - f0;
+    if (N <= 0) return;
+    const c = info[k] || {}, e = guion.escenas[k] || {};
+    const src = c.archivo ? (path.isAbsolute(c.archivo) ? c.archivo : path.join(dir, c.archivo)) : null;
+    const seg = path.join(tmp, `s${String(k).padStart(4, "0")}.mp4`); segs[k] = seg;
+    // los subtítulos usan la hora del video completo: se corre el reloj al inicio del tramo y se regresa
+    const subs = !conSubs ? "null" : `setpts=PTS+${(f0 / fps).toFixed(4)}/TB,ass='${rutaFiltro(ass)}':fontsdir='${rutaFiltro(fuentes)}',setpts=PTS-STARTPTS`;
+    const sal = ["-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p", "-r", String(fps), "-threads", "2", seg];
+    if (src && fs.existsSync(src) && c.tipo === "imagen") {
+      const m = exprCamara(movimiento(e, k + 1), N);
+      await ffmpeg(["-loop", "1", "-framerate", String(fps), "-t", (N / fps).toFixed(4), "-i", src, "-vf",
+        `scale=${W2}:${H2}:force_original_aspect_ratio=increase,crop=${W2}:${H2},zoompan=z='${m.z}':x='${m.x}':y='${m.y}':d=1:s=${fmt.w}x${fmt.h}:fps=${fps},` +
+        `trim=end_frame=${N},${subs}`, ...sal]);
+    } else if (src && fs.existsSync(src) && c.tipo === "video") {
+      await ffmpeg(["-stream_loop", "-1", "-i", src, "-vf",
+        `fps=${fps},scale=${fmt.w}:${fmt.h}:force_original_aspect_ratio=increase,crop=${fmt.w}:${fmt.h},trim=end_frame=${N},${subs}`, ...sal]);
+    } else {
+      await ffmpeg(["-f", "lavfi", "-i", `color=c=${fondo}:s=${fmt.w}x${fmt.h}:r=${fps}`, "-vf", `trim=end_frame=${N},vignette=PI/5,${subs}`, ...sal]);
+    }
+    hechos++;
+    avisar({ paso: "render", progreso: hechos / n, msg: `Escena ${hechos} de ${n} · ${Math.round((Date.now() - t0) / 1000)} s` });
+  });
+  let hechos = 0; const t0 = Date.now();
+  await enParalelo(tareas, Math.max(1, Math.floor(CFG.hilos)));
+  const lista = path.join(tmp, "segmentos.txt");
+  fs.writeFileSync(lista, segs.filter(Boolean).map((p) => `file '${p.replace(/\\/g, "/")}'`).join("\n"));
+  const video = path.join(tmp, "video.mp4");
+  await ffmpeg(["-f", "concat", "-safe", "0", "-i", lista, "-c", "copy", video]);
+  return video;
+}

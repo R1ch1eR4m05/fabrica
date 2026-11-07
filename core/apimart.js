@@ -69,7 +69,7 @@ export function fotosProducto(id) {
 
 // prompt de la imagen de una escena del anuncio
 export function promptImagen(g, e, conProducto, anuncio = true) {
-  if (!anuncio) return [g.estiloVisual, e.flowPrompt || e.imagen, "No text, no letters, no logos, no watermark."].filter(Boolean).join(". ");
+  if (!anuncio) return [g.estiloVisual || g._estiloVisual, e.flowPrompt || e.imagen, "No text, no letters, no logos, no watermark."].filter(Boolean).join(". ");
   return [g.estiloVisual, e.imagen || e.flowPrompt,
     conProducto ? "Use the attached product photo(s) as the exact product: same packaging, label, shape and colors." : "",
     "Photorealistic advertising photo, clean composition with empty space for text, no text, no letters, no logos, no watermark."].filter(Boolean).join(" ");
@@ -82,7 +82,8 @@ export async function imagenesDeAPIMart(id, avisar = () => {}, { max = 8, soloFa
   const { leerEstilo } = await import("./estilos.js");
   const anuncio = !!leerEstilo(p.estilo)?.anuncios;
   const refs = anuncio ? fotosProducto(id) : [];
-  const pend = g.escenas.map((e, k) => ({ e, n: k + 1 })).filter(({ e, n }) => (e.imagen || e.flowPrompt) && e.sinImagen !== true && (anuncio || e.tipo !== "cierre" || leerEstilo(p.estilo)?.clipsFlow === "imagen") && (!soloFaltantes || !clipDeEscena(id, n)));
+  g._estiloVisual = leerEstilo(p.estilo)?.estiloVisual;
+  const pend = g.escenas.map((e, k) => ({ e, n: k + 1 })).filter(({ e, n }) => (e.imagen || e.flowPrompt) && e.sinImagen !== true && !e.misma && (anuncio || e.tipo !== "cierre" || leerEstilo(p.estilo)?.clipsFlow === "imagen") && (!soloFaltantes || !clipDeEscena(id, n)));
   if (!pend.length) return { generados: 0, fallos: [] };
   const lote = pend.slice(0, Math.max(1, max));
   // las imágenes se piden en la medida más alta del proyecto para que al recortar a 1:1 o 4:5 no se pierda lo importante
