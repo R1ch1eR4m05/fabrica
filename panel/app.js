@@ -242,7 +242,7 @@ function pintarProyecto() {
           ${p.tieneVoz ? `<audio id="vAudio" controls src="/proyectos/${h(p.id)}/voz.mp3?v=${Date.now()}" style="width:100%"></audio><div class="estado">${p.tiempos ? `${p.tiempos.duracion.toFixed(1)} s${p.tiempos.sinVoz ? " · sin voz, solo música" : p.tiempos.prueba ? " · voz de prueba" : ""}` : ""}</div>` : `<div class="estado">Primero el guion.</div>`}
         </div></section>
 
-      <section class="paso">${pasoCab(3, "render", "Vista previa y video", `<button class="btn peq" id="rTodo" title="Hace la voz y luego el video, sin esperar" ${p.estado.guion !== "listo" || S.sucio || ocupado("voz") || ocupado("render") ? "disabled" : ""}>Voz + video</button><button class="btn peq ${p.estado.voz === "listo" ? "primario" : ""}" id="rHacer" ${p.estado.voz !== "listo" || ocupado("render") || ocupado("fondo") ? "disabled" : ""}>${p.tieneFinal ? "Volver a sacar el video" : "Sacar el video"}</button>`)}
+      <section class="paso">${pasoCab(3, "render", "Vista previa y video", `<button class="btn peq" id="rTodo" title="${est?.anuncios ? "Imágenes con APIMart (las que falten) y luego todas las medidas" : "Hace la voz y luego el video, sin esperar"}" ${p.estado.guion !== "listo" || S.sucio || ocupado("voz") || ocupado("render") ? "disabled" : ""}>${est?.anuncios ? "Hacer todo" : "Voz + video"}</button><button class="btn peq ${p.estado.voz === "listo" ? "primario" : ""}" id="rHacer" ${(est?.anuncios && p.opciones?.tipo !== "video" ? p.estado.guion !== "listo" : p.estado.voz !== "listo") || ocupado("render") || ocupado("fondo") ? "disabled" : ""}>${est?.anuncios ? (p.opciones?.tipo === "video" ? "Sacar videos (todas las medidas)" : "Sacar imágenes (todas las medidas)") : p.tieneFinal ? "Volver a sacar el video" : "Sacar el video"}</button>`)}
         <div class="cont">
           <div class="vista">
             <div>
@@ -252,6 +252,7 @@ function pintarProyecto() {
             </div>
             <div>
               <div class="barra oculto" id="bar-render"><div></div></div>
+              ${est?.anuncios ? galeriaAnuncios(p) : ""}
               ${p.tieneFinal ? `
                 <video controls src="/proyectos/${h(p.id)}/final.mp4?v=${Date.now()}"></video>
                 <div class="fila" style="margin:10px 0"><a class="btn peq" href="/proyectos/${h(p.id)}/final.mp4" download="${h(p.id)}.mp4">Descargar video</a><a class="btn peq" href="/proyectos/${h(p.id)}/portada.jpg" download="${h(p.id)}.jpg">Portada</a></div>
@@ -469,12 +470,30 @@ async function pintarGHL(p, leerForm, guardarAntes) {
 
 // ---------- historia con Flow: un clip por escena ----------
 const ORIGEN_CLIP = { banco: "del banco", pexels: "Pexels" };
+function galeriaAnuncios(p) {
+  const xs = p.exportadas || []; if (!xs.length) return "";
+  const grupos = {}; for (const x of xs) { const m = x.match(/-(\d+x\d+)-v(\d+)\.jpg$/); (grupos[m ? m[1] : "?"] ||= []).push(x); }
+  return `<div class="estado" style="margin-bottom:6px"><b>${xs.length} imágenes</b> (también en <b>listos</b>, con el texto del anuncio). Toca una para descargarla.</div>
+    ${Object.entries(grupos).map(([g, l]) => `<div class="estado">${g.replace("x", ":")}</div><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:6px;margin-bottom:8px">${l.map((x) => `<a href="/proyectos/${h(p.id)}/anuncios/${h(x)}" download="${h(x)}"><img src="/proyectos/${h(p.id)}/anuncios/${h(x)}?v=${Date.now()}" loading="lazy" style="width:100%;border-radius:6px"></a>`).join("")}</div>`).join("")}`;
+}
+function panelProductoAPIMart(p, faltan) {
+  const fs_ = p.fotosProducto || [];
+  return `<div class="fila" style="margin:8px 0;align-items:center">
+      <button class="btn peq primario" id="cAPI" ${p.apimart && faltan ? "" : "disabled"} title="${p.apimart ? "Genera con APIMart (Nano Banana 2) las imágenes que faltan, usando la foto del producto de referencia" : "Pon APIMART_API_KEY en el .env"}">Generar con APIMart las que faltan</button>
+      <span class="estado">máx.</span><input id="cAPImax" type="number" value="8" min="1" max="20" style="width:70px">
+      <button class="btn peq" id="cAPItodas" ${p.apimart ? "" : "disabled"} title="Vuelve a generar todas (gasta créditos)">Rehacer todas</button>
+    </div>
+    <div class="fila" style="margin:4px 0 10px;align-items:center;gap:8px"><span class="estado"><b>Foto del producto</b> (referencia para que salga igual):</span>
+      ${fs_.map((f) => `<span style="position:relative"><img src="/proyectos/${h(p.id)}/producto/${h(f)}?v=1" style="height:64px;border-radius:6px"><button class="mini" data-pdel="${h(f)}" style="position:absolute;top:-6px;right:-6px">×</button></span>`).join("")}
+      <button class="mini" id="cProd">Subir foto</button></div>`;
+}
 function panelClips(p) {
   const cs = p.clips || [], faltan = cs.filter((x) => x.tipo !== "cierre" && !x.archivo).length, est = estiloDe(p.estilo) || {}, img = est.clipsFlow === "imagen";
   return `<div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--b)">
     <div class="estado" id="est-fondo">Clips por escena: ${cs.length - faltan - cs.filter((x) => x.tipo === "cierre").length} listos · ${faltan} sin ${img ? "imagen" : "clip"} (${est.banco ? "al hacer el video se llenan solas: banco de videos anteriores → Pexels → banco" : 'sin clip usa Pexels con "buscar" o un dibujo animado'})</div>
     <div class="barra oculto" id="bar-fondo"><div></div></div>
-    <div class="fila" style="margin:8px 0">
+    ${est.anuncios ? panelProductoAPIMart(p, faltan) : ""}
+    <div class="fila" style="margin:8px 0;${est.anuncios ? "display:none" : ""}">
       <button class="btn peq primario" id="cFlow" ${S.info.flow && faltan ? "" : "disabled"} title="${S.info.flow ? "Genera en Flow los que faltan" : "Flow solo funciona en la laptop con la skill instalada"}">Generar en Flow ${img ? "las imágenes" : "los"} que faltan</button>
       ${S.info.flowSkill && !img ? `<select id="cModelo" style="width:auto" title="Modelo de video de Flow (más caro = mejor)"></select>
         <label class="estado" style="display:flex;gap:6px;align-items:center" title="Primero hace una imagen de los personajes y el primer cuadro de cada escena con ella; luego anima. Gasta un poco más pero la familia sale igual en todas."><input type="checkbox" id="cCuadros" style="width:auto" checked> personajes iguales (imagen → video)</label>`
@@ -515,6 +534,10 @@ function eventoEnviarVPS(p) {
   if ($("#pEnviarVPS")) $("#pEnviarVPS").onclick = async () => { const b = $("#pEnviarVPS"); b.disabled = true; avisar("Enviando al VPS…"); try { const r = await api("/api/banco/sincronizar", "POST", { id: p.id }); avisar(r.enviados ? `Listo: ${r.enviados} archivos enviados. Ya lo ves desde el celular.` : "El VPS ya tiene todo de este video."); } catch (e) { avisar(e.message, true); } b.disabled = false; };
 }
 function eventosClips(p) {
+  if ($("#cAPI")) $("#cAPI").onclick = () => api(`/api/proyectos/${p.id}/apimart`, "POST", { max: Number($("#cAPImax").value) || 8 }).catch((e) => avisar(e.message, true));
+  if ($("#cAPItodas")) $("#cAPItodas").onclick = () => { if (confirm("Esto vuelve a generar TODAS las imágenes con APIMart (gasta créditos). ¿Seguir?")) api(`/api/proyectos/${p.id}/apimart`, "POST", { max: Number($("#cAPImax").value) || 8, todas: true }).catch((e) => avisar(e.message, true)); };
+  if ($("#cProd")) $("#cProd").onclick = () => subir(p.id, "producto", "image/*");
+  for (const b of document.querySelectorAll("[data-pdel]")) b.onclick = async () => { await api(`/api/proyectos/${p.id}/archivo?tipo=producto&nombre=${encodeURIComponent(b.dataset.pdel)}`, "DELETE"); abrir(p.id, { mantener: true }); };
   if ($("#cEspejo")) $("#cEspejo").onclick = async () => { $("#cEspejo").disabled = true; avisar("Enviando al VPS…"); try { const r = await api("/api/banco/sincronizar", "POST"); avisar(r.enviados ? `Listo: ${r.enviados} archivos enviados al VPS.` : "El VPS ya tenía todo."); } catch (e) { avisar(e.message, true); } $("#cEspejo").disabled = false; };
   for (const b of document.querySelectorAll("[data-cbanco]")) b.onclick = () => abrirBanco(p, Number(b.dataset.cbanco));
   for (const b of document.querySelectorAll("[data-cpex]")) b.onclick = async () => {
@@ -857,8 +880,8 @@ async function investigador(archivo) {
 // ---------- vista previa en vivo ----------
 function montarVista() {
   const p = S.actual, cont = $("#pantalla"); if (!cont) return;
-  const [W, H] = p.formato === "16:9" ? [1920, 1080] : [1080, 1920];
-  const ancho = p.formato === "16:9" ? Math.min(560, cont.parentElement.clientWidth || 560) : 300;
+  const [W, H] = ({ "16:9": [1920, 1080], "1:1": [1080, 1080], "4:5": [1080, 1350] })[p.formato] || [1080, 1920];
+  const ancho = p.formato === "16:9" ? Math.min(560, cont.parentElement.clientWidth || 560) : p.formato === "1:1" || p.formato === "4:5" ? 380 : 300;
   const k = ancho / W;
   cont.style.width = ancho + "px"; cont.style.height = H * k + "px";
   cont.innerHTML = `<iframe src="/estilos/${p.estilo}/plantilla.html?p=${encodeURIComponent(p.id)}&f=${encodeURIComponent(p.formato)}&v=${Date.now()}" width="${W}" height="${H}" style="transform:scale(${k})"></iframe>`;

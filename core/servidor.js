@@ -25,6 +25,8 @@ import * as BANCO from "./banco.js";
 import { pexels, pixabay } from "./fondos.js";
 import { flowSkillListo, MODELOS_VIDEO, MODELOS_IMAGEN, matarFlow } from "./flowskill.js";
 import { leerAjustes, guardarAjustes, MODELOS_VOZ } from "./ajustes.js";
+import * as ANU from "./anuncios.js";
+import * as AM from "./apimart.js";
 
 let investigando = null;
 function correrInvestigacion(nicho) {
@@ -91,6 +93,19 @@ function cancelarTodo() {
   for (const t of hechos) { P.marcar(t.id, t.paso, "error", { error: "Cancelado" }); emitir({ id: t.id, paso: t.paso, estado: "error", msg: "Cancelado" }); }
   siguiente();
   return hechos.length;
+}
+
+// anuncios: imágenes con APIMart (las que falten, con tope) → imágenes en las 3 medidas, o voz + video en las 3 medidas
+function hacerAnuncio(id, { maxImagenes = 8, musica = false } = {}) {
+  const p = P.leer(id, "proyecto.json"), faltan = HIS.estadoClips(id).some((x) => !x.archivo);
+  if (faltan && AM.hayAPIMart())
+    encolar(id, "fondo", (av) => AM.imagenesDeAPIMart(id, (a) => av({ ...a, paso: "fondo" }), { max: maxImagenes })
+      .catch((e) => { emitir({ id, paso: "fondo", estado: "error", msg: `APIMart: ${e.message}. Sigo con Pexels o degradado.` }); }));
+  if (p.opciones?.tipo === "video") {
+    encolar(id, "voz", (av) => hacerVoz(id, av));
+    if (musica && CFG.elevenKey) { fila.push({ id, paso: "musica", fn: (av) => musicaIA(id, av).catch((e) => emitir({ id, paso: "musica", estado: "error", msg: `Música: ${e.message}` })) }); P.marcar(id, "musica", "en-fila"); }
+    fila.push({ id, paso: "render", fn: (av) => ANU.renderMedidas(id, av) }); P.marcar(id, "render", "en-fila");
+  } else encolar(id, "render", (av) => ANU.exportarImagenes(id, av));
 }
 
 // ---- utilidades http ----
@@ -191,6 +206,15 @@ async function api(req, res, partes) {
     return json(res, 404, { error: "No existe" });
   }
 
+  if (recurso === "anuncios" && m === "POST") { // el cerebro (o n8n) manda un brief y salen los anuncios
+    try {
+      const b = await cuerpo(req);
+      const r = await ANU.crearDesdeBrief(b, { escribirGuion: INV.hayIA() ? (p) => escribirGuion(p) : null });
+      if (b.hacer) for (const x of r.creados) if (x.conGuion) try { hacerAnuncio(x.id, { maxImagenes: Number(b.maxImagenes) || 8, musica: !!b.musica }); } catch {}
+      return json(res, 200, { ...r, sinGuion: r.creados.filter((x) => !x.conGuion).length ? "Sin IA en el servidor: dile a Claude Code \"escribe los guiones pendientes\"." : undefined });
+    } catch (e) { return json(res, 400, { error: e.message }); }
+  }
+
   if (recurso === "cola") {
     if (m === "POST" && id === "cancelar") return json(res, 200, { ok: true, cancelados: cancelarTodo() });
     return json(res, 200, { actual: actual ? { id: actual.id, paso: actual.paso, minutos: Math.round((Date.now() - actual.desde) / 60000) } : null, esperando: fila.map((t) => ({ id: t.id, paso: t.paso })) });
@@ -227,6 +251,7 @@ async function api(req, res, partes) {
   if (!accion && m === "GET") {
     const d = P.detalle(id); if (leerEstilo(p.estilo)?.tipo === "motion") d.motionEstado = MOT.estadoMotion(id);
     if (leerEstilo(p.estilo)?.preparar === "historia") d.clips = HIS.estadoClips(id);
+    if (leerEstilo(p.estilo)?.anuncios) { d.exportadas = ANU.listarExportadas(id); d.fotosProducto = AM.fotosProducto(id).map((f) => path.basename(f)); d.apimart = AM.hayAPIMart(); }
     // de dónde salió la idea (si vino del investigador): enlaces, por qué y la adaptación
     if (p.desdeInvestigacion) try {
       const inv = INV.leerInvestigacion(p.desdeInvestigacion.archivo), pr = inv.propuestas.find((x) => x.n === p.desdeInvestigacion.n);
@@ -286,6 +311,7 @@ async function api(req, res, partes) {
     const limpiar = (pref) => fs.readdirSync(dir).filter((n) => n.startsWith(pref + ".")).forEach((n) => fs.rmSync(path.join(dir, n)));
     const base = { fondo: "fondo-propio", musica: "musica" }[tipo];
     if (m === "DELETE") {
+      if (tipo === "producto") { const f = path.join(AM.dirProducto(id), path.basename(q.get("nombre") || "")); if (q.get("nombre") && fs.existsSync(f)) fs.rmSync(f); return json(res, 200, P.detalle(id)); }
       if (tipo === "clip" && fs.existsSync(HIS.dirClips(id))) for (const x of fs.readdirSync(HIS.dirClips(id))) if (x.startsWith(`escena-${q.get("n")}.`)) fs.rmSync(path.join(HIS.dirClips(id), x));
       if (base) limpiar(base);
       if (base === "fondo" && P.existe(id, "tiempos.json")) { try { encolar(id, "fondo", (av) => prepararFondo(id, (a) => av({ ...a, paso: "fondo" }))); } catch {} }
@@ -302,6 +328,7 @@ async function api(req, res, partes) {
       destino = path.join(HIS.dirClips(id), `escena-${n}${ext}`);
       BANCO.marcarOrigen(id, n, null); // subido por ti: entra al banco
     }
+    else if (tipo === "producto") { fs.mkdirSync(AM.dirProducto(id), { recursive: true }); destino = path.join(AM.dirProducto(id), `foto-${Date.now()}${ext || ".jpg"}`); }
     else if (tipo === "imagen") { fs.mkdirSync(path.join(dir, "img"), { recursive: true }); destino = path.join(dir, "img", P.slug(path.basename(nombre, ext)) + ext); }
     else return json(res, 400, { error: "Tipo de archivo no válido." });
     await new Promise((ok, mal) => { const w = fs.createWriteStream(destino); req.pipe(w); w.on("finish", ok); w.on("error", mal); });
@@ -329,6 +356,7 @@ async function api(req, res, partes) {
       }
       encolar(id, "render", (av) => MOT.renderMotion(id, av)); return json(res, 200, { ok: true });
     }
+    if (est?.anuncios) { hacerAnuncio(id, { maxImagenes: Number(b?.maxImagenes) || 8, musica: !!b?.musica }); return json(res, 200, { ok: true }); }
     // fondo con Google Flow antes de la voz (solo si lo pidieron, hay prompt y Flow está abierto; si falla, sigue con Pexels)
     const prompt = (p.flowPrompt || P.leer(id, "guion.json")?.fondo?.flowPrompt || "").trim();
     // Reflexión · Estatuas (clipsFlow "imagen"): las imágenes siempre salen de Flow si la skill está lista
@@ -347,6 +375,12 @@ async function api(req, res, partes) {
   if (accion === "clips" && m === "POST") { // historia: genera en Flow los clips que faltan
     const b = await cuerpo(req);
     encolar(id, "fondo", (av) => HIS.clipsDeFlow(id, (a) => av({ ...a, paso: "fondo" }), { maxCreditos: Number(b.maxCreditos) || 25, soloFaltantes: b.todos !== true, conCuadros: b.conCuadros !== false }));
+    return json(res, 200, { ok: true });
+  }
+  if (accion === "apimart" && m === "POST") { // anuncios: imágenes con APIMart (las que faltan, o todas)
+    const b = await cuerpo(req);
+    if (!AM.hayAPIMart()) return json(res, 400, { error: "Falta APIMART_API_KEY en el .env." });
+    encolar(id, "fondo", (av) => AM.imagenesDeAPIMart(id, (a) => av({ ...a, paso: "fondo" }), { max: Number(b.max) || 8, soloFaltantes: b.todas !== true }));
     return json(res, 200, { ok: true });
   }
   if (accion === "voz-motion" && m === "POST") { encolar(id, "voz", (av) => MOT.vozMotion(id, av)); return json(res, 200, { ok: true }); }
@@ -390,6 +424,7 @@ async function api(req, res, partes) {
   if (accion === "voz" && m === "POST") { encolar(id, "voz", (av) => hacerVoz(id, av)); return json(res, 200, { ok: true }); }
   if (accion === "render" && m === "POST") {
     const esMotion = leerEstilo(p.estilo)?.tipo === "motion";
+    if (leerEstilo(p.estilo)?.anuncios) { encolar(id, "render", (av) => (p.opciones?.tipo === "video" ? ANU.renderMedidas(id, av) : ANU.exportarImagenes(id, av))); return json(res, 200, { ok: true }); }
     encolar(id, "render", (av) => (esMotion ? MOT.renderMotion(id, av) : render(id, av)));
     return json(res, 200, { ok: true });
   }

@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><title>Anuncios</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}canvas{display:block;width:100vw;height:100vh;object-fit:contain}</style>
+</head><body><canvas id="lienzo"></canvas>
+<script src="../_comun/motor.js"></script>
+<script>
+// Anuncios: 8 plantillas que se dibujan con las mismas piezas (foto, titular, subtítulo, botón, marca).
+// Imagen: cada escena es una variación completa (se exporta en 1:1, 4:5 y 9:16).
+// Video: las escenas van en secuencia; cada una puede cambiar de plantilla con "plantilla".
+// Reglas: el gancho completo desde el primer cuadro, algo se mueve siempre, nada de texto menor a 30 px,
+// el texto nunca encima de una zona clara sin "bolsa" oscura, y en 9:16 se respetan las zonas de la interfaz.
+const F = "../_comun/fuentes/";
+const PALETAS = {
+  crema:     { fondo: "#f6efe6", tinta: "#2b2118", acento: "#c8553d", suave: "#e8dccb", sobre: "#ffffff" },
+  confianza: { fondo: "#eef3fb", tinta: "#13233f", acento: "#2f6fed", suave: "#d6e2f7", sobre: "#ffffff" },
+  oscuro:    { fondo: "#121212", tinta: "#f5f5f5", acento: "#f2c14e", suave: "#262626", sobre: "#1c1c1c" },
+  rosa:      { fondo: "#fdf0f2", tinta: "#3a1f2b", acento: "#e05a7a", suave: "#f6d9df", sobre: "#ffffff" },
+  verde:     { fondo: "#eef6ef", tinta: "#1d3324", acento: "#2f9e5b", suave: "#d3e8d8", sobre: "#ffffff" },
+};
+let info = [], directas = [], cache = new Map(), actual = null, C = PALETAS.crema, op = {}, marca = "";
+
+Motor.inicioVoz = 0.2;
+Motor.iniciar({
+  fuentes: [["Montserrat", F + "montserrat-latin-800-normal.woff2", { weight: "800" }], ["Montserrat", F + "montserrat-latin-600-normal.woff2", { weight: "600" }],
+    ["Jost", F + "jost-latin-400-normal.woff2", { weight: "400" }], ["Jost", F + "jost-latin-500-normal.woff2", { weight: "500" }],
+    ["Cormorant", F + "cormorant-garamond-latin-600-normal.woff2", { weight: "600" }], ["Cormorant", F + "cormorant-garamond-latin-600-italic.woff2", { weight: "600", style: "italic" }]],
+  async preparar(M) {
+    op = M.proyecto.opciones || {};
+    C = { ...(PALETAS[op.paleta] || PALETAS.crema), ...(M.guion.colores || {}) };
+    marca = String(M.guion.marca || M.proyecto.canal || "").trim();
+    ctaGeneral = M.guion.anuncio?.boton || "";
+    try { const r = await fetch(`/proyectos/${encodeURIComponent(M.proyecto.id)}/clips/historia.json?v=${Date.now()}`); if (r.ok) info = await r.json(); } catch {}
+    // vista previa: imágenes recién generadas o subidas, directo (al exportar se preparan por medida)
+    if (!new URLSearchParams(location.search).get("render")) try {
+      const r = await fetch(`/api/proyectos/${encodeURIComponent(M.proyecto.id)}?v=${Date.now()}`);
+      if (r.ok) { const d = await r.json();
+        await Promise.all((d.clips || []).map(async (x, i) => {
+          if (!x.archivo || !/\.(jpe?g|png|webp)$/i.test(x.archivo)) return;
+          try { directas[i] = await createImageBitmap(await (await fetch(`/proyectos/${encodeURIComponent(M.proyecto.id)}/clips/${encodeURIComponent(x.archivo)}?v=${Date.now()}`)).blob()); } catch {}
+        }));
+      }
+    } catch {}
+    M.antesDeDibujar = async (t) => {
+      const i = M.escenaEn(t), c = info[i]; actual = directas[i] || null;
+      if (actual || !c || c.tipo === "ninguno" || !c.frames) return;
+      const k = c.tipo === "video" ? Math.min(c.frames - 1, Math.max(0, Math.floor((t - M.tiempos.escenas[i].ini) * c.fps))) : 0;
+      actual = await cuadro(M, i + 1, k);
+      if (c.tipo === "video") for (let j = 1; j <= 3; j++) if (k + j < c.frames) cuadro(M, i + 1, k + j);
+    };
+  },
+
+  dibujar(c, t, M) {
+    const i = M.escenaEn(t), e = M.guion.escenas[i], te = M.tiempos.escenas[i];
+    const p = t - te.ini, d = Math.max(1, te.fin - te.ini);
+    const L = lienzo(M, p, d, i);
+    c.fillStyle = C.fondo; c.fillRect(0, 0, M.W, M.H);
+    (DIBUJOS[e.plantilla || op.plantilla] || DIBUJOS.oferta)(c, M, e, L);
+    if (marca && (e.plantilla || op.plantilla) !== "ugc") firma(c, M, L);
+    // entre escenas de video: un barrido corto de color (no en la primera)
+    if (i > 0 && p < 0.22) { c.globalAlpha = 1 - p / 0.22; c.fillStyle = C.acento; c.fillRect(0, 0, M.W, M.H); c.globalAlpha = 1; }
+  },
+});
+
+// ---------- utilidades ----------
+async function cuadro(M, n, k) {
+  const clave = n * 100000 + k;
+  if (cache.has(clave)) return cache.get(clave);
+  const pr = (async () => { const r = await fetch(`/proyectos/${encodeURIComponent(M.proyecto.id)}/clips/${n}/${String(k + 1).padStart(5, "0")}.jpg`); return createImageBitmap(await r.blob()); })();
+  cache.set(clave, pr); if (cache.size > 72) cache.delete(cache.keys().next().value);
+  return pr;
+}
+// L: medidas útiles de la medida actual + reloj de entrada de la escena
+function lienzo(M, p, d, i) {
+  const W = M.W, H = M.H, u = M.u, alto = H / W > 1.5, mx = W * 0.07;
+  // 9:16: arriba ~11% y abajo ~20% los tapa la interfaz de Reels/TikTok
+  let y0 = alto ? H * 0.11 : H * 0.06; const y1 = alto ? H * 0.8 : H * 0.94;
+  const yFirma = y0; if (marca) y0 += 52 * u; // la marca va en su propia franja, nunca encima del titular
+  const ent = (a, dur = 0.9) => M.salida(M.rango(p, a, a + dur)); // entrada lenta y firme
+  return { W, H, u, mx, y0, y1, yFirma, alto, imagen: op.tipo !== "video", cuadrado: H / W < 1.1, p, d, i, ent, k: M.suave(M.clamp(p / d)), M };
+}
+function cubrir(c, img, x, y, w, h, zoom = 1, fx = 0.5, fy = 0.5) {
+  const s = Math.max(w / img.width, h / img.height) * zoom, iw = img.width * s, ih = img.height * s;
+  c.save(); c.beginPath(); c.rect(x, y, w, h); c.clip(); c.drawImage(img, x + (w - iw) * fx, y + (h - ih) * fy, iw, ih); c.restore();
+}
+// la foto de la escena (o un degradado vivo si no hay), con acercamiento lento
+function foto(c, L, x, y, w, h, radio = 0) {
+  c.save();
+  if (radio) { redondo(c, x, y, w, h, radio); c.clip(); }
+  if (actual) cubrir(c, actual, x, y, w, h, 1.04 + 0.06 * L.k);
+  else {
+    const g = c.createLinearGradient(x, y, x + w, y + h); g.addColorStop(0, C.suave); g.addColorStop(1, C.acento);
+    c.fillStyle = g; c.fillRect(x, y, w, h);
+    for (let k = 0; k < 3; k++) { const a = L.p * 0.3 + k * 2.1, r = Math.min(w, h) * 0.4; c.globalAlpha = 0.18; c.fillStyle = C.sobre;
+      c.beginPath(); c.arc(x + w * (0.5 + 0.3 * Math.cos(a)), y + h * (0.5 + 0.3 * Math.sin(a * 1.3)), r, 0, 7); c.fill(); }
+    c.globalAlpha = 1;
+  }
+  c.restore();
+}
+function redondo(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+// texto que cabe: baja el tamaño hasta que entre en maxLineas; devuelve el alto usado
+function texto(c, s, x, y, ancho, { tam = 72, min = 34, peso = 800, fam = "Montserrat", color = C.tinta, lineas = 4, alinear = "left", inter = 1.12, estilo = "", alfa = 1, dy = 0, medir = false } = {}, L) {
+  s = String(s || ""); if (!s) return 0;
+  const u = L.u; let t = tam * u, ls;
+  for (;;) { c.font = `${estilo} ${peso} ${t}px ${fam}`; ls = L.M.lineas(c, s, ancho); if (ls.length <= lineas || t <= min * u) break; t -= 2 * u; }
+  if (medir) return ls.length * t * inter;
+  c.save(); c.globalAlpha *= alfa; c.fillStyle = color; c.textAlign = alinear; c.textBaseline = "top";
+  const ax = alinear === "center" ? x + ancho / 2 : alinear === "right" ? x + ancho : x;
+  ls.forEach((l, k) => c.fillText(l, ax, y + dy + k * t * inter));
+  c.restore();
+  return ls.length * t * inter;
+}
+function boton(c, L, s, cx, y, { alfa = 1 } = {}) {
+  s = String(s || "").trim(); if (!s) return 0;
+  const u = L.u; c.font = `800 ${40 * u}px Montserrat`;
+  const w = Math.min(L.W - 2 * L.mx, c.measureText(s.toUpperCase()).width + 110 * u), h = 96 * u, x = cx - w / 2;
+  const late = 1 + 0.03 * Math.sin(L.p * 4); // late para llamar la vista
+  c.save(); c.globalAlpha *= alfa; c.translate(cx, y + h / 2); c.scale(late, late); c.translate(-cx, -(y + h / 2));
+  c.shadowColor = "rgba(0,0,0,0.25)"; c.shadowBlur = 20 * u; c.shadowOffsetY = 6 * u;
+  redondo(c, x, y, w, h, h / 2); c.fillStyle = C.acento; c.fill(); c.shadowColor = "transparent";
+  c.fillStyle = "#fff"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(s.toUpperCase(), cx, y + h / 2 + 2 * u);
+  c.restore();
+  return h;
+}
+function chip(c, L, s, x, y, { fondo = C.acento, color = "#fff", tam = 32 } = {}) {
+  const u = L.u; c.font = `800 ${tam * u}px Montserrat`; const w = c.measureText(s).width + 44 * u, h = tam * 1.8 * u;
+  redondo(c, x, y, w, h, h / 2); c.fillStyle = fondo; c.fill(); c.fillStyle = color; c.textBaseline = "middle"; c.textAlign = "left"; c.fillText(s, x + 22 * u, y + h / 2 + 1 * u);
+  return w;
+}
+function estrellas(c, L, n, x, y, tam) {
+  for (let k = 0; k < 5; k++) { const cx = x + k * tam * 1.15 + tam / 2, cy = y + tam / 2, a = L.ent(0.3 + k * 0.08, 0.4);
+    c.save(); c.translate(cx, cy); c.scale(a, a); c.beginPath();
+    for (let j = 0; j < 10; j++) { const r = j % 2 ? tam * 0.22 : tam * 0.5, an = -Math.PI / 2 + j * Math.PI / 5; c.lineTo(Math.cos(an) * r, Math.sin(an) * r); }
+    c.closePath(); c.fillStyle = k < n ? "#f5b301" : "rgba(0,0,0,0.15)"; c.fill(); c.restore(); }
+}
+function marcaIcono(c, L, ok, x, y, r) {
+  c.beginPath(); c.arc(x, y, r, 0, 7); c.fillStyle = ok ? "#2f9e5b" : "#d64545"; c.fill();
+  c.strokeStyle = "#fff"; c.lineWidth = r * 0.28; c.lineCap = "round"; c.beginPath();
+  if (ok) { c.moveTo(x - r * 0.45, y); c.lineTo(x - r * 0.1, y + r * 0.35); c.lineTo(x + r * 0.5, y - r * 0.35); }
+  else { c.moveTo(x - r * 0.35, y - r * 0.35); c.lineTo(x + r * 0.35, y + r * 0.35); c.moveTo(x + r * 0.35, y - r * 0.35); c.lineTo(x - r * 0.35, y + r * 0.35); }
+  c.stroke();
+}
+function bolsa(c, x, y, w, h, fuerza = 0.65) { const g = c.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, `rgba(0,0,0,${fuerza})`); c.fillStyle = g; c.fillRect(x, y, w, h); }
+function firma(c, M, L) {
+  const u = L.u; c.save(); c.font = `600 ${30 * u}px Montserrat`; c.fillStyle = C.tinta; c.globalAlpha = 0.7; c.textAlign = "right"; c.textBaseline = "top";
+  c.fillText(marca, L.W - L.mx, L.yFirma); c.restore();
+}
+let ctaGeneral = "";
+const cta = (e) => (e.cta ?? ctaGeneral) || "";
+
+// ---------- las plantillas ----------
+const DIBUJOS = {
+  // titular de noticia + foto + bajada; parece contenido, no anuncio
+  advertorial(c, M, e, L) {
+    const { W, u, mx, y0, y1 } = L, ancho = W - 2 * mx;
+    let y = y0;
+    c.fillStyle = C.acento; c.fillRect(mx, y, 120 * u * L.ent(0, 0.5), 8 * u); y += 26 * u;
+    texto(c, (e.medio || "Tendencias").toUpperCase(), mx, y, ancho, { tam: 30, min: 30, peso: 800, color: C.acento, lineas: 1 }, L); y += 52 * u;
+    y += texto(c, e.texto, mx, y, ancho, { tam: L.cuadrado ? 64 : 78, min: 44, peso: 600, fam: "Cormorant", lineas: L.cuadrado ? 3 : 4, inter: 1.05 }, L) + 24 * u;
+    const resto = y1 - y, hb = cta(e) ? 120 * u : 0, hs = e.sub ? (L.cuadrado ? 90 : 150) * u : 0;
+    const hf = Math.max(160 * u, resto - hb - hs - 30 * u);
+    foto(c, L, mx, y, ancho, hf, 18 * u); y += hf + 22 * u;
+    if (e.sub) y += texto(c, e.sub, mx, y, ancho, { tam: 38, min: 32, peso: 400, fam: "Jost", lineas: L.cuadrado ? 2 : 3, alfa: L.ent(0.4) }, L) + 16 * u;
+    boton(c, L, cta(e), W / 2, Math.min(y, y1 - 96 * u), { alfa: L.ent(0.7) });
+  },
+
+  // un número enorme que cuenta + qué significa
+  dato(c, M, e, L) {
+    const { W, H, u, mx, y0, y1 } = L, ancho = W - 2 * mx;
+    foto(c, L, 0, 0, W, H); c.fillStyle = C.fondo; c.globalAlpha = actual ? 0.86 : 0.5; c.fillRect(0, 0, W, H); c.globalAlpha = 1;
+    const num = String(e.dato || e.texto || ""), m = num.match(/^([^\d]*)([\d.,]+)(.*)$/);
+    let mostrado = num;
+    if (m) { const fin = parseFloat(m[2].replace(/,/g, "")), dec = (m[2].split(".")[1] || "").length, v = fin * L.ent(0, 1.3);
+      mostrado = m[1] + v.toLocaleString("es-MX", { minimumFractionDigits: dec, maximumFractionDigits: dec }) + m[3]; }
+    const cy = (y0 + y1) / 2;
+    let y = cy - (L.cuadrado ? 230 : 300) * u;
+    c.save(); c.font = `800 ${(L.cuadrado ? 220 : 260) * u}px Montserrat`; c.fillStyle = C.acento; c.textAlign = "center"; c.textBaseline = "top";
+    let tam = (L.cuadrado ? 220 : 260) * u; while (c.measureText(mostrado).width > ancho && tam > 90 * u) { tam -= 6 * u; c.font = `800 ${tam}px Montserrat`; }
+    c.fillText(mostrado, W / 2, y); c.restore(); y += tam * 1.05;
+    y += texto(c, e.dato ? e.texto : e.sub, mx, y, ancho, { tam: 58, min: 38, lineas: 3, alinear: "center", alfa: L.ent(0.5) }, L) + 20 * u;
+    if (e.dato && e.sub) y += texto(c, e.sub, mx, y, ancho, { tam: 36, min: 32, peso: 400, fam: "Jost", lineas: 2, alinear: "center", alfa: L.ent(0.7) }, L) + 20 * u;
+    if (e.fuente) texto(c, `Fuente: ${e.fuente}`, mx, y1 - 140 * u, ancho, { tam: 30, min: 30, peso: 400, fam: "Jost", lineas: 1, alinear: "center", alfa: 0.7 }, L);
+    boton(c, L, cta(e), W / 2, Math.min(y + 10 * u, y1 - 96 * u), { alfa: L.ent(0.9) });
+  },
+
+  // reseña de cliente en tarjeta, con estrellas
+  testimonio(c, M, e, L) {
+    const { W, H, u, mx, y0, y1 } = L, ancho = W - 2 * mx;
+    foto(c, L, 0, 0, W, H);
+    if (actual) { c.fillStyle = "rgba(0,0,0,0.25)"; c.fillRect(0, 0, W, H); }
+    const qOpt = { tam: L.cuadrado ? 50 : 56, min: 34, peso: 600, lineas: L.cuadrado ? 5 : 7 }, cita = `“${String(e.cita || e.texto).replace(/^["“]|["”]$/g, "")}”`;
+    const hq = texto(c, cita, 0, 0, ancho - 96 * u, { ...qOpt, medir: true }, L);
+    const hc = Math.min(y1 - y0, 48 * u + 86 * u + hq + 24 * u + 50 * u + (cta(e) ? 150 * u : 40 * u)), yc = L.alto ? y1 - hc - 30 * u : (H - hc) / 2;
+    const sube = (1 - L.ent(0, 0.8)) * 80 * u;
+    c.save(); c.globalAlpha = L.ent(0, 0.6); c.shadowColor = "rgba(0,0,0,0.3)"; c.shadowBlur = 40 * u;
+    redondo(c, mx, yc + sube, ancho, hc, 34 * u); c.fillStyle = C.sobre; c.fill(); c.restore();
+    let y = yc + sube + 48 * u; const px = mx + 48 * u, pw = ancho - 96 * u;
+    estrellas(c, L, Math.round(e.estrellas ?? 5), px, y, 52 * u); y += 86 * u;
+    y += texto(c, cita, px, y, pw, { ...qOpt, alfa: L.ent(0.25) }, L) + 24 * u;
+    texto(c, `— ${e.autor || "Cliente verificada"}`, px, y, pw, { tam: 34, min: 30, peso: 500, fam: "Jost", color: C.acento, lineas: 1, alfa: L.ent(0.5) }, L);
+    if (cta(e)) boton(c, L, cta(e), W / 2, yc + sube + hc - 130 * u, { alfa: L.ent(0.8) });
+  },
+
+  // nosotros contra lo de siempre, en dos columnas con ✓ y ✗
+  versus(c, M, e, L) {
+    const { W, u, mx, y0, y1 } = L, ancho = W - 2 * mx;
+    const nos = e.nosotros || [], ellos = e.ellos || [], filas = Math.max(nos.length, ellos.length, 1);
+    const col = (ancho - 24 * u) / 2, hh = 90 * u, ht = texto(c, e.texto, 0, 0, ancho, { tam: 64, min: 40, lineas: 3, medir: true }, L) + 30 * u;
+    const hf = Math.min(L.cuadrado ? 92 * u : 150 * u, (y1 - y0 - ht - hh - (cta(e) ? 160 * u : 30 * u)) / filas);
+    const total = ht + hh + hf * filas + 20 * u + (cta(e) ? 140 * u : 0);
+    let y = y0 + Math.max(10 * u, (y1 - y0 - total) / 2);
+    y += texto(c, e.texto, mx, y, ancho, { tam: 64, min: 40, lineas: 3, alinear: "center" }, L) + 30 * u;
+    redondo(c, mx, y, col, hh + hf * filas + 20 * u, 26 * u); c.fillStyle = C.acento; c.fill();
+    redondo(c, mx + col + 24 * u, y, col, hh + hf * filas + 20 * u, 26 * u); c.fillStyle = C.suave; c.fill();
+    texto(c, e.marcaNos || marca || "Nosotros", mx, y + 26 * u, col, { tam: 38, min: 30, color: "#fff", lineas: 1, alinear: "center" }, L);
+    texto(c, e.marcaEllos || "Lo de siempre", mx + col + 24 * u, y + 26 * u, col, { tam: 38, min: 30, color: C.tinta, lineas: 1, alinear: "center" }, L);
+    y += hh;
+    for (let k = 0; k < filas; k++) {
+      const a = L.ent(0.3 + k * 0.18, 0.6), yy = y + k * hf + (1 - a) * 30 * u, r = 22 * u;
+      c.globalAlpha = a;
+      if (nos[k]) { marcaIcono(c, L, true, mx + 44 * u, yy + hf / 2, r); texto(c, nos[k], mx + 80 * u, yy + hf / 2 - 20 * u, col - 100 * u, { tam: 34, min: 30, peso: 600, color: "#fff", lineas: 2, inter: 1.05 }, L); }
+      if (ellos[k]) { marcaIcono(c, L, false, mx + col + 68 * u, yy + hf / 2, r); texto(c, ellos[k], mx + col + 104 * u, yy + hf / 2 - 20 * u, col - 100 * u, { tam: 34, min: 30, peso: 600, color: C.tinta, lineas: 2, inter: 1.05 }, L); }
+      c.globalAlpha = 1;
+    }
+    boton(c, L, cta(e), W / 2, Math.min(y + filas * hf + 50 * u, y1 - 96 * u), { alfa: L.ent(0.9) });
+  },
+
+  // antes (gris, ✗) / después (color, ✓) sobre la foto
+  "antes-despues"(c, M, e, L) {
+    const { W, H, u, mx, y0, y1 } = L, ancho = W - 2 * mx;
+    let y = y0 + 10 * u;
+    y += texto(c, e.texto, mx, y, ancho, { tam: 60, min: 40, lineas: 3, alinear: "center" }, L) + 24 * u;
+    const resto = y1 - y - (cta(e) ? 130 * u : 10 * u), mitad = (resto - 20 * u) / 2;
+    const bloque = (titulo, items, yy, bueno, a) => {
+      c.save(); c.globalAlpha = a; redondo(c, mx, yy, ancho, mitad, 28 * u); c.clip();
+      foto(c, L, mx, yy, ancho, mitad);
+      if (!bueno) { c.globalCompositeOperation = "saturation"; c.fillStyle = "#808080"; c.fillRect(mx, yy, ancho, mitad); c.globalCompositeOperation = "source-over"; }
+      c.fillStyle = bueno ? "rgba(0,0,0,0.35)" : "rgba(0,0,0,0.55)"; c.fillRect(mx, yy, ancho, mitad);
+      chip(c, L, titulo, mx + 28 * u, yy + 26 * u, { fondo: bueno ? C.acento : "#555" });
+      (items || []).slice(0, 3).forEach((s, k) => { const iy = yy + 120 * u + k * 76 * u; if (iy > yy + mitad - 50 * u) return;
+        marcaIcono(c, L, bueno, mx + 54 * u, iy + 22 * u, 20 * u); texto(c, s, mx + 92 * u, iy, ancho - 130 * u, { tam: 36, min: 30, peso: 600, color: "#fff", lineas: 1 }, L); });
+      c.restore();
+    };
+    bloque(e.etiquetaAntes || "ANTES", [].concat(e.antes || []), y, false, L.ent(0.1, 0.6));
+    bloque(e.etiquetaDespues || "DESPUÉS", [].concat(e.despues || []), y + mitad + 20 * u, true, L.ent(0.5, 0.6));
+    boton(c, L, cta(e), W / 2, y + resto + 24 * u, { alfa: L.ent(0.9) });
+  },
+
+  // notificaciones que van cayendo en la pantalla bloqueada
+  notificaciones(c, M, e, L) {
+    const { W, H, u, mx, y0, y1 } = L, ancho = W - 2 * mx;
+    foto(c, L, 0, 0, W, H); c.fillStyle = "rgba(10,10,20,0.45)"; c.fillRect(0, 0, W, H);
+    let y = y0 + (L.alto ? H * 0.04 : 10 * u);
+    c.save(); c.fillStyle = "#fff"; c.textAlign = "center"; c.textBaseline = "top"; c.font = `600 ${(L.cuadrado ? 110 : 150) * u}px Jost`;
+    c.fillText(e.hora || "9:41", W / 2, y); c.restore(); y += (L.cuadrado ? 140 : 190) * u;
+    if (e.texto) y += texto(c, e.texto, mx, y, ancho, { tam: 54, min: 36, color: "#fff", lineas: 2, alinear: "center" }, L) + 30 * u;
+    const ns = e.notis || [], hn = (L.cuadrado ? 120 : 150) * u;
+    ns.slice(0, L.cuadrado ? 3 : 5).forEach((n, k) => {
+      const a = L.ent(0.35 + k * 0.35, 0.55), yy = y + k * (hn + 18 * u) - (1 - a) * 60 * u; if (yy + hn > y1 - (cta(e) ? 120 * u : 0)) return;
+      c.save(); c.globalAlpha = a; redondo(c, mx, yy, ancho, hn, 30 * u); c.fillStyle = "rgba(245,245,247,0.92)"; c.fill();
+      redondo(c, mx + 24 * u, yy + 24 * u, 56 * u, 56 * u, 14 * u); c.fillStyle = C.acento; c.fill();
+      c.fillStyle = "#fff"; c.font = `800 ${30 * u}px Montserrat`; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(String(n.app || marca || "•")[0].toUpperCase(), mx + 52 * u, yy + 53 * u);
+      texto(c, `${n.app || marca || ""}${n.titulo ? " · " + n.titulo : ""}`, mx + 100 * u, yy + 22 * u, ancho - 130 * u, { tam: 30, min: 30, peso: 800, color: "#111", lineas: 1 }, L);
+      texto(c, n.texto, mx + 100 * u, yy + 62 * u, ancho - 130 * u, { tam: 32, min: 30, peso: 400, fam: "Jost", color: "#222", lineas: L.cuadrado ? 1 : 2, inter: 1.08 }, L);
+      c.restore();
+    });
+    boton(c, L, cta(e), W / 2, y1 - 110 * u, { alfa: L.ent(0.4 + Math.min(ns.length, 5) * 0.35) });
+  },
+
+  // foto a pantalla completa con subtítulos de creador (cajas blancas), se siente orgánico
+  ugc(c, M, e, L) {
+    const { W, H, u, mx, y0, y1 } = L, ancho = W - 2 * mx;
+    foto(c, L, 0, 0, W, H);
+    const frases = String(e.texto || "").split(/(?<=[.!?])\s+/).filter(Boolean);
+    c.font = `800 ${50 * u}px Montserrat`;
+    let y = L.alto ? H * 0.52 : H * 0.45;
+    const visibles = L.imagen ? frases.length : Math.max(1, Math.ceil(frases.length * Math.min(1, (L.p + 0.6) / Math.max(1, L.d * 0.7))));
+    frases.slice(0, visibles).forEach((f) => {
+      const ls = L.M.lineas(c, f, ancho - 50 * u);
+      ls.forEach((l) => { const w = c.measureText(l).width + 40 * u, h = 72 * u;
+        redondo(c, (W - w) / 2, y, w, h, 14 * u); c.fillStyle = "#fff"; c.fill();
+        c.fillStyle = "#111"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(l, W / 2, y + h / 2 + 2 * u); y += h + 6 * u; });
+      y += 14 * u;
+    });
+    if (e.sub) { chip(c, L, e.sub, mx, y0 + 10 * u, { fondo: "rgba(0,0,0,0.55)", tam: 30 }); }
+    if (cta(e)) boton(c, L, cta(e), W / 2, y1 - 110 * u, { alfa: L.ent(1.2) });
+  },
+
+  // producto al centro, precio, oferta y botón
+  oferta(c, M, e, L) {
+    const { W, H, u, mx, y0, y1 } = L, ancho = W - 2 * mx;
+    const g = c.createRadialGradient(W / 2, H * 0.45, 0, W / 2, H * 0.45, H * 0.7); g.addColorStop(0, C.sobre); g.addColorStop(1, C.fondo);
+    c.fillStyle = g; c.fillRect(0, 0, W, H);
+    let y = y0 + 10 * u;
+    if (e.badge) { const w = chip(c, L, e.badge.toUpperCase(), 0, -999); chip(c, L, e.badge.toUpperCase(), (W - w) / 2, y, {}); y += 80 * u; }
+    y += texto(c, e.texto, mx, y, ancho, { tam: L.cuadrado ? 60 : 72, min: 40, lineas: 3, alinear: "center" }, L) + 24 * u;
+    const pie = (e.precio ? 120 * u : 0) + (cta(e) ? 120 * u : 0) + (e.sub ? 70 * u : 0);
+    const hf = Math.max(200 * u, y1 - y - pie - 20 * u), wf = Math.min(ancho, hf * 0.9);
+    const flota = Math.sin(L.p * 1.6) * 8 * u;
+    c.save(); c.shadowColor = "rgba(0,0,0,0.22)"; c.shadowBlur = 50 * u; c.shadowOffsetY = 24 * u;
+    redondo(c, (W - wf) / 2, y + flota, wf, hf, 30 * u); c.fillStyle = C.sobre; c.fill(); c.restore();
+    foto(c, L, (W - wf) / 2, y + flota, wf, hf, 30 * u); y += hf + 24 * u;
+    if (e.sub) y += texto(c, e.sub, mx, y, ancho, { tam: 36, min: 32, peso: 500, fam: "Jost", lineas: 1, alinear: "center", alfa: L.ent(0.4) }, L) + 12 * u;
+    if (e.precio) {
+      c.save(); c.globalAlpha = L.ent(0.5); c.textAlign = "center"; c.textBaseline = "top";
+      c.font = `800 ${84 * u}px Montserrat`; const wp = c.measureText(e.precio).width;
+      c.font = `600 ${44 * u}px Montserrat`; const wa = e.precioAntes ? c.measureText(e.precioAntes).width + 30 * u : 0;
+      const x0 = W / 2 - (wp + wa) / 2;
+      if (e.precioAntes) { c.fillStyle = C.tinta; c.globalAlpha *= 0.55; c.textAlign = "left"; c.fillText(e.precioAntes, x0, y + 30 * u);
+        c.fillRect(x0, y + 54 * u, wa - 30 * u, 4 * u); c.globalAlpha = L.ent(0.5); }
+      c.textAlign = "left"; c.font = `800 ${84 * u}px Montserrat`; c.fillStyle = C.acento; c.fillText(e.precio, x0 + wa, y); c.restore();
+      y += 110 * u;
+    }
+    boton(c, L, cta(e), W / 2, Math.min(y, y1 - 96 * u), { alfa: L.ent(0.7) });
+  },
+};
+</script>
+</body></html>

@@ -75,7 +75,7 @@
       M.tiempos = (await leer("tiempos.json", true)) || estimar(M.guion);
       if (M.tiempos.escenas.length !== M.guion.escenas.length) M.tiempos = estimar(M.guion); // el guion cambió después de la voz
       const fmt = q.get("f") || M.proyecto.formato;
-      [M.W, M.H] = fmt === "16:9" ? [1920, 1080] : [1080, 1920];
+      [M.W, M.H] = ({ "16:9": [1920, 1080], "1:1": [1080, 1080], "4:5": [1080, 1350] })[fmt] || [1080, 1920];
       M.vertical = M.H > M.W; M.u = Math.min(M.W, M.H) / 1080;
       M.duracion = M.tiempos.duracion;
 

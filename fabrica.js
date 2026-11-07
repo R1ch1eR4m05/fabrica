@@ -8,7 +8,7 @@
 //   node fabrica.js voz <id>                      genera la voz
 //   node fabrica.js fotos <id> [seg,seg,…]        saca fotogramas para revisar (proyectos/<id>/revision/)
 //   node fabrica.js render <id> [--formato 16:9]  saca el video final (también en listos/)
-//   node fabrica.js todo <id>                     voz + render
+//   node fabrica.js todo <id>                     voz + render (anuncios: APIMart [--max N|--sin-apimart] + todas las medidas)
 //   node fabrica.js pendientes                    (Claude Code) TODO lo que falta: propuestas sin crear, guiones, motion y videos sin sacar
 //   node fabrica.js crear-propuesta <archivo> <n> [--sin-ia]   crea el video de una propuesta del investigador
 //   node fabrica.js voz-motion <id>               voz en off de un motion (narración del brief)
@@ -81,6 +81,14 @@ async function main() {
     case "render": case "todo": {
       const id = libres[0];
       if (opc("formato")) { const p = P.leer(id, "proyecto.json"); p.formato = opc("formato"); P.guardar(id, "proyecto.json", p); }
+      const { leerEstilo } = await import("./core/estilos.js");
+      if (leerEstilo(P.leer(id, "proyecto.json").estilo)?.anuncios) { // anuncios: APIMart (si hay llave y faltan) → imágenes o videos en todas las medidas
+        const A = await import("./core/anuncios.js"), AM = await import("./core/apimart.js"), q = P.leer(id, "proyecto.json");
+        if (orden === "todo" && AM.hayAPIMart() && !args.includes("--sin-apimart")) { const r = await AM.imagenesDeAPIMart(id, avisar, { max: Number(opc("max", 8)) }).catch((e) => ({ error: e.message })); console.log("APIMart:", JSON.stringify(r)); }
+        if (q.opciones?.tipo === "video") { if (orden === "todo") { const { hacerVoz } = await import("./core/voz.js"); await hacerVoz(id, avisar); P.marcar(id, "voz", "listo"); } console.log(await A.renderMedidas(id, avisar)); }
+        else console.log(await A.exportarImagenes(id, avisar));
+        P.marcar(id, "render", "listo"); return;
+      }
       if (orden === "todo") { const { hacerVoz } = await import("./core/voz.js"); await hacerVoz(id, avisar); P.marcar(id, "voz", "listo"); }
       const { render } = await import("./core/render.js");
       const r = await render(id, avisar); P.marcar(id, "render", "listo");

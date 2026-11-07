@@ -21,7 +21,7 @@ function buscarChrome() {
   return candidatos.find((c) => fs.existsSync(c)) || undefined;
 }
 
-async function abrirNavegador() {
+export async function abrirNavegador() {
   return chromium.launch({
     executablePath: buscarChrome(),
     args: ["--ignore-gpu-blocklist", "--enable-gpu-rasterization", "--disable-dev-shm-usage", "--autoplay-policy=no-user-gesture-required"],
@@ -29,14 +29,14 @@ async function abrirNavegador() {
 }
 
 // servidor temporal para que el navegador lea la plantilla y los datos del proyecto
-function servidorTemporal() {
+export function servidorTemporal() {
   return new Promise((res) => {
     const s = http.createServer((req, r) => { if (!servirArchivo(req, r, req.url)) { r.writeHead(404); r.end(); } });
     s.listen(0, "127.0.0.1", () => res({ s, base: `http://127.0.0.1:${s.address().port}` }));
   });
 }
 
-async function abrirPagina(nav, base, proyecto, fmt) {
+export async function abrirPagina(nav, base, proyecto, fmt) {
   const pag = await nav.newPage({ viewport: { width: fmt.w, height: fmt.h }, deviceScaleFactor: 1 });
   const errores = [];
   pag.on("pageerror", (e) => errores.push(e.message));

@@ -64,6 +64,12 @@ Estado: noviembre 2026, Flow genera desde el panel del agente ("Configuración d
 - Banco de imágenes (`banco/<estilo>/`, con `indice.json`): las imágenes de Flow o subidas de cada video entran solas. Si una escena no tiene imagen: banco (la que más se parezca) → Pexels → cualquier imagen del banco no usada en ese video. En el panel cada escena tiene "Banco" y "Pexels".
 - Voz de hombre grave: en el panel "Usar esta voz en todos los de Reflexión · Estatuas".
 
+## Anuncios (`anuncios`) — ver ANUNCIOS.md
+- 8 plantillas (oferta, advertorial, dato, testimonio, versus, antes-despues, notificaciones, ugc) como imágenes (cada escena = una variación) o video, en 9:16, 4:5 y 1:1.
+- Guion según `estilos/anuncios/GUION.md`. Testimonios SOLO con reseñas reales del brief; datos con 2 fuentes; nada de promesas de salud/dinero.
+- Imágenes con APIMart (`core/apimart.js`, Nano Banana 2 por defecto) usando `proyectos/<id>/producto/*` como referencia. Gasta créditos: en el panel va con tope; desde Claude Code solo si Richie lo pide (`node fabrica.js todo <id>`; sin gastar: `--sin-apimart`).
+- El cerebro manda briefs a `POST /api/anuncios`.
+
 ## Motion graphics ("construye el motion de <id>")
 La skill vive en `motion/` (claude-video, MIT, textos en portugués; tú hablas en español con Richie). `$SKILL` = `<raíz de la fábrica>/motion`.
 1. Lee `proyectos/<id>/BRIEF.md` y `proyectos/<id>/proyecto.json` (campo `motion`). Las etapas A y B ya están hechas: no vuelvas a preguntar lo que ya dice el brief.

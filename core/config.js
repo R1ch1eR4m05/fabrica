@@ -56,4 +56,5 @@ export const FORMATOS = {
   "9:16": { w: 1080, h: 1920, nombre: "Vertical (TikTok, Reels, Shorts)" },
   "16:9": { w: 1920, h: 1080, nombre: "Horizontal (YouTube)" },
   "1:1": { w: 1080, h: 1080, nombre: "Cuadrado" },
+  "4:5": { w: 1080, h: 1350, nombre: "Feed 4:5 (Instagram/Facebook)" },
 };

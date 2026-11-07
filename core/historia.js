@@ -111,8 +111,9 @@ export async function clipsDeFlow(id, avisar = () => {}, { maxCreditos = 25, sol
 }
 
 // antes del render: fotogramas de cada escena
-export async function prepararHistoria(id, avisar = () => {}) {
+export async function prepararHistoria(id, avisar = () => {}, { formato } = {}) {
   const p = leer(id, "proyecto.json"), g = leer(id, "guion.json"), t = leer(id, "tiempos.json");
+  if (formato) p.formato = formato; // anuncios: se prepara una vez por medida
   const fmt = FORMATOS[p.formato], vertical = fmt.h > fmt.w;
   const w = Math.round((fmt.w * 0.75) / 2) * 2, h = Math.round((fmt.h * 0.75) / 2) * 2;
   const filtro = `scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h}`;
