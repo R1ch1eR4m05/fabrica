@@ -55,7 +55,7 @@ Motor.iniciar({
     const L = lienzo(M, p, d, i);
     c.fillStyle = C.fondo; c.fillRect(0, 0, M.W, M.H);
     (DIBUJOS[e.plantilla || op.plantilla] || DIBUJOS.oferta)(c, M, e, L);
-    if (marca && (e.plantilla || op.plantilla) !== "ugc") firma(c, M, L);
+    if (marca && !["ugc", "avatar"].includes(e.plantilla || op.plantilla)) firma(c, M, L);
     // entre escenas de video: un barrido corto de color (no en la primera)
     if (i > 0 && p < 0.22) { c.globalAlpha = 1 - p / 0.22; c.fillStyle = C.acento; c.fillRect(0, 0, M.W, M.H); c.globalAlpha = 1; }
   },
@@ -272,7 +272,8 @@ const DIBUJOS = {
     foto(c, L, 0, 0, W, H);
     const frases = String(e.texto || "").split(/(?<=[.!?])\s+/).filter(Boolean);
     c.font = `800 ${50 * u}px Montserrat`;
-    let y = L.alto ? H * 0.52 : H * 0.45;
+    // en "avatar" los subtítulos van más abajo para no tapar la cara
+    let y = (e.plantilla || op.plantilla) === "avatar" ? (L.alto ? H * 0.6 : H * 0.6) : L.alto ? H * 0.52 : H * 0.45;
     const visibles = L.imagen ? frases.length : Math.max(1, Math.ceil(frases.length * Math.min(1, (L.p + 0.6) / Math.max(1, L.d * 0.7))));
     frases.slice(0, visibles).forEach((f) => {
       const ls = L.M.lineas(c, f, ancho - 50 * u);
@@ -284,6 +285,9 @@ const DIBUJOS = {
     if (e.sub) { chip(c, L, e.sub, mx, y0 + 10 * u, { fondo: "rgba(0,0,0,0.55)", tam: 30 }); }
     if (cta(e)) boton(c, L, cta(e), W / 2, y1 - 110 * u, { alfa: L.ent(1.2) });
   },
+
+  // tu video con otra persona (cambiar avatar): pantalla completa con subtítulos de creador
+  avatar(c, M, e, L) { DIBUJOS.ugc(c, M, e, L); },
 
   // producto al centro, precio, oferta y botón
   oferta(c, M, e, L) {

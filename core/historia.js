@@ -37,12 +37,16 @@ export function promptFlow(guion, e) {
 // referencia, 3) cada escena animada desde su cuadro. Así la familia se ve igual en todas las tomas.
 async function clipsConSkill(id, avisar, { soloFaltantes = true, conCuadros = true } = {}) {
   const g = leer(id, "guion.json");
-  const pend = g.escenas.map((e, k) => ({ e, n: k + 1 })).filter(({ e, n }) => e.tipo !== "cierre" && e.flowPrompt && (!soloFaltantes || !clipDeEscena(id, n)));
+  const pr = leer(id, "proyecto.json"), est = leerEstilo(pr.estilo);
+  // anuncios: la foto de la escena va en "imagen"; se anima solo si el anuncio es video y pidieron clips
+  if (est?.anuncios) for (const e of g.escenas) if (!e.flowPrompt && e.imagen) e.flowPrompt = e.imagen;
+  const soloImagen = est?.clipsFlow === "imagen" || (est?.anuncios && !(pr.opciones?.tipo === "video" && pr.opciones?.animar === "si"));
+  const pend = g.escenas.map((e, k) => ({ e, n: k + 1 })).filter(({ e, n }) => (est?.anuncios || e.tipo !== "cierre") && e.flowPrompt && (!soloFaltantes || !clipDeEscena(id, n)));
   if (!pend.length) return { generados: 0 };
   const estilo = [g.estiloVisual, "vertical 9:16"].filter(Boolean).join(", ");
   const jobs = [];
   // estilos de imagen fija con movimiento de cámara (p. ej. Reflexión · Estatuas): solo imágenes, mucho más barato
-  if (leerEstilo(leer(id, "proyecto.json").estilo)?.clipsFlow === "imagen") {
+  if (soloImagen) {
     for (const { e, n } of pend) jobs.push({ type: "image", name: `escena-${n}`, prompt: `${estilo}. ${String(e.flowPrompt).trim()} No text, no letters, no logos, no watermark.` });
     avisar({ paso: "fondo", progreso: 0.02, msg: `Flow: ${jobs.length} imágenes…` });
     const { archivos, fallos } = await lote(id, `imagenes-${Date.now()}`, jobs, (a) => avisar({ ...a, paso: "fondo" }));

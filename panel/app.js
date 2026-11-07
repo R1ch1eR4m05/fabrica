@@ -242,7 +242,7 @@ function pintarProyecto() {
           ${p.tieneVoz ? `<audio id="vAudio" controls src="/proyectos/${h(p.id)}/voz.mp3?v=${Date.now()}" style="width:100%"></audio><div class="estado">${p.tiempos ? `${p.tiempos.duracion.toFixed(1)} s${p.tiempos.sinVoz ? " · sin voz, solo música" : p.tiempos.prueba ? " · voz de prueba" : ""}` : ""}</div>` : `<div class="estado">Primero el guion.</div>`}
         </div></section>
 
-      <section class="paso">${pasoCab(3, "render", "Vista previa y video", `<button class="btn peq" id="rTodo" title="${est?.anuncios ? "Imágenes con APIMart (las que falten) y luego todas las medidas" : "Hace la voz y luego el video, sin esperar"}" ${p.estado.guion !== "listo" || S.sucio || ocupado("voz") || ocupado("render") ? "disabled" : ""}>${est?.anuncios ? "Hacer todo" : "Voz + video"}</button><button class="btn peq ${p.estado.voz === "listo" ? "primario" : ""}" id="rHacer" ${(est?.anuncios && p.opciones?.tipo !== "video" ? p.estado.guion !== "listo" : p.estado.voz !== "listo") || ocupado("render") || ocupado("fondo") ? "disabled" : ""}>${est?.anuncios ? (p.opciones?.tipo === "video" ? "Sacar videos (todas las medidas)" : "Sacar imágenes (todas las medidas)") : p.tieneFinal ? "Volver a sacar el video" : "Sacar el video"}</button>`)}
+      <section class="paso">${pasoCab(3, "render", "Vista previa y video", `<button class="btn peq" id="rTodo" title="${est?.anuncios ? "Imágenes con APIMart (las que falten) y luego todas las medidas" : "Hace la voz y luego el video, sin esperar"}" ${p.estado.guion !== "listo" || S.sucio || ocupado("voz") || ocupado("render") ? "disabled" : ""}>${est?.anuncios ? "Hacer todo" : "Voz + video"}</button><button class="btn peq ${p.estado.voz === "listo" ? "primario" : ""}" id="rHacer" ${(est?.anuncios && p.opciones?.tipo !== "video" && p.opciones?.plantilla !== "avatar" ? p.estado.guion !== "listo" : p.estado.voz !== "listo") || ocupado("render") || ocupado("fondo") ? "disabled" : ""}>${est?.anuncios ? (p.opciones?.tipo === "video" || p.opciones?.plantilla === "avatar" ? "Sacar videos (todas las medidas)" : "Sacar imágenes (todas las medidas)") : p.tieneFinal ? "Volver a sacar el video" : "Sacar el video"}</button>`)}
         <div class="cont">
           <div class="vista">
             <div>
@@ -476,12 +476,35 @@ function galeriaAnuncios(p) {
   return `<div class="estado" style="margin-bottom:6px"><b>${xs.length} imágenes</b> (también en <b>listos</b>, con el texto del anuncio). Toca una para descargarla.</div>
     ${Object.entries(grupos).map(([g, l]) => `<div class="estado">${g.replace("x", ":")}</div><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:6px;margin-bottom:8px">${l.map((x) => `<a href="/proyectos/${h(p.id)}/anuncios/${h(x)}" download="${h(x)}"><img src="/proyectos/${h(p.id)}/anuncios/${h(x)}?v=${Date.now()}" loading="lazy" style="width:100%;border-radius:6px"></a>`).join("")}</div>`).join("")}`;
 }
+function panelAvatar(p) {
+  const a = p.avatar || {};
+  return `<div class="card" style="margin:8px 0;padding:12px">
+    <b>Cambiar avatar</b> <span class="estado">— tu video conserva movimiento, cámara y audio; cambia la persona.</span>
+    <div class="estado" style="margin:6px 0">Usa solo videos tuyos, con licencia o hechos con IA, y un personaje ficticio o de alguien que te dio permiso.</div>
+    <div class="fila" style="gap:8px;align-items:center">
+      ${a.fuente ? `<video src="/proyectos/${h(p.id)}/avatar/${h(a.fuente)}" muted playsinline preload="metadata" style="height:110px;border-radius:6px;background:#000" onmouseenter="this.play()" onmouseleave="this.pause()"></video>` : ""}
+      <button class="mini" id="avFuente">${a.fuente ? "Cambiar video" : "Subir tu video (3-30 s)"}</button>
+      ${a.imagen ? `<span style="position:relative"><img src="/proyectos/${h(p.id)}/avatar/${h(a.imagen)}?v=${Date.now()}" style="height:110px;border-radius:6px"><button class="mini" id="avQuitar" style="position:absolute;top:-6px;right:-6px">×</button></span>` : ""}
+      <button class="mini" id="avImagen">${a.imagen ? "Cambiar personaje" : "Subir foto del personaje"}</button>
+    </div>
+    ${a.imagen ? "" : `<label>O descríbelo y APIMart crea la foto</label><input id="avDesc" value="${h(a.descripcion)}" placeholder="Mamá mexicana de 35 años, cabello castaño en cola, blusa blanca, jeans">`}
+    <div class="fila" style="margin-top:8px;align-items:center">
+      <select id="avMotor" style="width:auto"><option value="kling" ${p.opciones?.motorAvatar !== "seedance" ? "selected" : ""}>Kling Motion Control</option><option value="seedance" ${p.opciones?.motorAvatar === "seedance" ? "selected" : ""}>Seedance 2.5</option></select>
+      <select id="avCalidad" style="width:auto"><option value="std">Estándar</option><option value="pro">Pro (mejor, más caro)</option></select>
+      <button class="btn peq primario" id="avHacer" ${p.apimart && a.fuente ? "" : "disabled"}>${a.resultado ? "Volver a cambiar el avatar" : "Cambiar avatar"}</button>
+    </div>
+    ${a.resultado ? `<video controls src="/proyectos/${h(p.id)}/avatar/resultado.mp4?v=${Date.now()}" style="width:220px;margin-top:8px;border-radius:8px"></video>` : ""}
+  </div>`;
+}
 function panelProductoAPIMart(p, faltan) {
-  const fs_ = p.fotosProducto || [];
+  const fs_ = p.fotosProducto || [], op = p.opciones || {};
+  if (op.plantilla === "avatar") return panelAvatar(p);
+  if (op.generador === "flow") return `<div class="estado" style="margin:8px 0">Imágenes con <b>Google Flow</b> (botón de abajo; solo en la laptop con la skill). ${op.tipo === "video" && op.animar === "si" ? "Como es video con clips, Flow hace video por escena." : ""}</div>`;
   return `<div class="fila" style="margin:8px 0;align-items:center">
       <button class="btn peq primario" id="cAPI" ${p.apimart && faltan ? "" : "disabled"} title="${p.apimart ? "Genera con APIMart (Nano Banana 2) las imágenes que faltan, usando la foto del producto de referencia" : "Pon APIMART_API_KEY en el .env"}">Generar con APIMart las que faltan</button>
       <span class="estado">máx.</span><input id="cAPImax" type="number" value="8" min="1" max="20" style="width:70px">
       <button class="btn peq" id="cAPItodas" ${p.apimart ? "" : "disabled"} title="Vuelve a generar todas (gasta créditos)">Rehacer todas</button>
+      ${op.tipo === "video" ? `<button class="btn peq" id="cAnimar" ${p.apimart ? "" : "disabled"} title="Convierte cada foto en un clip de 5 s con Seedance 2.5 (gasta más créditos que una imagen)">Animar las fotos (clips de video)</button>` : ""}
     </div>
     <div class="fila" style="margin:4px 0 10px;align-items:center;gap:8px"><span class="estado"><b>Foto del producto</b> (referencia para que salga igual):</span>
       ${fs_.map((f) => `<span style="position:relative"><img src="/proyectos/${h(p.id)}/producto/${h(f)}?v=1" style="height:64px;border-radius:6px"><button class="mini" data-pdel="${h(f)}" style="position:absolute;top:-6px;right:-6px">×</button></span>`).join("")}
@@ -493,7 +516,7 @@ function panelClips(p) {
     <div class="estado" id="est-fondo">Clips por escena: ${cs.length - faltan - cs.filter((x) => x.tipo === "cierre").length} listos · ${faltan} sin ${img ? "imagen" : "clip"} (${est.banco ? "al hacer el video se llenan solas: banco de videos anteriores → Pexels → banco" : 'sin clip usa Pexels con "buscar" o un dibujo animado'})</div>
     <div class="barra oculto" id="bar-fondo"><div></div></div>
     ${est.anuncios ? panelProductoAPIMart(p, faltan) : ""}
-    <div class="fila" style="margin:8px 0;${est.anuncios ? "display:none" : ""}">
+    <div class="fila" style="margin:8px 0;${est.anuncios && p.opciones?.generador !== "flow" ? "display:none" : ""}">
       <button class="btn peq primario" id="cFlow" ${S.info.flow && faltan ? "" : "disabled"} title="${S.info.flow ? "Genera en Flow los que faltan" : "Flow solo funciona en la laptop con la skill instalada"}">Generar en Flow ${img ? "las imágenes" : "los"} que faltan</button>
       ${S.info.flowSkill && !img ? `<select id="cModelo" style="width:auto" title="Modelo de video de Flow (más caro = mejor)"></select>
         <label class="estado" style="display:flex;gap:6px;align-items:center" title="Primero hace una imagen de los personajes y el primer cuadro de cada escena con ella; luego anima. Gasta un poco más pero la familia sale igual en todas."><input type="checkbox" id="cCuadros" style="width:auto" checked> personajes iguales (imagen → video)</label>`
@@ -537,6 +560,11 @@ function eventosClips(p) {
   if ($("#cAPI")) $("#cAPI").onclick = () => api(`/api/proyectos/${p.id}/apimart`, "POST", { max: Number($("#cAPImax").value) || 8 }).catch((e) => avisar(e.message, true));
   if ($("#cAPItodas")) $("#cAPItodas").onclick = () => { if (confirm("Esto vuelve a generar TODAS las imágenes con APIMart (gasta créditos). ¿Seguir?")) api(`/api/proyectos/${p.id}/apimart`, "POST", { max: Number($("#cAPImax").value) || 8, todas: true }).catch((e) => avisar(e.message, true)); };
   if ($("#cProd")) $("#cProd").onclick = () => subir(p.id, "producto", "image/*");
+  if ($("#cAnimar")) $("#cAnimar").onclick = () => { if (confirm("Cada foto se convierte en un clip de video con Seedance 2.5 en APIMart (gasta créditos). ¿Seguir?")) api(`/api/proyectos/${p.id}/animar`, "POST", { max: Number($("#cAPImax")?.value) || 6 }).catch((e) => avisar(e.message, true)); };
+  if ($("#avFuente")) $("#avFuente").onclick = () => subir(p.id, "avatar-fuente", "video/*");
+  if ($("#avImagen")) $("#avImagen").onclick = () => subir(p.id, "avatar-imagen", "image/*");
+  if ($("#avQuitar")) $("#avQuitar").onclick = async () => { await api(`/api/proyectos/${p.id}/archivo?tipo=avatar-imagen`, "DELETE"); abrir(p.id, { mantener: true }); };
+  if ($("#avHacer")) $("#avHacer").onclick = () => { if (confirm("Esto manda tu video y el personaje a APIMart y gasta créditos de video. ¿Seguir?")) api(`/api/proyectos/${p.id}/avatar`, "POST", { motor: $("#avMotor").value, calidad: $("#avCalidad").value, descripcion: $("#avDesc")?.value }).catch((e) => avisar(e.message, true)); };
   for (const b of document.querySelectorAll("[data-pdel]")) b.onclick = async () => { await api(`/api/proyectos/${p.id}/archivo?tipo=producto&nombre=${encodeURIComponent(b.dataset.pdel)}`, "DELETE"); abrir(p.id, { mantener: true }); };
   if ($("#cEspejo")) $("#cEspejo").onclick = async () => { $("#cEspejo").disabled = true; avisar("Enviando al VPS…"); try { const r = await api("/api/banco/sincronizar", "POST"); avisar(r.enviados ? `Listo: ${r.enviados} archivos enviados al VPS.` : "El VPS ya tenía todo."); } catch (e) { avisar(e.message, true); } $("#cEspejo").disabled = false; };
   for (const b of document.querySelectorAll("[data-cbanco]")) b.onclick = () => abrirBanco(p, Number(b.dataset.cbanco));

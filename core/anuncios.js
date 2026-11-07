@@ -127,3 +127,25 @@ export async function crearDesdeBrief(b, { escribirGuion } = {}) {
   }
   return { creados };
 }
+
+// plantilla "avatar": la escena 1 es tu video con la persona cambiada (con su audio original) y las demás escenas
+// (oferta, botón) se leen después. Arma tiempos.json y voz.mp3 con el audio del video, así el render normal lo mezcla con la música.
+export async function prepararAvatar(id, avisar = () => {}) {
+  const { archivosAvatar } = await import("./apimart.js");
+  const { ffmpeg, duracion } = await import("./ff.js");
+  const r = archivosAvatar(id).resultado;
+  if (!r) throw new Error("Primero cambia el avatar (paso 2: 'Cambiar avatar').");
+  const g = P.leer(id, "guion.json"); if (!g?.escenas?.length) throw new Error("Primero hace falta el guion.");
+  avisar({ paso: "voz", progreso: 0.2, msg: "Usando el audio de tu video…" });
+  const D = await duracion(r), escenas = [];
+  let t = 0;
+  for (const [k, e] of g.escenas.entries()) {
+    const n = String(e.texto || "").split(/\s+/).filter(Boolean).length;
+    const dur = k === 0 ? D : Math.max(2, n / 2.4 + 1.6);
+    escenas.push({ ini: t, finVoz: t + dur, fin: t + dur, palabras: [] }); t += dur;
+  }
+  t += 1;
+  await ffmpeg(["-i", r, "-vn", "-af", `apad=whole_dur=${t.toFixed(2)}`, "-t", t.toFixed(2), "-ar", "44100", "-b:a", "192k", path.join(P.dirProyecto(id), "voz.mp3")]);
+  P.guardar(id, "tiempos.json", { duracion: t, prueba: false, sinVoz: false, escenas });
+  return { duracion: t };
+}

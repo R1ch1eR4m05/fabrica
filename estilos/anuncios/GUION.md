@@ -36,6 +36,11 @@ persona y producto en uso; nada de texto en la foto), `buscar` (2-3 palabras par
 | `antes-despues` | `antes` [2-3 frases cortas del problema], `despues` [2-3 del resultado], `etiquetaAntes`, `etiquetaDespues`. Sin resultados de salud o peso |
 | `notificaciones` | `hora` ("7:02"), `notis` [{ `app`, `titulo`, `texto` }] 3-5, que cuenten una mini historia |
 | `ugc` | `texto` = 2-4 frases cortas como subtítulos de creador; `sub` = etiqueta arriba ("Reseña honesta") |
+| `avatar` | Siempre video. **Escena 1** = el video de Richie con la persona cambiada: `texto` = los subtítulos de lo que dice en su video (2-4 frases), sin `voz` (se usa el audio del video). Escenas 2-3 = cierre en `oferta` u otra plantilla, con `texto`, `precio`, `cta` |
+
+## Imágenes y clips
+`opciones.generador`: `apimart` (Nano Banana 2, usa la foto del producto de referencia) o `flow` (Google Flow en la laptop).
+`opciones.animar: "si"` en video: cada foto se vuelve clip (APIMart: Seedance 2.5; Flow: video por escena).
 
 ## Reglas (Meta y sentido común)
 - Nada de promesas de salud, peso, dinero o resultados garantizados. Nada de "¿Tienes X problema?" que señale un

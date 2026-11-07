@@ -16,6 +16,19 @@ texto para Meta en `listos/<id>-anuncio.txt`. Los videos: `listos/<id>-9x16.mp4`
 Requisitos: `APIMART_API_KEY` en el .env (opcional `APIMART_MODELO_IMAGEN`, p. ej. `gpt-image-2` o `seedream-5-0-pro`).
 Sin APIMart usa Pexels con `buscar` o un degradado de la paleta.
 
+## Generadores
+- **Imágenes con:** APIMart (Nano Banana 2 con la foto del producto) o Google Flow (la skill de la laptop; sin foto de referencia).
+- **En video:** fotos con movimiento de cámara (barato) o "Clips de video con IA" (APIMart: Seedance 2.5 anima cada foto; Flow: un video por escena).
+
+## Cambiar avatar (plantilla `avatar`, estilo Genjutsu)
+Subes **tu video** (3-30 s, tuyo, con licencia o hecho con IA) y **la foto del personaje** (o lo describes y APIMart la
+crea: "mamá mexicana de 35 años…"). "Cambiar avatar" lo manda a APIMart: **Kling Motion Control** (guarda el audio
+original) o **Seedance 2.5** en modo edición (el audio original se vuelve a poner con ffmpeg). El resultado queda en
+`listos/<id>-avatar.mp4` y como escena 1 del anuncio: la fábrica le pone subtítulos de creador, el cierre con precio y
+botón, y lo saca en las medidas elegidas con el audio de tu video + música.
+Solo personajes ficticios o personas que dieron permiso; nunca el video de otra cuenta ni la cara de alguien real sin su permiso.
+Idea tomada de open-genjutsu (Anil-matcha, MIT: https://github.com/Anil-matcha/open-genjutsu); aquí corre sobre APIMart.
+
 ## Desde el cerebro (o n8n): `POST /api/anuncios`
 ```json
 {

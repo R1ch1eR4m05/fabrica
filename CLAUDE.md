@@ -68,6 +68,8 @@ Estado: noviembre 2026, Flow genera desde el panel del agente ("Configuración d
 - 8 plantillas (oferta, advertorial, dato, testimonio, versus, antes-despues, notificaciones, ugc) como imágenes (cada escena = una variación) o video, en 9:16, 4:5 y 1:1.
 - Guion según `estilos/anuncios/GUION.md`. Testimonios SOLO con reseñas reales del brief; datos con 2 fuentes; nada de promesas de salud/dinero.
 - Imágenes con APIMart (`core/apimart.js`, Nano Banana 2 por defecto) usando `proyectos/<id>/producto/*` como referencia. Gasta créditos: en el panel va con tope; desde Claude Code solo si Richie lo pide (`node fabrica.js todo <id>`; sin gastar: `--sin-apimart`).
+- Generador: APIMart o Flow (`opciones.generador`); en video, `animar: "si"` vuelve cada foto un clip (Seedance 2.5 o Flow).
+- Plantilla `avatar`: video de Richie + foto/descripción del personaje → Kling Motion Control o Seedance 2.5 en APIMart (`cambiarAvatar` en `core/apimart.js`). Solo videos propios/con licencia y personajes ficticios o con permiso.
 - El cerebro manda briefs a `POST /api/anuncios`.
 
 ## Motion graphics ("construye el motion de <id>")

@@ -1,11 +1,43 @@
 {
   "nombre": "Anuncios",
-  "descripcion": "Anuncios para Meta/TikTok en 8 plantillas (advertorial, dato, testimonio, nosotros vs ellos, antes/después, notificaciones, UGC, oferta). Como imágenes (una por variación) o como video, en 9:16, 4:5 y 1:1. Imágenes con APIMart usando la foto de tu producto.",
+  "descripcion": "Anuncios para Meta/TikTok en 8 plantillas (advertorial, dato, testimonio, nosotros vs ellos, antes/después, notificaciones, UGC, oferta). Como imágenes (una por variación) o como video, en 9:16, 4:5 y 1:1. Imágenes con APIMart o Flow (y clips de video con IA), y la plantilla 'Cambiar avatar' que pone a otra persona en tu video.",
   "orden": 6,
-  "formatos": ["9:16", "4:5", "1:1"],
-  "duraciones": { "corto": "imagen: 3 a 6 variaciones · video: 15 a 30 segundos (5 a 8 escenas)", "largo": "imagen: 6 a 10 variaciones · video: 30 a 45 segundos (8 a 12 escenas)" },
-  "tipos": ["gancho", "beneficio", "prueba", "oferta", "cta"],
-  "camposAvanzados": ["imagen", "plantilla", "sub", "cta", "dato", "cita", "autor", "estrellas", "nosotros", "ellos", "antes", "despues", "notis", "precio", "precioAntes", "badge", "medio", "fuente"],
+  "formatos": [
+    "9:16",
+    "4:5",
+    "1:1"
+  ],
+  "duraciones": {
+    "corto": "imagen: 3 a 6 variaciones · video: 15 a 30 segundos (5 a 8 escenas)",
+    "largo": "imagen: 6 a 10 variaciones · video: 30 a 45 segundos (8 a 12 escenas)"
+  },
+  "tipos": [
+    "gancho",
+    "beneficio",
+    "prueba",
+    "oferta",
+    "cta"
+  ],
+  "camposAvanzados": [
+    "imagen",
+    "plantilla",
+    "sub",
+    "cta",
+    "dato",
+    "cita",
+    "autor",
+    "estrellas",
+    "nosotros",
+    "ellos",
+    "antes",
+    "despues",
+    "notis",
+    "precio",
+    "precioAntes",
+    "badge",
+    "medio",
+    "fuente"
+  ],
   "preparar": "historia",
   "clipsIA": "apimart",
   "anuncios": true,
@@ -13,18 +45,99 @@
   "inicioVoz": 0.2,
   "pausaEntreEscenas": 0.25,
   "colaFinal": 1.2,
-  "lectura": { "porSegundo": 2.4, "extra": 1.6 },
+  "lectura": {
+    "porSegundo": 2.4,
+    "extra": 1.6
+  },
   "opciones": [
-    { "clave": "tipo", "nombre": "Sale como", "valores": { "imagen": "Imágenes (una por variación)", "video": "Video" } },
-    { "clave": "plantilla", "nombre": "Plantilla", "valores": { "oferta": "Oferta / producto", "advertorial": "Advertorial (tipo noticia)", "dato": "Dato impactante", "testimonio": "Testimonio / reseña", "versus": "Nosotros vs. lo de siempre", "antes-despues": "Antes y después", "notificaciones": "Notificaciones del celular", "ugc": "UGC (subtítulos de creador)" } },
-    { "clave": "paleta", "nombre": "Colores", "valores": { "crema": "Crema y terracota", "confianza": "Azul confianza", "oscuro": "Oscuro premium", "rosa": "Rosa suave", "verde": "Verde natural" } },
-    { "clave": "medidas", "nombre": "Medidas", "valores": { "todas": "9:16 + 4:5 + 1:1", "esta": "Solo la de arriba" } }
+    {
+      "clave": "tipo",
+      "nombre": "Sale como",
+      "valores": {
+        "imagen": "Imágenes (una por variación)",
+        "video": "Video"
+      }
+    },
+    {
+      "clave": "plantilla",
+      "nombre": "Plantilla",
+      "valores": {
+        "oferta": "Oferta / producto",
+        "advertorial": "Advertorial (tipo noticia)",
+        "dato": "Dato impactante",
+        "testimonio": "Testimonio / reseña",
+        "versus": "Nosotros vs. lo de siempre",
+        "antes-despues": "Antes y después",
+        "notificaciones": "Notificaciones del celular",
+        "ugc": "UGC (subtítulos de creador)",
+        "avatar": "Cambiar avatar (tu video → otra persona)"
+      }
+    },
+    {
+      "clave": "generador",
+      "nombre": "Imágenes con",
+      "valores": {
+        "apimart": "APIMart (Nano Banana 2)",
+        "flow": "Google Flow (solo laptop)"
+      }
+    },
+    {
+      "clave": "animar",
+      "nombre": "En video",
+      "valores": {
+        "no": "Fotos con movimiento de cámara",
+        "si": "Clips de video con IA"
+      }
+    },
+    {
+      "clave": "motorAvatar",
+      "nombre": "Cambiar avatar con",
+      "valores": {
+        "kling": "Kling Motion Control (guarda el audio)",
+        "seedance": "Seedance 2.5 (edición)"
+      }
+    },
+    {
+      "clave": "paleta",
+      "nombre": "Colores",
+      "valores": {
+        "crema": "Crema y terracota",
+        "confianza": "Azul confianza",
+        "oscuro": "Oscuro premium",
+        "rosa": "Rosa suave",
+        "verde": "Verde natural"
+      }
+    },
+    {
+      "clave": "medidas",
+      "nombre": "Medidas",
+      "valores": {
+        "todas": "9:16 + 4:5 + 1:1",
+        "esta": "Solo la de arriba"
+      }
+    }
   ],
-  "sonido": { "ambiente": "oscuro", "volumenAmbiente": 0.0, "golpesEn": [], "efectosPorTipo": { "gancho": "whoosh" } },
+  "sonido": {
+    "ambiente": "oscuro",
+    "volumenAmbiente": 0.0,
+    "golpesEn": [],
+    "efectosPorTipo": {
+      "gancho": "whoosh"
+    }
+  },
   "musicaIA": {
     "prompt": "Upbeat, modern, warm commercial background track for a short social media ad, light percussion, positive, sits under a voice-over.",
     "reusar": true,
-    "parametros": { "animo": "alegre", "ritmo": "medio", "energia": "media", "instrumentos": ["guitarra", "percusión", "sintetizador"] }
+    "parametros": {
+      "animo": "alegre",
+      "ritmo": "medio",
+      "energia": "media",
+      "instrumentos": [
+        "guitarra",
+        "percusión",
+        "sintetizador"
+      ]
+    }
   },
   "portadaEn": 1.8,
   "vozSugerida": "Voz cálida y cercana (mujer u hombre), ritmo ágil, tono de recomendación, no de locutor."
