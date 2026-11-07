@@ -289,8 +289,9 @@ async function api(req, res, partes) {
     }
     // fondo con Google Flow antes de la voz (solo si lo pidieron, hay prompt y Flow está abierto; si falla, sigue con Pexels)
     const prompt = (p.flowPrompt || P.leer(id, "guion.json")?.fondo?.flowPrompt || "").trim();
-    if (b?.flow && est?.preparar === "historia" && (await flowDisponible()))
-      encolar(id, "fondo", (av) => HIS.clipsDeFlow(id, (a) => av({ ...a, paso: "fondo" }), { maxCreditos: Number(b.flow.maxCreditos) || 25 })
+    // Reflexión · Estatuas (clipsFlow "imagen"): las imágenes siempre salen de Flow si la skill está lista
+    if ((b?.flow || est?.clipsFlow === "imagen") && est?.preparar === "historia" && (await flowDisponible()))
+      encolar(id, "fondo", (av) => HIS.clipsDeFlow(id, (a) => av({ ...a, paso: "fondo" }), { maxCreditos: Number(b?.flow?.maxCreditos) || 25 })
         .catch((e) => { console.error("Flow", e.message); emitir({ id, paso: "fondo", estado: "error", msg: `Flow falló (${e.message}); sigo con Pexels o dibujos.` }); }));
     else if (b?.flow && est?.fondo && prompt && (await flowDisponible()))
       encolar(id, "fondo", (av) => clipDeFlow(id, prompt, (a) => av({ ...a, paso: "fondo" }), { maxCreditos: Number(b.flow.maxCreditos) || 25 })

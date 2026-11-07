@@ -14,7 +14,7 @@
   "colaFinal": 2.0,
   "opciones": [
     { "clave": "tono", "nombre": "Tono", "valores": { "turquesa": "Turquesa", "ambar": "Ámbar", "plata": "Plata (blanco y negro)", "rojo": "Rojo oscuro" } },
-    { "clave": "logo", "nombre": "Sello", "valores": { "si": "Con sello del canal", "no": "Sin sello" } }
+    { "clave": "logo", "nombre": "Sello", "valores": { "monarca": "Sello M (Monarca)", "canal": "Inicial del canal", "no": "Sin sello" } }
   ],
   "sonido": { "ambiente": "oscuro", "volumenAmbiente": 0.12, "golpesEn": [], "efectosPorTipo": {} },
   "musicaIA": {

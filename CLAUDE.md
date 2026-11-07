@@ -51,7 +51,8 @@ Si `FLOW_SKILL_DIR` está en el .env, la fábrica usa esa skill (https://github.
 ## Reflexión · Estatuas (`reflexion-estatuas`)
 - Monólogo estoico en segunda persona con imágenes de estatuas y paisajes, pintadas de un solo tono (turquesa, ámbar, plata o rojo), acercamiento lento y texto romano (Cinzel) palabra por palabra que se limpia en cada punto.
 - Guion según `estilos/reflexion-estatuas/GUION.md`: `estiloVisual` en inglés y por escena `voz`, `flowPrompt` (la imagen) y `buscar`.
-- Imágenes: `proyectos/<id>/clips/escena-N.jpg|png|mp4`; con la skill de Flow se generan como IMÁGENES (no video, gasta menos). Sin imagen usa Pexels y si no, niebla.
+- Imágenes: `proyectos/<id>/clips/escena-N.jpg|png|mp4`. Richie autorizó que este estilo SIEMPRE las genere con la skill de Flow (como imágenes, no video) al darle "Hacer todo"; solo las que falten. Sin skill usa Pexels y si no, niebla.
+- Sello: "M" de Monarca (la página se llama Monarca).
 - Voz de hombre grave: en el panel "Usar esta voz en todos los de Reflexión · Estatuas".
 
 ## Motion graphics ("construye el motion de <id>")

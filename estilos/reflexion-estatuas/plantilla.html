@@ -17,7 +17,7 @@ Motor.iniciar({
   async preparar(M) {
     const op = M.proyecto.opciones || {};
     tono = TONOS[op.tono] || TONOS.turquesa; conLogo = op.logo !== "no";
-    sello = String(M.proyecto.canal || M.guion.canal || "").replace(/^@/, "").trim();
+    sello = op.logo === "canal" ? String(M.proyecto.canal || M.guion.canal || "").replace(/^@/, "").trim() || "M" : "M"; // Monarca
     try { const r = await fetch(`/proyectos/${encodeURIComponent(M.proyecto.id)}/clips/historia.json?v=${Date.now()}`); if (r.ok) info = await r.json(); } catch {}
     M.antesDeDibujar = async (t) => {
       const i = M.escenaEn(t), c = info[i]; actual = null;
