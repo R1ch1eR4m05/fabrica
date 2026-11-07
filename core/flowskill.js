@@ -27,6 +27,8 @@ const PARCHES = [
     `from .agente import esperar_listo; await esperar_listo(page, timeout=30_000)`],
   ["flow_provider/browser.py", [`await page.locator(SEL_SETTINGS_TRIGGER).wait_for(state="visible", timeout=45_000)`, `await page.locator(${VIS("SEL_SETTINGS_TRIGGER")}).first.wait_for(state="visible", timeout=45_000)`],
     `from .agente import esperar_listo; await esperar_listo(page, timeout=45_000)`],
+  // nov 2026: al crear proyecto la página nueva nunca dispara "load" a tiempo; basta con que cambie la URL
+  ["flow_provider/project.py", [`await page.wait_for_url("**/project/**", timeout=15000)`], `await page.wait_for_url("**/project/**", timeout=60000, wait_until="commit")`],
   // el botón de ajustes viejo, si aparece dos veces
   ["flow_provider/configure.py", [`await page.locator(SEL_PANEL_TRIGGER).click(timeout=10_000)`], `await page.locator(${VIS("SEL_PANEL_TRIGGER")}).first.click(timeout=10_000)`],
   // imagen y video: con agente se configura desde "Configuración de agentes"
