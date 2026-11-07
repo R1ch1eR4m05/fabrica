@@ -472,6 +472,14 @@ async function api(req, res, partes) {
     encolar(id, "render", (av) => (esMotion ? MOT.renderMotion(id, av) : render(id, av)));
     return json(res, 200, { ok: true });
   }
+  if (accion === "miniatura") { // 3 miniaturas de YouTube del video
+    const MIN = await import("./miniatura.js");
+    if (m === "GET") return json(res, 200, MIN.leerMiniaturas(id) || {});
+    const b = await cuerpo(req).catch(() => ({}));
+    if (b?.usar) { try { return json(res, 200, MIN.usarMiniatura(id, String(b.usar))); } catch (e) { return json(res, 400, { error: e.message }); } }
+    encolar(id, "render", (av) => MIN.crearMiniaturas(id, { avisar: av, ia: !!b?.ia }));
+    return json(res, 200, { ok: true });
+  }
   if (accion === "capitulos" && m === "POST") { // video largo → un video por capítulo + un Reel vertical de cada uno
     const b = await cuerpo(req).catch(() => ({}));
     const CAP = await import("./capitulos.js");

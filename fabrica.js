@@ -19,6 +19,8 @@
 //   node fabrica.js recolectar [--nicho id]       junta y puntúa publicaciones virales (Apify) para que Claude Code las analice
 //   node fabrica.js nichos [id]                   lista los nichos (Levania, Monarca…) y, con id, deja ese activo
 //   node fabrica.js investigaciones [--nicho id]  lista las investigaciones
+//   node fabrica.js miniatura-estudiar [--estilo id] [enlaces de YouTube…]  estudia las miniaturas que mejor van en el nicho
+//   node fabrica.js miniatura <id> [--ia]  3 miniaturas de YouTube (1280x720) para el video; --ia = fondo nuevo con APIMart
 //   node fabrica.js capitulos <id> [--sin-reels]  video largo → un video por capítulo (+ Reel vertical de cada uno)
 //   node fabrica.js comparar-voces ["texto"] [--estilo id]   mismo texto con cada modelo de voz → listos/comparar-voces/
 import path from "node:path";
@@ -176,6 +178,16 @@ async function main() {
       const act = INV.nichoActivo();
       for (const n of INV.listarNichos()) console.log(`${n.id === act ? "→" : " "} ${n.id}  ·  ${n.nombre}${n.canal ? "  ·  " + n.canal : ""}  (investigacion/nichos/${n.id}.json)`);
       return;
+    }
+    case "miniatura-estudiar": {
+      const MIN = await import("./core/miniatura.js");
+      const r = await MIN.investigarMiniaturas(opc("estilo") || "filosofia-larga", { enlaces: libres, avisar });
+      console.log(r.pendiente ? `\nBajé ${r.videos} miniaturas a investigacion/miniaturas/<estilo>/ref/. Falta la receta (Claude Code las mira y guarda la receta).` : `\nListo: ${r.videos} miniaturas estudiadas, ${r.patrones} patrones.`); return;
+    }
+    case "miniatura": {
+      const MIN = await import("./core/miniatura.js");
+      const r = await MIN.crearMiniaturas(libres[0], { avisar, ia: args.includes("--ia") });
+      console.log(`\nListo: ${r.opciones.length} miniaturas en proyectos/${libres[0]}/miniaturas/ (la A ya está en listos/). Texto: ${r.origen}.${r.sinEstudio ? " Usé la receta base: estudia el nicho para afinarla." : ""}`); return;
     }
     case "capitulos": {
       const CAP = await import("./core/capitulos.js");

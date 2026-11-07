@@ -260,6 +260,7 @@ function pintarProyecto() {
                 <div class="estado">También queda guardado en la carpeta <b>listos</b>.</div>
                 ${p.guion?.escenas?.filter((e) => e.capitulo).length > 1 ? panelCortes(p) : ""}`
               : `<div class="estado">Cuando tengas la voz, revisa la vista previa y pulsa "Sacar el video".</div>`}
+              ${est?.miniaturas && p.guion?.escenas?.length ? panelMiniaturas(p) : ""}
             </div>
           </div>
         </div></section>
@@ -298,6 +299,8 @@ function pintarProyecto() {
     $("#vModelo").innerHTML = Object.entries(a.modelosVoz).map(([k, n]) => `<option value="${h(k)}" ${k === actual ? "selected" : ""}>Voz: ${h(n)}</option>`).join("");
     $("#vModelo").onchange = async () => { await api("/api/ajustes", "PUT", { modeloPorEstilo: { [p.estilo]: $("#vModelo").value } }); avisar(`Modelo de voz guardado para ${est?.nombre || "este estilo"}. Dale "Rehacer voz" para oírlo.`); };
   });
+  if ($("#mCrear")) $("#mCrear").onclick = () => api(`/api/proyectos/${p.id}/miniatura`, "POST", { ia: $("#mIA").checked }).then(() => avisar("Creando miniaturas… sale en la barra de la fila.")).catch((e) => avisar(e.message, true));
+  for (const b of document.querySelectorAll("[data-musar]")) b.onclick = () => api(`/api/proyectos/${p.id}/miniatura`, "POST", { usar: b.dataset.musar }).then(() => { avisar(`Miniatura ${b.dataset.musar} elegida: ya está en la carpeta listos.`); abrir(p.id, { mantener: true }); }).catch((e) => avisar(e.message, true));
   if ($("#cCortar")) $("#cCortar").onclick = () => api(`/api/proyectos/${p.id}/capitulos`, "POST", { reels: $("#cCortarReels").checked }).then(() => avisar("Cortando por capítulos… sale en la barra de la fila.")).catch((e) => avisar(e.message, true));
   for (const b of document.querySelectorAll("[data-copiacap]")) b.onclick = async () => {
     const t = await (await fetch(`/proyectos/${p.id}/capitulos/${b.dataset.copiacap}?v=${Date.now()}`)).text();
@@ -530,6 +533,20 @@ function panelProductoAPIMart(p, faltan) {
     <div class="fila" style="margin:4px 0 10px;align-items:center;gap:8px"><span class="estado"><b>Foto del producto</b> (referencia para que salga igual):</span>
       ${fs_.map((f) => `<span style="position:relative"><img src="/proyectos/${h(p.id)}/producto/${h(f)}?v=1" style="height:64px;border-radius:6px"><button class="mini" data-pdel="${h(f)}" style="position:absolute;top:-6px;right:-6px">×</button></span>`).join("")}
       <button class="mini" id="cProd">Subir foto</button></div>`;
+}
+function panelMiniaturas(p) {
+  const m = p.miniaturas, ops = m?.opciones || [];
+  return `<div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--b)">
+    <div class="fila" style="align-items:center"><button class="btn peq primario" id="mCrear">${ops.length ? "Rehacer miniaturas" : "Crear miniaturas de YouTube"}</button>
+      <label class="estado" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="mIA" style="width:auto"> fondo nuevo con APIMart (gasta créditos)</label></div>
+    <div class="estado">3 opciones de 1280×720 con texto grande, hechas con lo que funciona en las miniaturas del nicho. Por defecto usan las imágenes de tu video.</div>
+    ${m?.sinEstudio ? `<div class="nota">Usé una receta base. Para afinarla con miniaturas reales del nicho: <code>node fabrica.js miniatura-estudiar</code> (o pídeselo a Claude Code).</div>` : ""}
+    ${ops.length ? `<img src="/proyectos/${h(p.id)}/miniaturas/comparativa.jpg?v=${Date.now()}" style="width:100%;max-width:900px;border-radius:8px;margin-top:8px">
+    <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr));margin-top:8px">${ops.map((o) => `<div class="card" style="padding:8px">
+      <img src="/proyectos/${h(p.id)}/miniaturas/${h(o.archivo)}?v=${Date.now()}" style="width:100%;border-radius:6px">
+      <div class="fila" style="margin-top:6px;align-items:center"><b>${h(o.letra)}</b><span class="estado">${h((o.lineas || []).join(" "))}</span></div>
+      <div class="fila" style="margin-top:4px"><button class="mini" data-musar="${h(o.letra)}">${m.elegida === o.letra ? "✓ Elegida" : "Usar esta"}</button><a class="mini" href="/proyectos/${h(p.id)}/miniaturas/${h(o.archivo)}" download="${h(p.id)}-miniatura-${h(o.letra)}.jpg">Descargar</a></div></div>`).join("")}</div>` : ""}
+  </div>`;
 }
 function panelCortes(p) {
   const cs = p.cortes || [], caps = cs.filter((c) => c.tipo === "capitulo"), reels = cs.filter((c) => c.tipo === "reel");

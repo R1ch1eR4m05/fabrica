@@ -71,6 +71,13 @@ Estado: noviembre 2026, Flow genera desde el panel del agente ("Configuración d
 - Imágenes: Flow (16:9), APIMart o banco. Cada imagen de Flow/APIMart gasta: no las generes desde Claude Code sin que Richie lo pida.
 - "Cortar por capítulos" (panel, debajo del video) o `node fabrica.js capitulos <id> [--sin-reels]`: de `final.mp4` saca un video por capítulo (título al inicio, cierre suave; para Facebook) y un Reel 9:16 de 45-60 s de cada uno (empieza en el capítulo o en la escena con `"reel": true`). Quedan en `proyectos/<id>/capitulos/` y en `listos/`, con portada y texto.
 
+### Miniatura de YouTube (Filosofía larga)
+- Panel: "Crear miniaturas de YouTube" (debajo del video) o `node fabrica.js miniatura <id> [--ia]`: saca 3 opciones de 1280x720 (A, B, C) con texto grande, más una comparativa a tamaño chico. La A queda en `listos/<id>-miniatura.jpg`; "Usar esta" cambia la elegida. Por defecto el fondo sale de las imágenes del video (gratis); `--ia` genera fondos nuevos con APIMart (gasta: no lo uses sin que Richie lo pida).
+- Receta del nicho: `node fabrica.js miniatura-estudiar [--estilo id] [enlaces de YouTube…]` junta las miniaturas de los videos que mejor van (Apify, o los enlaces que pegue Richie / `investigacion/miniaturas/<estilo>/enlaces.txt`), las baja a `investigacion/miniaturas/<estilo>/ref/` y, con ANTHROPIC_API_KEY, saca la receta sola.
+- Sin API (desde Claude Code): corre el mismo comando, MIRA las imágenes de `ref/` y escribe `investigacion/miniaturas/<estilo>/receta.json` con `{ "patrones": [...], "receta": { "palabras": {"min","max"}, "mayusculas", "textoPosicion": "izquierda|derecha|centro|abajo", "tema": "oscuro|claro", "colorTexto", "colorAcento", "paleta": [], "sujeto", "fondo", "evitar": [] } }` (y `fuentes`). Sin receta se usa una base (2-4 palabras, mayúsculas, texto a la izquierda).
+- Texto de la miniatura: 2-4 palabras, que digan la verdad del video, nunca frases de otros canales. Para escribirlo tú: `proyectos/<id>/miniatura.json` → `{ "opciones": [{ "lineas": ["PAZ","EN EL TAO"], "acento": 1, "escena": 3, "promptFondo": "(inglés, solo con --ia)" }] }` (hasta 3). Sin eso lo pone la IA (o, sin IA, sale del título).
+- Las miniaturas de otras cuentas son solo referencia: nunca copies su imagen ni su texto.
+
 ## Anuncios (`anuncios`) — ver ANUNCIOS.md
 - 8 plantillas (oferta, advertorial, dato, testimonio, versus, antes-despues, notificaciones, ugc) como imágenes (cada escena = una variación) o video, en 9:16, 4:5 y 1:1.
 - Guion según `estilos/anuncios/GUION.md`. Testimonios SOLO con reseñas reales del brief; datos con 2 fuentes; nada de promesas de salud/dinero.

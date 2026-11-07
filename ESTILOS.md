@@ -75,3 +75,6 @@ node fabrica.js nuevo <id-estilo> "idea de prueba"
 node fabrica.js listo <id> && node fabrica.js voz <id> && node fabrica.js fotos <id>
 ```
 Revisa las imágenes de `proyectos/<id>/revision/` en los dos formatos antes de dar el estilo por terminado.
+
+### Miniatura de YouTube (opcional)
+Si el estilo es de videos para YouTube, agrega en `estilo.json` `"miniaturas": { "busquedas": ["tema 1", "tema 2"] }` (búsquedas con las que `miniatura-estudiar` encuentra los videos que mejor van). El panel muestra entonces "Crear miniaturas de YouTube" en cada video del estilo. Ver CLAUDE.md.

@@ -28,6 +28,7 @@
     "reusar": true,
     "parametros": { "animo": "sereno", "ritmo": "muy lento", "energia": "baja", "instrumentos": ["guzheng", "flauta de bambú", "pads"] }
   },
+  "miniaturas": { "busquedas": ["filosofía estoica", "taoísmo paz interior", "Marco Aurelio meditaciones", "sabiduría oriental para la vida"] },
   "portadaEn": 2.0,
   "vozSugerida": "Hombre, voz cálida, grave y pausada. Para videos largos conviene Eleven v4 Turbo o Google Chirp 3 HD (mucho más baratos).",
   "creditos": ""
