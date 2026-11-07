@@ -63,6 +63,9 @@ só quando precisar.
 
 ## Etapa C: construir
 
+> **Fábrica:** antes do passo 3 leia `$SKILL/referencias/anti-diapositivas.md` (em espanhol) e use-o como lista de
+> checagem nos passos 3, 5 e 8. O que ele diz do primeiro segundo e da legibilidade no celular vale sempre para Reels.
+
 1. **Brief em números** (hábito 3). Escreva `BRIEF.md` na pasta de trabalho: tamanho (1920 x 1080 para 16:9,
    1080 x 1920 para 9:16, 1080 x 1080 para 1:1), duração, 30 fps, loop ou não, as palavras exatas, a paleta em hex
    (as cores da marca substituem as do estilo; as regras do estilo ficam), as fontes com os links, as curvas em
