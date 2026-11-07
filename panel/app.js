@@ -890,6 +890,26 @@ function mostrarProgreso(paso, ev) {
   if (activo) e.textContent = ev.msg || "Trabajando…";
 }
 
+// barra fija: qué está haciendo la fábrica y botón para soltar lo trabado
+async function barraCola() {
+  let b = $("#barraCola");
+  if (!b) { b = document.createElement("div"); b.id = "barraCola"; b.style.cssText = "position:fixed;left:12px;right:12px;bottom:12px;z-index:50;display:none;gap:10px;align-items:center;justify-content:space-between;background:#1b1b22;border:1px solid #44444f;border-radius:10px;padding:8px 12px;font-size:13px;box-shadow:0 4px 18px #0008"; document.body.appendChild(b); }
+  try {
+    const c = await api("/api/cola");
+    if (!c.actual && !c.esperando.length) { b.style.display = "none"; return; }
+    const N = { guion: "guion", voz: "voz", fondo: "imágenes", musica: "música", render: "render" };
+    b.innerHTML = `<span>${c.actual ? `Haciendo: <b>${h(N[c.actual.paso] || c.actual.paso)}</b> de «${h(c.actual.id)}» · ${c.actual.minutos} min` : "Nada en marcha"}${c.esperando.length ? ` · ${c.esperando.length} en fila (${c.esperando.map((t) => h(N[t.paso] || t.paso)).join(", ")})` : ""}</span><button class="btn peq" id="cancelarCola">Cancelar todo</button>`;
+    b.style.display = "flex";
+    $("#cancelarCola").onclick = async () => {
+      if (!confirm("¿Cancelar lo que se está haciendo y vaciar la fila? Lo ya generado se queda.")) return;
+      const r = await api("/api/cola/cancelar", "POST");
+      avisar(`Cancelado (${r.cancelados}). Ya puedes volver a darle.`); barraCola();
+      S.proyectos = await api("/api/proyectos"); pintarLista(); if (S.actual) abrir(S.actual.id, { mantener: true });
+    };
+  } catch {}
+}
+setInterval(barraCola, 5000);
+
 function escuchar() {
   const es = new EventSource("/api/eventos");
   es.onmessage = async (m) => {

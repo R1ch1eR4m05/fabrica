@@ -23,7 +23,7 @@ import * as COPY from "./copy.js";
 import * as GHL from "./ghl.js";
 import * as BANCO from "./banco.js";
 import { pexels, pixabay } from "./fondos.js";
-import { flowSkillListo, MODELOS_VIDEO, MODELOS_IMAGEN } from "./flowskill.js";
+import { flowSkillListo, MODELOS_VIDEO, MODELOS_IMAGEN, matarFlow } from "./flowskill.js";
 import { leerAjustes, guardarAjustes, MODELOS_VOZ } from "./ajustes.js";
 
 let investigando = null;
@@ -50,30 +50,46 @@ function emitir(ev) {
   for (const r of oyentes) r.write(linea);
 }
 
+const NOMBRE_PASO = { guion: "el guion", voz: "la voz", fondo: "las imágenes/fondo", musica: "la música", render: "el render" };
+const quienVa = () => (actual ? `${NOMBRE_PASO[actual.paso] || actual.paso} de «${actual.id}» (lleva ${Math.round((Date.now() - actual.desde) / 60000)} min)` : "");
+
 function encolar(id, paso, fn) {
   // el mismo paso no se pide dos veces; pasos distintos (voz e imágenes de Flow, p. ej.) se forman en fila
   if ((actual?.id === id && actual.paso === paso) || fila.some((t) => t.id === id && t.paso === paso)) throw new Error("Eso ya se está haciendo en este video. Espera a que termine.");
   fila.push({ id, paso, fn });
   P.marcar(id, paso, "en-fila");
-  emitir({ id, paso, estado: "en-fila", msg: fila.length > 1 || actual ? "En fila…" : "Empezando…" });
+  emitir({ id, paso, estado: "en-fila", msg: actual ? `En fila: primero termina ${quienVa()}. Si está trabado, usa «Cancelar todo» abajo.` : "Empezando…" });
   siguiente();
 }
 
 async function siguiente() {
   if (actual || !fila.length) return;
-  actual = fila.shift();
-  const { id, paso, fn } = actual;
+  const mia = (actual = { ...fila.shift(), desde: Date.now(), cancelado: false });
+  const { id, paso, fn } = mia;
   P.marcar(id, paso, "trabajando");
   emitir({ id, paso, estado: "trabajando", progreso: 0, msg: "Trabajando…" });
   try {
-    const r = await fn((a) => emitir({ id, paso, estado: "trabajando", ...a }));
+    const r = await fn((a) => { if (mia.cancelado) throw new Error("Cancelado"); emitir({ id, paso, estado: "trabajando", ...a }); });
+    if (mia.cancelado) return;
     P.marcar(id, paso, "listo");
     emitir({ id, paso, estado: "listo", msg: "Listo", resultado: r });
   } catch (e) {
+    if (mia.cancelado) return;
     console.error(`[${id}/${paso}]`, e);
     P.marcar(id, paso, "error", { error: e.message });
     emitir({ id, paso, estado: "error", msg: e.message });
-  } finally { actual = null; siguiente(); }
+  } finally { if (actual === mia) { actual = null; siguiente(); } }
+}
+
+// suelta lo que esté en marcha y vacía la fila (por si algo se quedó trabado)
+function cancelarTodo() {
+  const hechos = [];
+  try { matarFlow(); } catch {}
+  if (actual) { actual.cancelado = true; hechos.push(actual); actual = null; }
+  while (fila.length) hechos.push(fila.shift());
+  for (const t of hechos) { P.marcar(t.id, t.paso, "error", { error: "Cancelado" }); emitir({ id: t.id, paso: t.paso, estado: "error", msg: "Cancelado" }); }
+  siguiente();
+  return hechos.length;
 }
 
 // ---- utilidades http ----
@@ -172,6 +188,11 @@ async function api(req, res, partes) {
       catch (e) { return json(res, e.codigo || 500, { error: e.message }); }
     }
     return json(res, 404, { error: "No existe" });
+  }
+
+  if (recurso === "cola") {
+    if (m === "POST" && id === "cancelar") return json(res, 200, { ok: true, cancelados: cancelarTodo() });
+    return json(res, 200, { actual: actual ? { id: actual.id, paso: actual.paso, minutos: Math.round((Date.now() - actual.desde) / 60000) } : null, esperando: fila.map((t) => ({ id: t.id, paso: t.paso })) });
   }
 
   if (recurso === "info") return json(res, 200, {

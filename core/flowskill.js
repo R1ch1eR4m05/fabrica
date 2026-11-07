@@ -82,6 +82,9 @@ function errorLegible(salida) {
 }
 
 // corre un lote; devuelve { nombre: archivo } de lo que salió bien y la lista de fallos
+let flowActivo = null;
+export function matarFlow() { try { flowActivo?.kill(); } catch {} flowActivo = null; }
+
 export function lote(id, nombre, jobs, avisar = () => {}, { minutos = 60 } = {}) {
   return new Promise((ok, mal) => {
     if (!flowSkillListo()) return mal(new Error("No encuentro Google Flow Skill. Pon FLOW_SKILL_DIR en el .env (la carpeta donde está flow.py) y haz 'python flow.py login' una vez."));
@@ -91,6 +94,7 @@ export function lote(id, nombre, jobs, avisar = () => {}, { minutos = 60 } = {})
     const archivo = path.join(dir, `${nombre}.json`);
     fs.writeFileSync(archivo, JSON.stringify({ project: nombre, defaults: { ratio: "9:16", image_model: m.imagen, video_model: m.video, video_duration: "8s" }, jobs }, null, 2));
     const p = spawn(CFG.python || (process.platform === "win32" ? "python" : "python3"), ["flow.py", "batch", archivo, "--out", dir], { cwd: CFG.flowSkillDir, env: { ...process.env, PYTHONIOENCODING: "utf-8" } });
+    flowActivo = p;
     let salida = "", hechos = 0;
     const t0 = Date.now();
     const reloj = setTimeout(() => { p.kill(); mal(new Error(`Flow tardó más de ${minutos} minutos.`)); }, minutos * 60000);
