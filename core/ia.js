@@ -53,7 +53,9 @@ export async function escribirGuion(proyecto, { cambios = "", guionActual = null
 }
 
 export function extraerJSON(texto) {
-  const g = jsonDe(texto);
+  let g;
+  // los teléfonos y algunos chats cambian las comillas por “curvas”: se enderezan si el JSON no se deja leer así
+  try { g = jsonDe(texto); } catch (e) { try { g = jsonDe(String(texto).replace(/[“”„«»]/g, '"')); } catch { throw e; } }
   if (!Array.isArray(g.escenas) || !g.escenas.length) throw new Error("El guion llegó sin escenas.");
   return g;
 }

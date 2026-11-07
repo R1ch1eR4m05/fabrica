@@ -684,6 +684,14 @@ function pintarEscenas() {
       el.oninput = el.onchange = (ev) => {
         // escenas que solo traen "voz" (Estatuas, Historia): se edita y se guarda ahí mismo
         const k = el.dataset.k === "texto" && g.escenas[i].texto === undefined && g.escenas[i].voz !== undefined ? "voz" : el.dataset.k, v = el.value;
+        // pegaste un guion completo (el JSON de Claude) dentro de una escena: se toma como el guion entero
+        if (el.dataset.k === "texto" && /^\s*[{\[]/.test(v) && /escenas/.test(v)) {
+          el.disabled = true;
+          api(`/api/proyectos/${S.actual.id}/guion-pegado`, "POST", { texto: v })
+            .then(() => { S.sucio = false; avisar("Pegaste un guion completo: lo tomé como el guion entero. Ahora dale Rehacer voz."); abrir(S.actual.id, { mantener: true }); })
+            .catch((e) => { el.disabled = false; avisar(e.message, true); });
+          return;
+        }
         if (v === "" && k !== "texto" && k !== "voz") delete g.escenas[i][k]; else g.escenas[i][k] = v;
         if (!S.sucio) { S.sucio = true; const der = $(".paso .der"); if (der && !$("#gGuardar")) { der.insertAdjacentHTML("afterbegin", `<button class="btn primario peq" id="gGuardar">Guardar cambios</button>`); $("#gGuardar").onclick = guardarGuion; } }
         if (ev.type === "change" && ["tipo", "visual"].includes(k)) pintarEscenas();
@@ -710,7 +718,7 @@ function pintarEscenas() {
 }
 
 async function guardarGuion() {
-  S.guion.escenas = S.guion.escenas.filter((e) => (e.texto || "").trim() || e.duracion);
+  S.guion.escenas = S.guion.escenas.filter((e) => (e.texto || e.voz || "").trim() || e.duracion);
   if (!S.guion.escenas.length) return avisar("El guion está vacío.", true);
   await api(`/api/proyectos/${S.actual.id}/guion`, "PUT", S.guion);
   S.sucio = false; avisar("Guion guardado."); S.proyectos = await api("/api/proyectos"); abrir(S.actual.id, { mantener: true });
