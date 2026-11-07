@@ -73,6 +73,7 @@ async function siguiente() {
     if (mia.cancelado) return;
     P.marcar(id, paso, "listo");
     emitir({ id, paso, estado: "listo", msg: "Listo", resultado: r });
+    if (BANCO.hayEspejo() && !id.startsWith("_")) BANCO.sincronizar(undefined, id).catch((e) => console.warn("Espejo:", e.message)); // el celular (VPS) ve el video, el copy y las imágenes
   } catch (e) {
     if (mia.cancelado) return;
     console.error(`[${id}/${paso}]`, e);
@@ -134,7 +135,7 @@ async function api(req, res, partes) {
     }
     if (id === "inventario" && m === "GET") return json(res, 200, BANCO.inventario());
     if (id === "sincronizar" && m === "POST") {
-      try { const r = await BANCO.sincronizar(); return json(res, 200, r); } catch (e) { return json(res, 400, { error: e.message }); }
+      try { const b = await cuerpo(req); const r = await BANCO.sincronizar(undefined, b.id || null); return json(res, 200, r); } catch (e) { return json(res, 400, { error: e.message }); }
     }
     if (!id && m === "GET") { const est = new URL(req.url, "http://x").searchParams.get("estilo") || ""; return json(res, 200, { lista: BANCO.listarBanco(path.basename(est)), espejo: BANCO.hayEspejo() }); }
     return json(res, 404, { error: "No existe" });

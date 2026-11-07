@@ -13,13 +13,14 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { CFG, RAIZ } from "./config.js";
+import { CFG, RAIZ, DIR_PROYECTOS, DIR_LISTOS } from "./config.js";
 import { dirProyecto, leer, guardar, slug, listarProyectos } from "./proyectos.js";
 import { leerEstilo } from "./estilos.js";
 
 export const DIR_BANCO = path.join(RAIZ, "banco");
 const DIR_MUSICA = path.join(RAIZ, "musica");
 const VIDEO = /\.(mp4|mov|webm|m4v)$/i, IMAGEN = /\.(jpe?g|png|webp)$/i, AUDIO = /\.(mp3|m4a|wav|ogg)$/i;
+const ARCH_VIDEO = /\.(json|txt|mp3|m4a|wav|mp4|mov|webm|m4v|jpe?g|png|webp)$/i;
 const rel = (f) => path.relative(RAIZ, f).replace(/\\/g, "/");
 
 // ---------------- nicho de un proyecto ----------------
@@ -161,7 +162,7 @@ async function espejo(f, datos) {
   if (!hayEspejo()) return;
   try {
     const r = await fetch(`${CFG.espejoUrl.replace(/\/+$/, "")}/api/banco/recibir`, {
-      method: "POST", signal: AbortSignal.timeout(120000),
+      method: "POST", signal: AbortSignal.timeout(900000),
       headers: { authorization: "Basic " + Buffer.from("fabrica:" + CFG.espejoClave).toString("base64"), "x-ruta": encodeURIComponent(rel(f)), "x-datos": encodeURIComponent(JSON.stringify(datos)), "content-type": "application/octet-stream" },
       body: fs.readFileSync(f),
     });
@@ -173,36 +174,59 @@ export function recibir(ruta, datos, buffer) {
   const f = path.resolve(RAIZ, ruta);
   const okBanco = f.startsWith(DIR_BANCO + path.sep) && (VIDEO.test(f) || IMAGEN.test(f));
   const okMusica = f.startsWith(path.join(DIR_MUSICA, "nichos") + path.sep) && AUDIO.test(f);
-  if (!okBanco && !okMusica) throw new Error("Ruta no permitida.");
+  const okVideo = (f.startsWith(DIR_PROYECTOS + path.sep) && !/[\\/](flow|tmp)[\\/]/.test(f.slice(DIR_PROYECTOS.length)) || f.startsWith(DIR_LISTOS + path.sep)) && ARCH_VIDEO.test(f);
+  if (!okBanco && !okMusica && !okVideo) throw new Error("Ruta no permitida.");
   fs.mkdirSync(path.dirname(f), { recursive: true });
   fs.writeFileSync(f, buffer);
   if (okMusica && datos?.meta) fs.writeFileSync(f.replace(AUDIO, ".json"), JSON.stringify(datos.meta, null, 2));
   if (okBanco && datos?.estilo && datos.item) { const l = indice(datos.estilo).filter((x) => x.hash !== datos.item.hash); l.push(datos.item); guardarIndice(datos.estilo, l); }
 }
-// manda todo lo que el VPS aún no tenga
-export async function sincronizar(avisar = () => {}) {
+// manda todo lo que el VPS aún no tenga (banco, música, y los videos con sus imágenes, voz, copy y portada)
+let sincronizando = false;
+export async function sincronizar(avisar = () => {}, soloId = null) {
   if (!hayEspejo()) throw new Error("Pon ESPEJO_URL y ESPEJO_CLAVE en el .env de la laptop.");
-  const base = CFG.espejoUrl.replace(/\/+$/, ""), auth = { authorization: "Basic " + Buffer.from("fabrica:" + CFG.espejoClave).toString("base64") };
-  const r = await fetch(`${base}/api/banco/inventario`, { headers: auth, signal: AbortSignal.timeout(30000) });
-  if (!r.ok) throw new Error(`El VPS respondió ${r.status} (¿URL o clave mal?)`);
-  const tiene = new Set((await r.json()).archivos || []);
-  const mios = inventario().archivos.filter((x) => !tiene.has(x));
-  let k = 0;
-  for (const ruta of mios) {
-    const f = path.join(RAIZ, ruta);
-    let datos = {};
-    if (ruta.startsWith("banco/")) { const estilo = ruta.split("/")[1]; datos = { tipo: "banco", estilo, item: indice(estilo).find((x) => x.archivo === path.basename(f)) }; }
-    else datos = { tipo: "musica", meta: metaDe(f) };
-    await espejo(f, datos); avisar({ progreso: ++k / mios.length, msg: `Enviando al VPS ${k} de ${mios.length}…` });
+  if (sincronizando) throw new Error("Ya se está enviando al VPS. Espera a que termine.");
+  sincronizando = true;
+  try {
+    const base = CFG.espejoUrl.replace(/\/+$/, ""), auth = { authorization: "Basic " + Buffer.from("fabrica:" + CFG.espejoClave).toString("base64") };
+    const r = await fetch(`${base}/api/banco/inventario`, { headers: auth, signal: AbortSignal.timeout(30000) });
+    if (!r.ok) throw new Error(`El VPS respondió ${r.status} (¿URL o clave mal?)`);
+    const vps = await r.json(), tiene = new Set(vps.archivos || []), tam = vps.tamanos || {};
+    const inv = inventario();
+    const mios = inv.archivos.filter((x) => {
+      if (soloId && !(x.startsWith(`proyectos/${soloId}/`) || x.startsWith(`listos/${soloId}-`))) return false;
+      if (x.startsWith("proyectos/") || x.startsWith("listos/")) return tam[x] !== inv.tamanos[x]; // cambió o no existe
+      return !tiene.has(x);
+    });
+    let k = 0;
+    for (const ruta of mios) {
+      const f = path.join(RAIZ, ruta);
+      let datos = {};
+      if (ruta.startsWith("banco/")) { const estilo = ruta.split("/")[1]; datos = { tipo: "banco", estilo, item: indice(estilo).find((x) => x.archivo === path.basename(f)) }; }
+      else if (ruta.startsWith("musica/")) datos = { tipo: "musica", meta: metaDe(f) };
+      else datos = { tipo: "video" };
+      await espejo(f, datos); avisar({ progreso: ++k / mios.length, msg: `Enviando al VPS ${k} de ${mios.length}…` });
+    }
+    return { enviados: mios.length };
+  } finally { sincronizando = false; }
+}
+function recorrer(dir, salida, saltar = () => false) {
+  if (!fs.existsSync(dir)) return;
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const f = path.join(dir, e.name);
+    if (e.isDirectory()) { if (!saltar(e.name)) recorrer(f, salida, saltar); }
+    else if (ARCH_VIDEO.test(e.name)) salida.push(f);
   }
-  return { enviados: mios.length };
 }
 export function inventario() {
-  const archivos = [];
+  const archivos = [], tamanos = {};
   if (fs.existsSync(DIR_BANCO)) for (const e of fs.readdirSync(DIR_BANCO)) for (const x of listarBanco(e)) archivos.push(x.ruta);
   const dn = path.join(DIR_MUSICA, "nichos");
   if (fs.existsSync(dn)) for (const n of fs.readdirSync(dn)) for (const a of fs.readdirSync(path.join(dn, n)).filter((x) => AUDIO.test(x))) archivos.push(`musica/nichos/${n}/${a}`);
-  return { archivos };
+  const fv = [];
+  recorrer(DIR_PROYECTOS, fv, (n) => n === "flow" || n === "tmp"); recorrer(DIR_LISTOS, fv);
+  for (const f of fv) { const r = rel(f); archivos.push(r); try { tamanos[r] = fs.statSync(f).size; } catch {} }
+  return { archivos, tamanos };
 }
 
 // al arrancar: mete al banco lo que ya se haya generado antes (una sola pasada, barata: compara por hash)

@@ -204,7 +204,7 @@ function pintarProyecto() {
         <div class="seg" id="pFormato">${(est?.formatos || ["9:16"]).map((k) => `<button data-v="${k}" class="${p.formato === k ? "on" : ""}">${k}</button>`).join("")}</div>
       </div>
     </div>
-    <p class="sub">${h(est?.nombre)} · ${p.duracion === "largo" ? "Largo" : "Corto"} · <span style="opacity:.7">${h(p.idea)}</span></p>
+    <p class="sub">${h(est?.nombre)} · ${p.duracion === "largo" ? "Largo" : "Corto"} · <span style="opacity:.7">${h(p.idea)}</span> ${S.info.espejo ? `<button class="mini" id="pEnviarVPS" title="Manda este video (imágenes, voz, copy, portada y video final) al VPS para verlo desde el celular">Enviar al VPS</button>` : ""}</p>
     ${panelInspiracion(p)}
 
     <div class="pasos">
@@ -307,6 +307,7 @@ function pintarProyecto() {
     for (const b of document.querySelectorAll("[data-quitar]")) b.onclick = async () => { await api(`/api/proyectos/${p.id}/archivo?tipo=${b.dataset.quitar}`, "DELETE"); abrir(p.id, { mantener: true }); };
   }
   $("#vHacer").onclick = () => api(`/api/proyectos/${p.id}/voz`, "POST").catch((e) => avisar(e.message, true));
+  eventoEnviarVPS(p);
   if (est?.preparar === "historia") eventosClips(p);
   if ($("#muGenerar")) eventosMusica(p, est);
   $("#rTodo").onclick = () => api(`/api/proyectos/${p.id}/todo`, "POST").catch((e) => avisar(e.message, true));
@@ -507,6 +508,9 @@ async function abrirBanco(p, n) {
   $("#cBancoCerrar").onclick = () => (caja.innerHTML = "");
   for (const el of caja.querySelectorAll("[data-bsel]")) el.onclick = async () => { await api(`/api/proyectos/${p.id}/clip-banco`, "POST", { n, archivo: el.dataset.bsel }); avisar(`Escena ${n}: imagen del banco.`); abrir(p.id, { mantener: true }); };
   caja.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+function eventoEnviarVPS(p) {
+  if ($("#pEnviarVPS")) $("#pEnviarVPS").onclick = async () => { const b = $("#pEnviarVPS"); b.disabled = true; avisar("Enviando al VPS…"); try { const r = await api("/api/banco/sincronizar", "POST", { id: p.id }); avisar(r.enviados ? `Listo: ${r.enviados} archivos enviados. Ya lo ves desde el celular.` : "El VPS ya tiene todo de este video."); } catch (e) { avisar(e.message, true); } b.disabled = false; };
 }
 function eventosClips(p) {
   if ($("#cEspejo")) $("#cEspejo").onclick = async () => { $("#cEspejo").disabled = true; avisar("Enviando al VPS…"); try { const r = await api("/api/banco/sincronizar", "POST"); avisar(r.enviados ? `Listo: ${r.enviados} archivos enviados al VPS.` : "El VPS ya tenía todo."); } catch (e) { avisar(e.message, true); } $("#cEspejo").disabled = false; };

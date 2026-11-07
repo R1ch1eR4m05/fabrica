@@ -119,3 +119,6 @@ Lee la investigación más reciente de `investigacion/` (o la que diga Richie) y
 - No pidas llaves por el chat: van en `.env`.
 - No borres nada de `proyectos/` ni de `listos/` sin que Richie lo pida.
 - Código y textos propios: no copies código ni textos de plantillas de terceros (la "Plantilla gratis de Animaciones" de Skool no permite reutilizarse para esto).
+
+## Ver los videos desde el celular (espejo laptop → VPS)
+Con `ESPEJO_URL`/`ESPEJO_CLAVE` en la laptop, al terminar cada paso de un video la laptop manda al VPS el proyecto completo (guion, voz, imágenes, copy, portada, video final y `listos/`). Botón "Enviar al VPS" en cada video para forzarlo. Si el mismo id está en las dos máquinas, gana la laptop. La carpeta `flow/` (logs) no se manda.
