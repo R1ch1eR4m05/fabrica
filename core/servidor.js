@@ -231,7 +231,7 @@ async function api(req, res, partes) {
   }
 
   if (recurso === "info") return json(res, 200, {
-    flow: await flowDisponible(), flowSkill: flowSkillListo(), espejo: BANCO.hayEspejo(), apify: !!CFG.apifyToken, ghl: GHL.ghlListo(),
+    flow: await flowDisponible(), flowSkill: flowSkillListo(), laptop: BANCO.hayLaptop(), espejo: BANCO.hayEspejo(), apify: !!CFG.apifyToken, ghl: GHL.ghlListo(),
     estilos: listarEstilos(), formatos: FORMATOS, efectos: EFECTOS,
     ia: INV.hayIA(), motorIA: CFG.anthropicKey ? "Claude" : CFG.geminiKey ? "Gemini" : null, voz: !!CFG.elevenKey, pexels: !!(CFG.pexelsKey || CFG.pixabayKey), gemini: !!CFG.geminiKey, apimart: !!CFG.apimartKey, trabajando: actual ? { id: actual.id, paso: actual.paso } : null,
   });
@@ -393,6 +393,11 @@ async function api(req, res, partes) {
     const b = await cuerpo(req);
     encolar(id, "fondo", (av) => HIS.clipsDeFlow(id, (a) => av({ ...a, paso: "fondo" }), { maxCreditos: Number(b.maxCreditos) || 25, soloFaltantes: b.todos !== true, conCuadros: b.conCuadros !== false }));
     return json(res, 200, { ok: true });
+  }
+  if (accion === "flow-laptop" && m === "POST") { // VPS: la laptop hace las imágenes en Flow y las regresa por el espejo
+    const b = await cuerpo(req);
+    try { return json(res, 200, await BANCO.flowEnLaptop(id, { maxCreditos: Number(b.maxCreditos) || 25 })); }
+    catch (e) { return json(res, 400, { error: e.message }); }
   }
   if (accion === "animar" && m === "POST") { // anuncios en video: anima con APIMart (Seedance) las fotos de las escenas
     const b = await cuerpo(req);

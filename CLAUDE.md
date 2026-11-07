@@ -129,5 +129,9 @@ Lee la investigación más reciente de `investigacion/` (o la que diga Richie) y
 - No borres nada de `proyectos/` ni de `listos/` sin que Richie lo pida.
 - Código y textos propios: no copies código ni textos de plantillas de terceros (la "Plantilla gratis de Animaciones" de Skool no permite reutilizarse para esto).
 
+## Flow desde el celular (VPS → laptop) y APIMart en cualquier estilo de imágenes
+- Flow solo corre en la laptop. Con `LAPTOP_URL`/`LAPTOP_CLAVE` en el .env del VPS, el botón "Generar en la laptop (Flow)" manda el proyecto a la laptop (por Tailscale), la laptop genera y el espejo regresa las imágenes al VPS. La laptop debe estar prendida, con la fábrica abierta, escuchando en su IP de Tailscale (`HOST=127.0.0.1,100.x.x.x`) y con `ESPEJO_*` configurado.
+- "Generar con APIMart" está en todos los estilos de imágenes por escena (Estatuas, Historia): Nano Banana 2, unos centavos por imagen; lo generado entra al banco.
+
 ## Ver los videos desde el celular (espejo laptop → VPS)
 Con `ESPEJO_URL`/`ESPEJO_CLAVE` en la laptop, al terminar cada paso de un video la laptop manda al VPS el proyecto completo (guion, voz, imágenes, copy, portada, video final y `listos/`). Botón "Enviar al VPS" en cada video para forzarlo. Si el mismo id está en las dos máquinas, gana la laptop. La carpeta `flow/` (logs) no se manda.

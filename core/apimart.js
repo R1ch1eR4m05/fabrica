@@ -68,7 +68,8 @@ export function fotosProducto(id) {
 }
 
 // prompt de la imagen de una escena del anuncio
-export function promptImagen(g, e, conProducto) {
+export function promptImagen(g, e, conProducto, anuncio = true) {
+  if (!anuncio) return [g.estiloVisual, e.flowPrompt || e.imagen, "No text, no letters, no logos, no watermark."].filter(Boolean).join(". ");
   return [g.estiloVisual, e.imagen || e.flowPrompt,
     conProducto ? "Use the attached product photo(s) as the exact product: same packaging, label, shape and colors." : "",
     "Photorealistic advertising photo, clean composition with empty space for text, no text, no letters, no logos, no watermark."].filter(Boolean).join(" ");
@@ -78,24 +79,28 @@ export function promptImagen(g, e, conProducto) {
 export async function imagenesDeAPIMart(id, avisar = () => {}, { max = 8, soloFaltantes = true } = {}) {
   const p = leer(id, "proyecto.json"), g = leer(id, "guion.json");
   if (!g) throw new Error("Primero hace falta el guion.");
-  const refs = fotosProducto(id);
-  const pend = g.escenas.map((e, k) => ({ e, n: k + 1 })).filter(({ e, n }) => (e.imagen || e.flowPrompt) && e.sinImagen !== true && (!soloFaltantes || !clipDeEscena(id, n)));
+  const { leerEstilo } = await import("./estilos.js");
+  const anuncio = !!leerEstilo(p.estilo)?.anuncios;
+  const refs = anuncio ? fotosProducto(id) : [];
+  const pend = g.escenas.map((e, k) => ({ e, n: k + 1 })).filter(({ e, n }) => (e.imagen || e.flowPrompt) && e.sinImagen !== true && (anuncio || e.tipo !== "cierre" || leerEstilo(p.estilo)?.clipsFlow === "imagen") && (!soloFaltantes || !clipDeEscena(id, n)));
   if (!pend.length) return { generados: 0, fallos: [] };
   const lote = pend.slice(0, Math.max(1, max));
   // las imágenes se piden en la medida más alta del proyecto para que al recortar a 1:1 o 4:5 no se pierda lo importante
-  const size = p.opciones?.medidas === "esta" ? p.formato : "4:5";
+  const size = !anuncio || p.opciones?.medidas === "esta" ? p.formato : "4:5";
   fs.mkdirSync(dirClips(id), { recursive: true });
   let generados = 0; const fallos = [];
   for (const [k, { e, n }] of lote.entries()) {
     avisar({ paso: "fondo", progreso: k / lote.length, msg: `APIMart: imagen ${k + 1} de ${lote.length} (escena ${n})…` });
     try {
-      const r = await generarImagen(promptImagen(g, e, refs.length && e.producto !== false), { size, refs: e.producto === false ? [] : refs });
+      const r = await generarImagen(promptImagen(g, e, refs.length && e.producto !== false, anuncio), { size, refs: e.producto === false ? [] : refs });
       for (const x of fs.readdirSync(dirClips(id))) if (x.startsWith(`escena-${n}.`)) fs.rmSync(path.join(dirClips(id), x));
       fs.writeFileSync(path.join(dirClips(id), `escena-${n}${r.ext}`), r.bytes);
       generados++;
     } catch (er) { fallos.push(`escena ${n}: ${er.message}`); if (/llave|saldo/i.test(er.message)) break; }
   }
   if (!generados && fallos.length) throw new Error(fallos.join(" | "));
+  // lo generado entra al banco del estilo (y con espejo se manda al VPS/laptop)
+  if (generados && leerEstilo(p.estilo)?.banco) try { const B = await import("./banco.js"); await B.guardarDeProyecto(id); } catch {}
   return { generados, fallos, faltan: pend.length - lote.length };
 }
 

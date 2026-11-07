@@ -158,16 +158,42 @@ export function elegirMusica(id, ruta) {
 
 // ---------------- espejo (laptop → VPS) ----------------
 export const hayEspejo = () => !!(CFG.espejoUrl && CFG.espejoClave);
+async function enviarA(url, clave, f, datos) {
+  const r = await fetch(`${url.replace(/\/+$/, "")}/api/banco/recibir`, {
+    method: "POST", signal: AbortSignal.timeout(900000),
+    headers: { authorization: "Basic " + Buffer.from("fabrica:" + clave).toString("base64"), "x-ruta": encodeURIComponent(rel(f)), "x-datos": encodeURIComponent(JSON.stringify(datos)), "content-type": "application/octet-stream" },
+    body: fs.readFileSync(f),
+  });
+  if (!r.ok) throw new Error(`${r.status} ${(await r.text()).slice(0, 150)}`);
+}
 async function espejo(f, datos) {
   if (!hayEspejo()) return;
+  try { await enviarA(CFG.espejoUrl, CFG.espejoClave, f, datos); } catch (e) { console.warn("Espejo:", e.message); }
+}
+
+// ---------------- VPS → laptop: pedirle a la laptop que haga las imágenes en Flow ----------------
+export const hayLaptop = () => !!CFG.laptopUrl;
+const authLaptop = () => ({ authorization: "Basic " + Buffer.from("fabrica:" + (CFG.laptopClave || "")).toString("base64") });
+export async function laptopLista() {
+  if (!hayLaptop()) return { ok: false, motivo: "Falta LAPTOP_URL en el .env del VPS." };
   try {
-    const r = await fetch(`${CFG.espejoUrl.replace(/\/+$/, "")}/api/banco/recibir`, {
-      method: "POST", signal: AbortSignal.timeout(900000),
-      headers: { authorization: "Basic " + Buffer.from("fabrica:" + CFG.espejoClave).toString("base64"), "x-ruta": encodeURIComponent(rel(f)), "x-datos": encodeURIComponent(JSON.stringify(datos)), "content-type": "application/octet-stream" },
-      body: fs.readFileSync(f),
-    });
-    if (!r.ok) console.warn("Espejo:", r.status, (await r.text()).slice(0, 150));
-  } catch (e) { console.warn("Espejo:", e.message); }
+    const r = await fetch(`${CFG.laptopUrl.replace(/\/+$/, "")}/api/info`, { headers: authLaptop(), signal: AbortSignal.timeout(8000) });
+    if (r.status === 401) return { ok: false, motivo: "La laptop rechazó la clave (LAPTOP_CLAVE debe ser la PANEL_CLAVE de la laptop)." };
+    const d = await r.json();
+    return d.flow ? { ok: true } : { ok: false, motivo: "La laptop responde, pero Flow no está listo ahí (¿skill instalada y sesión de Google?)." };
+  } catch { return { ok: false, motivo: "No alcanzo la laptop: que esté prendida, con la fábrica abierta y Tailscale conectado." }; }
+}
+export async function flowEnLaptop(id, { maxCreditos = 25 } = {}) {
+  const l = await laptopLista(); if (!l.ok) throw new Error(l.motivo);
+  if (!CFG.laptopUrl) throw new Error("Falta LAPTOP_URL.");
+  // la laptop necesita el proyecto (guion e idea) para saber qué imágenes hacer
+  for (const n of ["proyecto.json", "guion.json", "tiempos.json"]) {
+    const f = path.join(dirProyecto(id), n); if (fs.existsSync(f)) await enviarA(CFG.laptopUrl, CFG.laptopClave || "", f, { tipo: "video" });
+  }
+  const r = await fetch(`${CFG.laptopUrl.replace(/\/+$/, "")}/api/proyectos/${encodeURIComponent(id)}/clips`, {
+    method: "POST", headers: { ...authLaptop(), "content-type": "application/json" }, body: JSON.stringify({ maxCreditos }), signal: AbortSignal.timeout(20000) });
+  if (!r.ok) throw new Error(`La laptop no aceptó el pedido: ${(await r.text()).slice(0, 150)}`);
+  return { ok: true, espejo: true };
 }
 // lo recibe el VPS
 export function recibir(ruta, datos, buffer) {

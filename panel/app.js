@@ -521,7 +521,9 @@ function panelClips(p) {
       ${S.info.flowSkill && !img ? `<select id="cModelo" style="width:auto" title="Modelo de video de Flow (más caro = mejor)"></select>
         <label class="estado" style="display:flex;gap:6px;align-items:center" title="Primero hace una imagen de los personajes y el primer cuadro de cada escena con ella; luego anima. Gasta un poco más pero la familia sale igual en todas."><input type="checkbox" id="cCuadros" style="width:auto" checked> personajes iguales (imagen → video)</label>`
         : S.info.flowSkill ? "" : `<span class="estado">Tope de créditos por clip</span><input id="cMax" type="number" value="25" min="1" style="width:80px">`}
-      ${S.info.flow ? "" : `<span class="estado">Flow cerrado: copia cada prompt, hazlo en Flow y súbelo aquí.</span>`}
+      ${!S.info.flow && S.info.laptop ? `<button class="btn peq primario" id="cLaptop" ${faltan ? "" : "disabled"} title="La laptop (prendida, con la fábrica abierta y Tailscale) las hace en Flow y regresan solas">Generar en la laptop (Flow)</button>` : ""}
+      ${!est.anuncios && S.info.apimart ? `<button class="btn peq" id="cAPIhist" ${faltan ? "" : "disabled"} title="Genera con APIMart (Nano Banana 2) las imágenes que faltan; cuesta unos centavos por imagen">Generar con APIMart</button>` : ""}
+      ${S.info.flow || S.info.laptop ? "" : `<span class="estado">Flow solo está en la laptop: copia cada prompt, hazlo en Flow y súbelo aquí${S.info.apimart ? ", o usa APIMart" : ""}.</span>`}
       ${est.banco && S.info.espejo ? `<button class="btn peq" id="cEspejo" title="Manda al VPS las imágenes del banco y la música generada que aún no tenga">Enviar banco y música al VPS</button>` : ""}
     </div>
     <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(230px,1fr))">${cs.map((x) => `
@@ -557,6 +559,13 @@ function eventoEnviarVPS(p) {
   if ($("#pEnviarVPS")) $("#pEnviarVPS").onclick = async () => { const b = $("#pEnviarVPS"); b.disabled = true; avisar("Enviando al VPS…"); try { const r = await api("/api/banco/sincronizar", "POST", { id: p.id }); avisar(r.enviados ? `Listo: ${r.enviados} archivos enviados. Ya lo ves desde el celular.` : "El VPS ya tiene todo de este video."); } catch (e) { avisar(e.message, true); } b.disabled = false; };
 }
 function eventosClips(p) {
+  if ($("#cLaptop")) $("#cLaptop").onclick = async () => {
+    if (!confirm("La laptop va a generar en Flow las imágenes que faltan (gasta créditos de Flow). ¿Seguir?")) return;
+    $("#cLaptop").disabled = true;
+    try { await api(`/api/proyectos/${p.id}/flow-laptop`, "POST", {}); avisar("Listo, la laptop ya está generando. Cuando termine, las imágenes llegan solas: recarga en unos minutos."); }
+    catch (e) { avisar(e.message, true); $("#cLaptop").disabled = false; }
+  };
+  if ($("#cAPIhist")) $("#cAPIhist").onclick = () => { if (confirm("Generar con APIMart las imágenes que faltan (unos centavos por imagen). ¿Seguir?")) api(`/api/proyectos/${p.id}/apimart`, "POST", { max: 30 }).catch((e) => avisar(e.message, true)); };
   if ($("#cAPI")) $("#cAPI").onclick = () => api(`/api/proyectos/${p.id}/apimart`, "POST", { max: Number($("#cAPImax").value) || 8 }).catch((e) => avisar(e.message, true));
   if ($("#cAPItodas")) $("#cAPItodas").onclick = () => { if (confirm("Esto vuelve a generar TODAS las imágenes con APIMart (gasta créditos). ¿Seguir?")) api(`/api/proyectos/${p.id}/apimart`, "POST", { max: Number($("#cAPImax").value) || 8, todas: true }).catch((e) => avisar(e.message, true)); };
   if ($("#cProd")) $("#cProd").onclick = () => subir(p.id, "producto", "image/*");
