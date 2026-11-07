@@ -46,13 +46,23 @@ export async function musicaIA(id, avisar = () => {}, { prompt, reusar, desdePan
   const segundos = reusar ? Math.max(necesito, 45) : necesito; // las reutilizables se hacen un poco más largas para que sirvan a otros videos
   const texto = (prompt || "").trim() || promptMusica(id);
   avisar({ progreso: 0.1, msg: `Componiendo ${segundos} s de música con ElevenLabs…` });
-  const r = await fetch("https://api.elevenlabs.io/v1/music?output_format=mp3_44100_128", {
-    method: "POST", signal: AbortSignal.timeout(300000),
-    headers: { "xi-api-key": CFG.elevenKey, "content-type": "application/json" },
-    body: JSON.stringify({ prompt: texto, music_length_ms: segundos * 1000, force_instrumental: true }),
-  });
+  // ElevenLabs a veces está saturado (429 system_busy / 5xx): se reintenta solo, esperando cada vez más
+  const ESPERAS = [20, 45, 90, 150];
+  let r, err = "";
+  for (let k = 0; ; k++) {
+    r = await fetch("https://api.elevenlabs.io/v1/music?output_format=mp3_44100_128", {
+      method: "POST", signal: AbortSignal.timeout(300000),
+      headers: { "xi-api-key": CFG.elevenKey, "content-type": "application/json" },
+      body: JSON.stringify({ prompt: texto, music_length_ms: segundos * 1000, force_instrumental: true }),
+    });
+    if (r.ok) break;
+    err = (await r.text()).slice(0, 300);
+    const saturado = r.status >= 500 || (r.status === 429 && /system_busy|heavy traffic|concurren/i.test(err));
+    if (!saturado || k >= ESPERAS.length) break;
+    for (let w = ESPERAS[k]; w > 0; w -= 5) { avisar({ progreso: 0.1, msg: `ElevenLabs está saturado; reintento ${k + 1} de ${ESPERAS.length} en ${w} s…` }); await new Promise((ok) => setTimeout(ok, 5000)); }
+  }
   if (!r.ok) {
-    const err = (await r.text()).slice(0, 300);
+    if (r.status === 429 && /system_busy|heavy traffic/i.test(err)) throw new Error("ElevenLabs sigue saturado después de 5 intentos (es de su lado, no de tu cuenta ni tus créditos). Prueba en un rato.");
     if (/missing_permissions|music_generation/i.test(err)) throw new Error("Tu llave de ElevenLabs no tiene permiso de música. En elevenlabs.io → Developers → API Keys, edita la llave y activa \"Music Generation\" (no hace falta cambiar el .env). Si usas otra llave nueva, ponla en el .env y reinicia la fábrica. Llave usada: …" + CFG.elevenKey.slice(-4) + ". Detalle: " + err.slice(0, 160));
     if (r.status === 401 || r.status === 403 || /plan|subscription|paid/i.test(err)) throw new Error(`ElevenLabs no dejó generar música (la música solo está en planes de pago): ${err}`);
     throw new Error(`ElevenLabs Music respondió ${r.status}: ${err}`);
