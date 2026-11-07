@@ -1,0 +1,27 @@
+{
+  "nombre": "Reflexión · Estatuas",
+  "descripcion": "Reflexión narrada con voz grave de hombre sobre estatuas griegas y paisajes, todo en un solo tono (turquesa por defecto). El texto aparece palabra por palabra en letra romana grande con brillo. Para frases de vida, disciplina, estoicismo, verdades incómodas.",
+  "orden": 5,
+  "formatos": ["9:16", "16:9"],
+  "duraciones": { "corto": "45 a 70 segundos (10 a 16 escenas)", "largo": "90 a 120 segundos (18 a 26 escenas)" },
+  "tipos": ["escena", "cierre"],
+  "visuales": [],
+  "camposAvanzados": ["flowPrompt", "buscar"],
+  "preparar": "historia",
+  "clipsFlow": "imagen",
+  "inicioVoz": 0.3,
+  "pausaEntreEscenas": 0.35,
+  "colaFinal": 2.0,
+  "opciones": [
+    { "clave": "tono", "nombre": "Tono", "valores": { "turquesa": "Turquesa", "ambar": "Ámbar", "plata": "Plata (blanco y negro)", "rojo": "Rojo oscuro" } },
+    { "clave": "logo", "nombre": "Sello", "valores": { "si": "Con sello del canal", "no": "Sin sello" } }
+  ],
+  "sonido": { "ambiente": "oscuro", "volumenAmbiente": 0.12, "golpesEn": [], "efectosPorTipo": {} },
+  "musicaIA": {
+    "prompt": "Dark, emotional cinematic underscore for a stoic motivational monologue: slow felt piano, low strings, soft swells, deep and reflective, sits under a deep male voice.",
+    "reusar": true,
+    "parametros": { "animo": "inspirador", "ritmo": "lento", "energia": "baja", "instrumentos": ["piano", "cuerdas", "cello"] }
+  },
+  "portadaEn": 2.5,
+  "vozSugerida": "Hombre, voz grave y pausada, narrador (pon su Voice ID con 'Usar esta voz en todos los de Reflexión · Estatuas')."
+}

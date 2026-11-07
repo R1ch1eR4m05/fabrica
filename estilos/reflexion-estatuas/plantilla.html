@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><title>Reflexión · Estatuas</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}canvas{display:block;width:100vw;height:100vh;object-fit:contain}</style>
+</head><body><canvas id="lienzo"></canvas>
+<script src="../_comun/motor.js"></script>
+<script>
+// Reflexión · Estatuas: cada escena es una imagen (o clip) pintada de un solo tono, con acercamiento lento,
+// y el texto aparece palabra por palabra en letra romana: la palabra nueva entra gris y se vuelve blanca.
+// En cada punto o signo de pregunta el texto se limpia. Sello del canal al centro, polvo flotando.
+const F = "../_comun/fuentes/";
+const TONOS = { turquesa: "#3fb2a3", ambar: "#d49a5a", plata: "#9a9a9a", rojo: "#b5473a" };
+let info = [], cache = new Map(), actual = null, tono = TONOS.turquesa, conLogo = true, sello = "";
+
+Motor.inicioVoz = 0.3;
+Motor.iniciar({
+  fuentes: [["Cinzel", F + "cinzel-latin-700-normal.woff2", { weight: "700" }], ["Cinzel", F + "cinzel-latin-800-normal.woff2", { weight: "800" }]],
+  async preparar(M) {
+    const op = M.proyecto.opciones || {};
+    tono = TONOS[op.tono] || TONOS.turquesa; conLogo = op.logo !== "no";
+    sello = String(M.proyecto.canal || M.guion.canal || "").replace(/^@/, "").trim();
+    try { const r = await fetch(`/proyectos/${encodeURIComponent(M.proyecto.id)}/clips/historia.json?v=${Date.now()}`); if (r.ok) info = await r.json(); } catch {}
+    M.antesDeDibujar = async (t) => {
+      const i = M.escenaEn(t), c = info[i]; actual = null;
+      if (!c || c.tipo === "ninguno" || !c.frames) return;
+      const k = c.tipo === "video" ? Math.min(c.frames - 1, Math.max(0, Math.floor((t - M.tiempos.escenas[i].ini) * c.fps))) : 0;
+      actual = await cuadro(M, i + 1, k);
+      if (c.tipo === "video") for (let j = 1; j <= 3; j++) if (k + j < c.frames) cuadro(M, i + 1, k + j);
+    };
+  },
+
+  dibujar(c, t, M) {
+    const W = M.W, H = M.H, u = M.u;
+    const i = M.escenaEn(t), te = M.tiempos.escenas[i], p = t - te.ini, d = Math.max(1, te.fin - te.ini);
+
+    // ---- la imagen, con acercamiento lento (cada escena hacia un lado) ----
+    c.fillStyle = "#050807"; c.fillRect(0, 0, W, H);
+    c.save();
+    const k = M.suave(M.clamp(p / d)), z = 1.05 + 0.1 * k, dir = i % 2 ? -1 : 1;
+    c.translate(W / 2 + dir * W * 0.015 * k, H / 2 - H * 0.012 * k); c.scale(z, z); c.translate(-W / 2, -H / 2);
+    if (actual) cubrir(c, actual, W, H); else niebla(c, M, t, i);
+    c.restore();
+
+    // ---- un solo tono: sin color, teñido y con contraste ----
+    c.save();
+    c.globalCompositeOperation = "saturation"; c.fillStyle = "#808080"; c.fillRect(0, 0, W, H);
+    c.globalCompositeOperation = "color"; c.fillStyle = tono; c.fillRect(0, 0, W, H);
+    c.globalCompositeOperation = "soft-light"; c.fillStyle = "#1a1a1a"; c.fillRect(0, 0, W, H);
+    c.restore();
+    const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, "rgba(0,0,0,0.35)"); g.addColorStop(0.45, "rgba(0,0,0,0.05)"); g.addColorStop(1, "rgba(0,0,0,0.55)");
+    c.fillStyle = g; c.fillRect(0, 0, W, H);
+    const v = c.createRadialGradient(W / 2, H * 0.45, H * 0.25, W / 2, H * 0.45, H * 0.8); v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,0.6)");
+    c.fillStyle = v; c.fillRect(0, 0, W, H);
+
+    polvo(c, M, t);
+    if (i > 0 && p < 0.25) { c.fillStyle = `rgba(0,0,0,${0.85 * (1 - p / 0.25)})`; c.fillRect(0, 0, W, H); } // corte con un respiro de negro
+
+    if (conLogo && sello) logo(c, M);
+    texto(c, M, t, te);
+  },
+});
+
+async function cuadro(M, n, k) {
+  const clave = n * 100000 + k;
+  if (cache.has(clave)) return cache.get(clave);
+  const pr = (async () => { const r = await fetch(`/proyectos/${encodeURIComponent(M.proyecto.id)}/clips/${n}/${String(k + 1).padStart(5, "0")}.jpg`); return createImageBitmap(await r.blob()); })();
+  cache.set(clave, pr); if (cache.size > 72) cache.delete(cache.keys().next().value);
+  return pr;
+}
+function cubrir(c, img, W, H) { const s = Math.max(W / img.width, H / img.height), w = img.width * s, h = img.height * s; c.drawImage(img, (W - w) / 2, (H - h) / 2, w, h); }
+
+// sin imagen: niebla que se mueve (para que nunca quede un hueco)
+function niebla(c, M, t, i) {
+  const W = M.W, H = M.H;
+  for (let k = 0; k < 4; k++) {
+    const a = t * (0.08 + k * 0.03) + k * 1.7 + i, x = W * (0.5 + 0.4 * Math.cos(a)), y = H * (0.5 + 0.35 * Math.sin(a * 1.2)), r = W * (0.6 + 0.15 * k);
+    const gr = c.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, "rgba(200,200,200,0.16)"); gr.addColorStop(1, "rgba(0,0,0,0)"); c.fillStyle = gr; c.fillRect(0, 0, W, H);
+  }
+}
+
+// polvo que sube y algún cuadrito de luz flotando
+function polvo(c, M, t) {
+  const W = M.W, H = M.H, u = M.u;
+  for (let k = 0; k < 40; k++) {
+    const r = M.hash(k * 3.7), q = M.hash(k * 9.1 + 2), vel = 10 + r * 25;
+    const x = ((q * W + Math.sin(t * 0.4 + k) * 25 * u) % W + W) % W, y = (((r * H - t * vel * u) % H) + H) % H;
+    c.globalAlpha = (0.15 + 0.35 * (0.5 + 0.5 * Math.sin(t * 1.7 + k))) * 0.8; c.fillStyle = "#e8fffb";
+    c.beginPath(); c.arc(x, y, (1 + (k % 3)) * u, 0, 7); c.fill();
+  }
+  for (let k = 0; k < 6; k++) {
+    const r = M.hash(k * 13.3 + 5), x = (r * W + t * 12 * u * (k % 2 ? 1 : -1) + W) % W, y = (((M.hash(k * 7.7) * H - t * 18 * u) % H) + H) % H, s = (8 + r * 10) * u;
+    c.save(); c.translate(x, y); c.rotate(t * 0.6 + k); c.globalAlpha = 0.18 + 0.15 * Math.sin(t * 2 + k); c.fillStyle = "#dffcf6"; c.fillRect(-s / 2, -s / 2, s, s); c.restore();
+  }
+  c.globalAlpha = 1;
+}
+
+function logo(c, M) {
+  const u = M.u, x = M.W / 2, y = M.H * (M.vertical ? 0.68 : 0.8), r = 30 * u;
+  c.save(); c.globalAlpha = 0.85;
+  c.beginPath(); c.arc(x, y, r, 0, 7); c.fillStyle = "rgba(0,0,0,0.35)"; c.fill();
+  c.lineWidth = 2.5 * u; c.strokeStyle = "#f2f2f2"; c.stroke();
+  c.beginPath(); c.arc(x, y, r - 5 * u, 0, 7); c.lineWidth = 1 * u; c.stroke();
+  c.font = `800 ${28 * u}px Cinzel`; c.fillStyle = "#f2f2f2"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(sello[0].toUpperCase(), x, y + 1 * u);
+  c.restore();
+}
+
+// ---- texto palabra por palabra: la frase se arma y se limpia en cada punto ----
+function paginas(palabras) {
+  const ps = []; let cur = [];
+  for (const w of palabras) { cur.push(w); if (/[.!?…]["»”]?$/.test(w.w) || cur.length >= 16) { ps.push(cur); cur = []; } }
+  if (cur.length) ps.push(cur);
+  return ps;
+}
+function texto(c, M, t, te) {
+  const W = M.W, H = M.H, u = M.u;
+  const ps = paginas(te.palabras); let pag = null;
+  for (const p of ps) if (t >= p[0].t0 - 0.05) pag = p;
+  if (!pag) return;
+  const fin = pag[pag.length - 1].t1, siguiente = ps[ps.indexOf(pag) + 1];
+  if (!siguiente && t > Math.max(fin + 0.9, te.finVoz + 0.6)) return; // al final de la escena se va
+  const vis = pag.filter((w) => t >= w.t0 - 0.03);
+  let tam = 84 * u; c.font = `800 ${tam}px Cinzel`;
+  const todo = pag.map((w) => w.w.toUpperCase()).join(" ");
+  while (tam > 48 * u && M.lineas(c, todo, W * 0.8).length > 5) { tam -= 4 * u; c.font = `800 ${tam}px Cinzel`; }
+  // líneas con TODAS las palabras de la página (así nada salta de lugar al aparecer)
+  const esp = c.measureText(" ").width, lineas = []; let l = [], ancho = 0;
+  for (const w of pag) { const s = w.w.toUpperCase(), pw = c.measureText(s).width; if (l.length && ancho + esp + pw > W * 0.8) { lineas.push({ l, ancho }); l = []; ancho = 0; } ancho += (l.length ? esp : 0) + pw; l.push({ ...w, s, pw }); }
+  if (l.length) lineas.push({ l, ancho });
+  const al = tam * 1.13, y0 = (M.vertical ? H * 0.3 : H * 0.32) - ((lineas.length - 1) * al) / 2;
+  c.textBaseline = "middle"; c.textAlign = "left";
+  lineas.forEach((ln, k) => {
+    let x = (W - ln.ancho) / 2; const y = y0 + k * al;
+    for (const w of ln.l) {
+      if (t >= w.t0 - 0.03) {
+        const a = M.clamp((t - w.t0) / 0.35); // entra gris y se vuelve blanca
+        const gris = Math.round(120 + 135 * a);
+        c.save();
+        c.shadowColor = "rgba(0,0,0,0.85)"; c.shadowBlur = 14 * u; c.shadowOffsetY = 3 * u; c.globalAlpha = 0.45 + 0.55 * a;
+        c.fillStyle = `rgb(${gris},${gris},${gris})`; c.fillText(w.s, x, y);
+        if (a > 0.3) { c.shadowColor = `rgba(255,255,255,${0.55 * a})`; c.shadowBlur = 22 * u; c.shadowOffsetY = 0; c.fillText(w.s, x, y); }
+        c.restore();
+      }
+      x += w.pw + esp;
+    }
+  });
+  c.textAlign = "center";
+}
+</script>
+</body></html>

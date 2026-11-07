@@ -48,6 +48,12 @@ Si `FLOW_SKILL_DIR` está en el .env, la fábrica usa esa skill (https://github.
 - Clips: `proyectos/<id>/clips/escena-N.mp4` (el panel los sube o los genera en Flow con "Generar en Flow los que faltan"). Si flow-mcp está conectado como MCP y Richie lo autoriza, puedes generarlos tú y guardarlos ahí con ese nombre. Sin clip, la escena usa Pexels (`buscar`) o un dibujo animado.
 - Siempre nace de una publicación viral: la historia adapta su gancho y su emoción a una familia hispana.
 
+## Reflexión · Estatuas (`reflexion-estatuas`)
+- Monólogo estoico en segunda persona con imágenes de estatuas y paisajes, pintadas de un solo tono (turquesa, ámbar, plata o rojo), acercamiento lento y texto romano (Cinzel) palabra por palabra que se limpia en cada punto.
+- Guion según `estilos/reflexion-estatuas/GUION.md`: `estiloVisual` en inglés y por escena `voz`, `flowPrompt` (la imagen) y `buscar`.
+- Imágenes: `proyectos/<id>/clips/escena-N.jpg|png|mp4`; con la skill de Flow se generan como IMÁGENES (no video, gasta menos). Sin imagen usa Pexels y si no, niebla.
+- Voz de hombre grave: en el panel "Usar esta voz en todos los de Reflexión · Estatuas".
+
 ## Motion graphics ("construye el motion de <id>")
 La skill vive en `motion/` (claude-video, MIT, textos en portugués; tú hablas en español con Richie). `$SKILL` = `<raíz de la fábrica>/motion`.
 1. Lee `proyectos/<id>/BRIEF.md` y `proyectos/<id>/proyecto.json` (campo `motion`). Las etapas A y B ya están hechas: no vuelvas a preguntar lo que ya dice el brief.

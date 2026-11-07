@@ -9,6 +9,7 @@ import { ffmpeg, duracion } from "./ff.js";
 import { pexels, pixabay } from "./fondos.js";
 import { llamar, flowDisponible } from "./flow.js";
 import { flowSkillListo, lote } from "./flowskill.js";
+import { leerEstilo } from "./estilos.js";
 
 const FPS = 24;
 const VIDEO = /\.(mp4|mov|webm|m4v)$/i, IMAGEN = /\.(jpe?g|png|webp)$/i;
@@ -39,6 +40,19 @@ async function clipsConSkill(id, avisar, { soloFaltantes = true, conCuadros = tr
   if (!pend.length) return { generados: 0 };
   const estilo = [g.estiloVisual, "vertical 9:16"].filter(Boolean).join(", ");
   const jobs = [];
+  // estilos de imagen fija con movimiento de cámara (p. ej. Reflexión · Estatuas): solo imágenes, mucho más barato
+  if (leerEstilo(leer(id, "proyecto.json").estilo)?.clipsFlow === "imagen") {
+    for (const { e, n } of pend) jobs.push({ type: "image", name: `escena-${n}`, prompt: `${estilo}. ${String(e.flowPrompt).trim()} No text, no letters, no logos, no watermark.` });
+    avisar({ paso: "fondo", progreso: 0.02, msg: `Flow: ${jobs.length} imágenes…` });
+    const { archivos, fallos } = await lote(id, `imagenes-${Date.now()}`, jobs, (a) => avisar({ ...a, paso: "fondo" }));
+    fs.mkdirSync(dirClips(id), { recursive: true });
+    let generados = 0;
+    for (const { n } of pend) { const f = archivos[`escena-${n}`]; if (!f) continue;
+      for (const x of fs.readdirSync(dirClips(id))) if (x.startsWith(`escena-${n}.`)) fs.rmSync(path.join(dirClips(id), x));
+      fs.copyFileSync(f, path.join(dirClips(id), `escena-${n}${path.extname(f).toLowerCase()}`)); generados++; }
+    if (!generados) throw new Error("Flow no entregó imágenes: " + fallos.join(" | "));
+    return { generados, fallos };
+  }
   const conRef = conCuadros && g.personajes;
   if (conRef) jobs.push({ type: "image", name: "personajes", prompt: `${estilo}. Character reference, full body, front view, neutral pose, plain soft background, no text: ${g.personajes}` });
   const fin = (x) => String(x || "").trim().replace(/([^.!?])$/, "$1.");
