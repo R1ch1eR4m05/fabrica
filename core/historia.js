@@ -76,9 +76,12 @@ async function clipsConSkill(id, avisar, { soloFaltantes = true, conCuadros = tr
   return { generados, fallos };
 }
 
+// lo que sale de Flow entra al banco de imágenes en ese momento (y, con espejo, se manda solo al VPS)
+async function alBanco(id, r) { try { const B = await import("./banco.js"); await B.guardarDeProyecto(id); } catch (e) { console.warn("Banco:", e.message); } return r; }
+
 // genera en Flow los clips que faltan (todas las escenas de una vez); cada uno queda como clips/escena-N.mp4
 export async function clipsDeFlow(id, avisar = () => {}, { maxCreditos = 25, soloFaltantes = true, conCuadros = true } = {}) {
-  if (flowSkillListo()) return clipsConSkill(id, avisar, { soloFaltantes, conCuadros });
+  if (flowSkillListo()) return alBanco(id, await clipsConSkill(id, avisar, { soloFaltantes, conCuadros }));
   if (!(await flowDisponible())) throw new Error("No encuentro flow-mcp abierto. Abre 'Flow Studio' y vuelve a intentar.");
   const p = leer(id, "proyecto.json"), g = leer(id, "guion.json");
   const pendientes = g.escenas.map((e, k) => ({ e, n: k + 1 })).filter(({ e, n }) => e.tipo !== "cierre" && e.flowPrompt && (!soloFaltantes || !clipDeEscena(id, n)));
@@ -101,7 +104,7 @@ export async function clipsDeFlow(id, avisar = () => {}, { maxCreditos = 25, sol
         else if (n) fallos.push(`escena ${n}: ${job.error || job.status}`);
       });
       if (!generados) throw new Error("Flow no entregó clips: " + fallos.join(" | "));
-      return { generados, fallos };
+      return alBanco(id, { generados, fallos });
     }
     if (Date.now() - t0 > 40 * 60000) throw new Error("Flow tardó más de 40 minutos. Revisa la ventana de Flow.");
   }

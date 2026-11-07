@@ -15,10 +15,34 @@ export const MODELOS_IMAGEN = ["Nano Banana 2 Lite", "Nano Banana 2", "Nano Bana
 export const flowSkillListo = () => !!(CFG.flowSkillDir && fs.existsSync(path.join(CFG.flowSkillDir, "flow.py")));
 export const modelos = () => { const a = leerAjustes(); return { video: a.flowVideo || "Veo 3.1 - Lite", imagen: a.flowImagen || "Nano Banana 2 Lite" }; };
 
+// Arreglos a la skill (MIT) para la página actual de Flow: ahora hay dos botones de ajustes en la página y la skill
+// pedía "el" botón, así que Playwright se negaba (strict mode). Se aplican solos antes de cada lote; si la skill ya
+// los trae, no se toca nada.
+const PARCHES = [
+  ["flow_provider/configure.py", "await page.locator(SEL_PANEL_TRIGGER).click(timeout=10_000)", 'await page.locator(", ".join(x.strip() + ":visible" for x in SEL_PANEL_TRIGGER.split(","))).first.click(timeout=10_000)'],
+  ["flow_provider/browser.py", "await page.locator(SEL_SETTINGS_TRIGGER).wait_for(state=\"visible\", timeout=45_000)", 'await page.locator(", ".join(x.strip() + ":visible" for x in SEL_SETTINGS_TRIGGER.split(","))).first.wait_for(state="visible", timeout=45_000)'],
+  ["flow_provider/project.py", "await page.locator(SEL_SETTINGS_TRIGGER).first.wait_for(", 'await page.locator(", ".join(x.strip() + ":visible" for x in SEL_SETTINGS_TRIGGER.split(","))).first.wait_for('],
+];
+export function parcharSkill() {
+  let n = 0;
+  for (const [rel, viejo, nuevo] of PARCHES) {
+    const f = path.join(CFG.flowSkillDir, rel);
+    try { const s = fs.readFileSync(f, "utf8"); if (s.includes(viejo)) { fs.writeFileSync(f, s.split(viejo).join(nuevo)); n++; } } catch {}
+  }
+  return n;
+}
+// del texto de error de Python, la línea que de verdad dice qué pasó
+function errorLegible(salida) {
+  const l = String(salida).split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
+  const clave = [...l].reverse().find((x) => /(Error|Exception|Timeout|violation|intercepts|not found|No se|FALL)/i.test(x) && !/^\s*File "/.test(x));
+  return (clave || l.slice(-3).join(" ")).replace(/<[^>]{60,}>/g, "<…>").slice(0, 300);
+}
+
 // corre un lote; devuelve { nombre: archivo } de lo que salió bien y la lista de fallos
 export function lote(id, nombre, jobs, avisar = () => {}, { minutos = 60 } = {}) {
   return new Promise((ok, mal) => {
     if (!flowSkillListo()) return mal(new Error("No encuentro Google Flow Skill. Pon FLOW_SKILL_DIR en el .env (la carpeta donde está flow.py) y haz 'python flow.py login' una vez."));
+    try { parcharSkill(); } catch {}
     const m = modelos(), dir = path.join(dirProyecto(id), "flow");
     fs.mkdirSync(dir, { recursive: true });
     const archivo = path.join(dir, `${nombre}.json`);
@@ -41,7 +65,8 @@ export function lote(id, nombre, jobs, avisar = () => {}, { minutos = 60 } = {})
     p.on("close", () => {
       clearTimeout(reloj);
       const rep = path.join(dir, nombre, "batch_report.json");
-      if (!fs.existsSync(rep)) return mal(new Error("Flow terminó sin reporte: " + salida.slice(-400)));
+      try { fs.writeFileSync(path.join(dir, `${nombre}.log`), salida); } catch {}
+      if (!fs.existsSync(rep)) return mal(new Error(`Flow falló: ${errorLegible(salida)} (detalle completo en proyectos/${id}/flow/${nombre}.log)`));
       const r = JSON.parse(fs.readFileSync(rep, "utf8"));
       const archivos = Object.fromEntries(r.filter((x) => x.ok && x.file).map((x) => [x.name, path.isAbsolute(x.file) ? x.file : path.join(CFG.flowSkillDir, x.file)]));
       ok({ archivos, fallos: r.filter((x) => !x.ok).map((x) => `${x.name}: ${x.error}`) });
