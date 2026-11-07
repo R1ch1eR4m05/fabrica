@@ -5,7 +5,7 @@
 <script src="../_comun/motor.js"></script>
 <script>
 // Reflexión · Estatuas: cada escena es una imagen (o clip) pintada de un solo tono, con acercamiento lento,
-// y el texto aparece palabra por palabra en letra romana: la palabra nueva entra gris y se vuelve blanca.
+// y el texto aparece palabra por palabra en letra romana: la frase se ve completa y tenue, y cada palabra se vuelve blanca cuando se dice.
 // En cada punto o signo de pregunta el texto se limpia. Sello del canal al centro, polvo flotando.
 const F = "../_comun/fuentes/";
 const TONOS = { turquesa: "#3fb2a3", ambar: "#d49a5a", plata: "#9a9a9a", rojo: "#b5473a" };
@@ -57,11 +57,12 @@ Motor.iniciar({
     c.save();
     c.globalCompositeOperation = "saturation"; c.fillStyle = "#808080"; c.fillRect(0, 0, W, H);
     c.globalCompositeOperation = "color"; c.fillStyle = tono; c.fillRect(0, 0, W, H);
-    c.globalCompositeOperation = "soft-light"; c.fillStyle = "#1a1a1a"; c.fillRect(0, 0, W, H);
+    c.globalCompositeOperation = "soft-light"; c.fillStyle = "#5a5a5a"; c.fillRect(0, 0, W, H);
+    c.globalCompositeOperation = "screen"; c.globalAlpha = 0.14; c.fillStyle = tono; c.fillRect(0, 0, W, H); c.globalAlpha = 1; // levanta las sombras: en el feed lo muy oscuro se ve chico y apagado
     c.restore();
-    const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, "rgba(0,0,0,0.35)"); g.addColorStop(0.45, "rgba(0,0,0,0.05)"); g.addColorStop(1, "rgba(0,0,0,0.55)");
+    const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, "rgba(0,0,0,0.22)"); g.addColorStop(0.45, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.35)");
     c.fillStyle = g; c.fillRect(0, 0, W, H);
-    const v = c.createRadialGradient(W / 2, H * 0.45, H * 0.25, W / 2, H * 0.45, H * 0.8); v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,0.6)");
+    const v = c.createRadialGradient(W / 2, H * 0.45, H * 0.25, W / 2, H * 0.45, H * 0.8); v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,0.35)");
     c.fillStyle = v; c.fillRect(0, 0, W, H);
 
     polvo(c, M, t);
@@ -121,6 +122,8 @@ function paginas(palabras) {
   const ps = []; let cur = [];
   for (const w of palabras) { cur.push(w); if (/[.!?…]["»”]?$/.test(w.w) || cur.length >= 16) { ps.push(cur); cur = []; } }
   if (cur.length) ps.push(cur);
+  for (let k = 0; k < ps.length - 1; k++) if (ps[k].length < 3) { ps[k + 1] = [...ps[k], ...ps[k + 1]]; ps.splice(k, 1); k--; }
+  if (ps.length > 1 && ps[ps.length - 1].length < 3) ps.splice(ps.length - 2, 2, [...ps[ps.length - 2], ...ps[ps.length - 1]]);
   return ps;
 }
 function texto(c, M, t, te) {
@@ -132,24 +135,25 @@ function texto(c, M, t, te) {
   const fin = pag[pag.length - 1].t1, siguiente = ps[ps.indexOf(pag) + 1];
   if (!siguiente && t > Math.max(fin + 0.9, te.finVoz + 0.6)) return; // al final de la escena se va
   const gancho = te === M.tiempos.escenas[0] && pag === ps[0]; // el gancho sale COMPLETO desde el fotograma 0 (quien no te conoce decide en 1 segundo)
-  let tam = 84 * u; c.font = `800 ${tam}px Cinzel`;
+  const ANCHO = W * (M.vertical ? 0.9 : 0.8);
+  let tam = (gancho ? 124 : 100) * u; c.font = `800 ${tam}px Cinzel`;
   const todo = pag.map((w) => w.w.toUpperCase()).join(" ");
-  while (tam > 48 * u && M.lineas(c, todo, W * 0.8).length > 5) { tam -= 4 * u; c.font = `800 ${tam}px Cinzel`; }
+  while (tam > 52 * u && M.lineas(c, todo, ANCHO).length > (gancho ? 4 : 5)) { tam -= 4 * u; c.font = `800 ${tam}px Cinzel`; }
   // líneas con TODAS las palabras de la página (así nada salta de lugar al aparecer)
   const esp = c.measureText(" ").width, lineas = []; let l = [], ancho = 0;
-  for (const w of pag) { const s = w.w.toUpperCase(), pw = c.measureText(s).width; if (l.length && ancho + esp + pw > W * 0.8) { lineas.push({ l, ancho }); l = []; ancho = 0; } ancho += (l.length ? esp : 0) + pw; l.push({ ...w, s, pw }); }
+  for (const w of pag) { const s = w.w.toUpperCase(), pw = c.measureText(s).width; if (l.length && ancho + esp + pw > ANCHO) { lineas.push({ l, ancho }); l = []; ancho = 0; } ancho += (l.length ? esp : 0) + pw; l.push({ ...w, s, pw }); }
   if (l.length) lineas.push({ l, ancho });
   const al = tam * 1.13, y0 = (M.vertical ? H * 0.3 : H * 0.32) - ((lineas.length - 1) * al) / 2;
   c.textBaseline = "middle"; c.textAlign = "left";
   lineas.forEach((ln, k) => {
     let x = (W - ln.ancho) / 2; const y = y0 + k * al;
     for (const w of ln.l) {
-      if (gancho || t >= w.t0 - 0.03) {
-        const a = gancho ? 1 : M.clamp((t - w.t0) / 0.35); // entra gris y se vuelve blanca
-        const gris = Math.round(120 + 135 * a);
+      {
+        const a = gancho ? 1 : M.clamp((t - w.t0) / 0.35); // tenue → se vuelve blanca cuando se dice
+        const gris = Math.round(165 + 90 * a);
         c.save();
-        c.shadowColor = "rgba(0,0,0,0.85)"; c.shadowBlur = 14 * u; c.shadowOffsetY = 3 * u; c.globalAlpha = 0.45 + 0.55 * a;
-        c.lineJoin = "round"; c.lineWidth = 7 * u; c.strokeStyle = "rgba(0,0,0,0.9)"; c.strokeText(w.s, x, y); // contorno negro: se lee con el brillo bajo
+        c.shadowColor = "rgba(0,0,0,0.85)"; c.shadowBlur = 14 * u; c.shadowOffsetY = 3 * u; c.globalAlpha = 0.5 + 0.5 * a;
+        c.lineJoin = "round"; c.lineWidth = 9 * u; c.strokeStyle = "rgba(0,0,0,0.9)"; c.strokeText(w.s, x, y); // contorno negro: se lee con el brillo bajo
         c.fillStyle = `rgb(${gris},${gris},${gris})`; c.fillText(w.s, x, y);
         if (a > 0.3) { c.shadowColor = `rgba(255,255,255,${0.55 * a})`; c.shadowBlur = 22 * u; c.shadowOffsetY = 0; c.fillText(w.s, x, y); }
         c.restore();

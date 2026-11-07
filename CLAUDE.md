@@ -57,7 +57,7 @@ Estado: noviembre 2026, Flow genera desde el panel del agente ("Configuración d
 - Siempre nace de una publicación viral: la historia adapta su gancho y su emoción a una familia hispana.
 
 ## Reflexión · Estatuas (`reflexion-estatuas`)
-- Monólogo estoico en segunda persona con imágenes de estatuas y paisajes, pintadas de un solo tono (turquesa, ámbar, plata o rojo), acercamiento lento y texto romano (Cinzel) palabra por palabra que se limpia en cada punto.
+- Monólogo estoico en segunda persona con imágenes de estatuas y paisajes, pintadas de un solo tono (turquesa, ámbar, plata o rojo), acercamiento lento y texto romano (Cinzel) grande: la frase completa se ve tenue y cada palabra se vuelve blanca cuando se dice; se limpia en cada punto (nunca queda una frase de 1-2 palabras sola). El gancho sale completo y más grande desde el cuadro 0. Imagen más clara que antes (en el feed lo muy oscuro se ve chico).
 - Guion según `estilos/reflexion-estatuas/GUION.md`: `estiloVisual` en inglés y por escena `voz`, `flowPrompt` (la imagen) y `buscar`.
 - Imágenes: `proyectos/<id>/clips/escena-N.jpg|png|mp4`. Richie autorizó que este estilo SIEMPRE las genere con la skill de Flow (como imágenes, no video) al darle "Hacer todo"; solo las que falten. Sin skill usa Pexels y si no, niebla.
 - Sello: "M" de Monarca (la página se llama Monarca).
