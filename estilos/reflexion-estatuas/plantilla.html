@@ -9,7 +9,7 @@
 // En cada punto o signo de pregunta el texto se limpia. Sello del canal al centro, polvo flotando.
 const F = "../_comun/fuentes/";
 const TONOS = { turquesa: "#3fb2a3", ambar: "#d49a5a", plata: "#9a9a9a", rojo: "#b5473a" };
-let info = [], cache = new Map(), actual = null, tono = TONOS.turquesa, conLogo = true, sello = "";
+let info = [], directas = [], cache = new Map(), actual = null, tono = TONOS.turquesa, conLogo = true, sello = "";
 
 Motor.inicioVoz = 0.3;
 Motor.iniciar({
@@ -19,9 +19,20 @@ Motor.iniciar({
     tono = TONOS[op.tono] || TONOS.turquesa; conLogo = op.logo !== "no";
     sello = op.logo === "canal" ? String(M.proyecto.canal || M.guion.canal || "").replace(/^@/, "").trim() || "M" : "M"; // Monarca
     try { const r = await fetch(`/proyectos/${encodeURIComponent(M.proyecto.id)}/clips/historia.json?v=${Date.now()}`); if (r.ok) info = await r.json(); } catch {}
+    // vista previa en el panel: las imágenes que aún no se han preparado (recién salidas de Flow, del banco o subidas)
+    // se cargan directo; al sacar el video se preparan bien (historia.json)
+    try {
+      const r = await fetch(`/api/proyectos/${encodeURIComponent(M.proyecto.id)}?v=${Date.now()}`);
+      if (r.ok) { const d = await r.json();
+        await Promise.all((d.clips || []).map(async (x, i) => {
+          if (!x.archivo || !/\.(jpe?g|png|webp)$/i.test(x.archivo)) return;
+          try { const b = await (await fetch(`/proyectos/${encodeURIComponent(M.proyecto.id)}/clips/${encodeURIComponent(x.archivo)}?v=${Date.now()}`)).blob(); directas[i] = await createImageBitmap(b); } catch {}
+        }));
+      }
+    } catch {}
     M.antesDeDibujar = async (t) => {
-      const i = M.escenaEn(t), c = info[i]; actual = null;
-      if (!c || c.tipo === "ninguno" || !c.frames) return;
+      const i = M.escenaEn(t), c = info[i]; actual = directas[i] || null;
+      if (actual || !c || c.tipo === "ninguno" || !c.frames) return;
       const k = c.tipo === "video" ? Math.min(c.frames - 1, Math.max(0, Math.floor((t - M.tiempos.escenas[i].ini) * c.fps))) : 0;
       actual = await cuadro(M, i + 1, k);
       if (c.tipo === "video") for (let j = 1; j <= 3; j++) if (k + j < c.frames) cuadro(M, i + 1, k + j);
