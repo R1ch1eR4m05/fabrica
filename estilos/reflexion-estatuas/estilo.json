@@ -23,6 +23,7 @@
     "reusar": true,
     "parametros": { "animo": "inspirador", "ritmo": "lento", "energia": "baja", "instrumentos": ["piano", "cuerdas", "cello"] }
   },
+  "imagenesPost": true,
   "portadaEn": 2.5,
   "vozSugerida": "Hombre, voz grave y pausada, narrador (pon su Voice ID con 'Usar esta voz en todos los de Reflexión · Estatuas')."
 }

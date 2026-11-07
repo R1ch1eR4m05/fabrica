@@ -21,6 +21,7 @@
 //   node fabrica.js investigaciones [--nicho id]  lista las investigaciones
 //   node fabrica.js miniatura-estudiar [--estilo id] [enlaces de YouTube…]  estudia las miniaturas que mejor van en el nicho
 //   node fabrica.js miniatura <id> [--ia]  3 miniaturas de YouTube (1280x720) para el video; --ia = fondo nuevo con APIMart
+//   node fabrica.js imagenes <id>  imágenes 4:5 para el feed: la frase más fuerte + carrusel (sin gastar créditos)
 //   node fabrica.js capitulos <id> [--sin-reels]  video largo → un video por capítulo (+ Reel vertical de cada uno)
 //   node fabrica.js comparar-voces ["texto"] [--estilo id]   mismo texto con cada modelo de voz → listos/comparar-voces/
 import path from "node:path";
@@ -188,6 +189,11 @@ async function main() {
       const MIN = await import("./core/miniatura.js");
       const r = await MIN.crearMiniaturas(libres[0], { avisar, ia: args.includes("--ia") });
       console.log(`\nListo: ${r.opciones.length} miniaturas en proyectos/${libres[0]}/miniaturas/ (la A ya está en listos/). Texto: ${r.origen}.${r.sinEstudio ? " Usé la receta base: estudia el nicho para afinarla." : ""}`); return;
+    }
+    case "imagenes": {
+      const IMG = await import("./core/imagenes-post.js");
+      const r = await IMG.sacarImagenes(libres[0], { avisar });
+      console.log(`\nListo: ${r.archivos.length} imágenes en proyectos/${libres[0]}/imagenes/ (y en listos/${libres[0]}-imagenes/). Frase: ${r.frase}`); return;
     }
     case "capitulos": {
       const CAP = await import("./core/capitulos.js");

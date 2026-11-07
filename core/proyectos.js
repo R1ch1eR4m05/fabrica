@@ -69,6 +69,7 @@ export function detalle(id) {
     tiempos: leer(id, "tiempos.json"),
     tieneVoz: existe(id, "voz.mp3"),
     tieneFinal: existe(id, "final.mp4"),
+    imagenesPost: (() => { try { return JSON.parse(fs.readFileSync(path.join(dirProyecto(id), "imagenes", "imagenes.json"), "utf8")); } catch { return null; } })(),
     miniaturas: (() => { try { return JSON.parse(fs.readFileSync(path.join(dirProyecto(id), "miniaturas", "miniaturas.json"), "utf8")); } catch { return null; } })(),
     cortes: (() => { try { return JSON.parse(fs.readFileSync(path.join(dirProyecto(id), "capitulos", "cortes.json"), "utf8")); } catch { return []; } })(),
     fondo: leer(id, "fondo.json"),

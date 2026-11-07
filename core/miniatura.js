@@ -189,7 +189,7 @@ Da 3 opciones DISTINTAS de texto y de escena. Responde SOLO JSON: {"opciones":[{
 }
 
 // ---------------- fondo ----------------
-async function imagenDeEscena(id, n, tmp) {
+export async function imagenDeEscena(id, n, tmp) {
   const dir = dirProyecto(id), info = leer(id, path.join("clips", "historia.json")) || [];
   for (let k = n - 1; k >= 0; k--) {
     const e = info[k]; if (!e?.archivo) continue;

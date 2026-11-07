@@ -472,6 +472,12 @@ async function api(req, res, partes) {
     encolar(id, "render", (av) => (esMotion ? MOT.renderMotion(id, av) : render(id, av)));
     return json(res, 200, { ok: true });
   }
+  if (accion === "imagenes") { // imágenes 4:5 para el feed: frase + carrusel
+    const IMG = await import("./imagenes-post.js");
+    if (m === "GET") return json(res, 200, IMG.leerImagenes(id) || {});
+    encolar(id, "render", (av) => IMG.sacarImagenes(id, { avisar: av }));
+    return json(res, 200, { ok: true });
+  }
   if (accion === "miniatura") { // 3 miniaturas de YouTube del video
     const MIN = await import("./miniatura.js");
     if (m === "GET") return json(res, 200, MIN.leerMiniaturas(id) || {});

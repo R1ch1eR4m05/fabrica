@@ -63,6 +63,7 @@ Estado: noviembre 2026, Flow genera desde el panel del agente ("Configuración d
 - Sello: "M" de Monarca (la página se llama Monarca).
 - Banco de imágenes (`banco/<estilo>/`, con `indice.json`): las imágenes de Flow o subidas de cada video entran solas. Si una escena no tiene imagen: banco (la que más se parezca) → Pexels → cualquier imagen del banco no usada en ese video. En el panel cada escena tiene "Banco" y "Pexels".
 - Voz de hombre grave: en el panel "Usar esta voz en todos los de Reflexión · Estatuas".
+- Imágenes para el feed: "Sacar imágenes para el feed" (panel) o `node fabrica.js imagenes <id>`: con las imágenes y frases del video, sin gastar, saca en 4:5 (1080x1350) `frase.jpg` (la frase más fuerte; la IA la elige del guion, o pon `"frasePost"` en guion.json con una oración exacta) y `carrusel-NN.jpg` (una diapositiva por escena, máximo 8) + `texto.txt`. Quedan en `proyectos/<id>/imagenes/` y `listos/<id>-imagenes/`. Se activa con `"imagenesPost": true` en estilo.json.
 
 ## Filosofía larga (`filosofia-larga`)
 - Video largo de YouTube (3-35 min) de filosofía oriental/estoica: ilustración de acuarela y tinta por escena, cámara lenta (acercar/alejar/paneos), voz pausada, subtítulos y capítulos.
