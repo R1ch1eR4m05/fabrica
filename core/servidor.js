@@ -25,12 +25,12 @@ import { flowSkillListo, MODELOS_VIDEO, MODELOS_IMAGEN } from "./flowskill.js";
 import { leerAjustes, guardarAjustes, MODELOS_VOZ } from "./ajustes.js";
 
 let investigando = null;
-function correrInvestigacion() {
+function correrInvestigacion(nicho) {
   if (investigando) throw new Error("Ya hay una investigación en marcha.");
   investigando = { inicio: Date.now() };
   const av = (a) => emitir({ id: "_investigador", paso: "investigar", estado: "trabajando", ...a });
   av({ progreso: 0, msg: "Empezando…" });
-  INV.investigar(av)
+  INV.investigar(av, nicho)
     .then((r) => emitir({ id: "_investigador", paso: "investigar", estado: "listo", msg: `Listo: ${r.propuestas} propuestas`, resultado: r }))
     .catch((e) => { console.error(e); emitir({ id: "_investigador", paso: "investigar", estado: "error", msg: e.message }); })
     .finally(() => (investigando = null));
@@ -108,8 +108,11 @@ async function api(req, res, partes) {
     }
   }
   if (recurso === "investigacion") {
-    if (!id && m === "GET") return json(res, 200, { config: INV.leerConfig(), lista: INV.listarInvestigaciones(), trabajando: !!investigando, apify: !!CFG.apifyToken, ia: INV.hayIA(), motor: CFG.geminiKey ? "Gemini" : CFG.anthropicKey ? "Claude" : null, pendientes: INV.informesPendientes() });
-    if (id === "prompt" && m === "GET") { res.writeHead(200, { "content-type": "text/plain; charset=utf-8" }); return res.end(INV.promptDeepResearch()); }
+    const qn = new URL(req.url, "http://x").searchParams.get("nicho") || undefined;
+    if (id === "nichos" && m === "POST") { const b = await cuerpo(req); if (!String(b.nombre || "").trim()) return json(res, 400, { error: "Ponle nombre al nicho." }); return json(res, 200, INV.crearNicho(String(b.nombre).trim())); }
+    if (id === "activo" && m === "PUT") { const b = await cuerpo(req); try { return json(res, 200, { activo: INV.activarNicho(b.id) }); } catch (e) { return json(res, 400, { error: e.message }); } }
+    if (!id && m === "GET") { const cfg = INV.leerConfig(qn); return json(res, 200, { config: cfg, nichos: INV.listarNichos(), activo: INV.nichoActivo(), estilos: INV.estilosDisponibles(), lista: INV.listarInvestigaciones(cfg.id), trabajando: !!investigando, apify: !!CFG.apifyToken, ia: INV.hayIA(), motor: CFG.geminiKey ? "Gemini" : CFG.anthropicKey ? "Claude" : null, pendientes: INV.informesPendientes() }); }
+    if (id === "prompt" && m === "GET") { res.writeHead(200, { "content-type": "text/plain; charset=utf-8" }); return res.end(INV.promptDeepResearch(qn)); }
     if (id === "importar" && m === "POST") {
       // también lo llama n8n: POST /api/investigacion/importar  { "texto": "...", "fuente": "muse" }   (o texto plano)
       // responde al instante (el informe queda guardado) y convierte en segundo plano
@@ -117,7 +120,7 @@ async function api(req, res, partes) {
       let datos; try { datos = JSON.parse(crudo); } catch { datos = { texto: crudo }; }
       const fuente = datos.fuente || "informe";
       let nombre;
-      try { nombre = INV.guardarInforme(datos.texto ?? datos.informe ?? crudo, fuente); } catch (e) { return json(res, 400, { error: e.message }); }
+      try { nombre = INV.guardarInforme(datos.texto ?? datos.informe ?? crudo, fuente, datos.nicho || qn); } catch (e) { return json(res, 400, { error: e.message }); }
       const conIA = INV.hayIA();
       json(res, 200, { recibido: true, informe: nombre, convirtiendo: conIA, pendiente: !conIA });
       if (!conIA) { emitir({ id: "_investigador", paso: "investigar", estado: "listo", msg: "Informe guardado. Pídele a Claude Code que lo convierta." }); return; }
@@ -134,8 +137,8 @@ async function api(req, res, partes) {
       correr();
       return;
     }
-    if (!id && m === "PUT") return json(res, 200, INV.guardarConfig(await cuerpo(req)));
-    if (!id && m === "POST") { correrInvestigacion(); return json(res, 200, { ok: true }); }
+    if (!id && m === "PUT") { const b = await cuerpo(req); return json(res, 200, INV.guardarConfig(b, b.id || qn)); }
+    if (!id && m === "POST") { const b = await cuerpo(req).catch(() => ({})); correrInvestigacion(b?.nicho || qn); return json(res, 200, { ok: true }); }
     if (id && !accion && m === "GET") return json(res, 200, INV.leerInvestigacion(id));
     if (id && accion === "reproponer" && m === "POST") {
       if (investigando) return json(res, 409, { error: "Ya hay una investigación en marcha." });

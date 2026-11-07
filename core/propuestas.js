@@ -10,15 +10,16 @@ import { escribirGuion } from "./ia.js";
 export async function crearDesdePropuesta(archivo, n, b = {}) {
   const inv = INV.leerInvestigacion(archivo), prop = inv.propuestas.find((x) => x.n === Number(n));
   if (!prop) throw Object.assign(new Error("No encuentro esa propuesta."), { codigo: 404 });
+  const cfg = INV.configDe(inv); // el nicho de esa investigación (Levania, Monarca…): canal, opciones y cierres
+  const canal = b.canal || cfg.canal || "";
       // el estilo lo eligió el investigador según el contenido; si no hay (propuestas viejas) o no existe, frases
       if (String(prop.estilo || "").startsWith("motion:")) { // motion graphics: brief automático; lo construye Claude Code
         const mot = leerEstilo("motion"), c = (mot.catalogo || []).find((x) => x.id === prop.estilo.slice(7));
         if (!c) throw Object.assign(new Error("Ese estilo de motion ya no existe."), { codigo: 400 });
-        const cfg = INV.leerConfig();
         const p = P.crearProyecto({ estilo: "motion", titulo: prop.tituloPost || prop.tema, idea: prop.idea || prop.frase, formato: b.formato || "9:16", duracion: "corto", conVoz: false });
-        p.desdeInvestigacion = { archivo, n: prop.n }; if (b.canal) p.canal = b.canal; P.guardar(p.id, "proyecto.json", p);
+        p.desdeInvestigacion = { archivo, n: prop.n }; if (canal) p.canal = canal; p.nicho = cfg.id; P.guardar(p.id, "proyecto.json", p);
         MOT.guardarBrief(p.id, { estiloMotion: c.id, formato: b.formato || "9:16", para: "Reels / TikTok", segundos: Math.max(15, Math.round(c.seg || 15)), // en Reels: 15-25 s para que haya gancho, desarrollo y remate loop: false,
-          textos: [...(prop.beats?.length ? prop.beats : [prop.frase]).map((x) => String(x).replace(/\*/g, "")), INV.cierreValido(prop.cierre)].filter(Boolean).join("\n"),
+          textos: [...(prop.beats?.length ? prop.beats : [prop.frase]).map((x) => String(x).replace(/\*/g, "")), INV.cierreValido(prop.cierre, cfg)].filter(Boolean).join("\n"),
           marca: /levania/i.test(cfg.nombre) ? "Levania: rosa #C4837A, salvia #8FA58A, crema #F6EEE4, tinta #3D3230. Tipografías Cormorant Garamond (títulos) y Jost (texto). Logo: estilos/render-datos/marca/levania_logo.png" : cfg.marca || "",
           narracion: (prop.beats?.length ? prop.beats : [prop.frase]).map((x) => String(x).replace(/\*/g, "")).join("\n"),
           medios: "ninguno, solo gráfico", notas: [prop.idea, prop.porque, prop.adaptacion && `Adaptación: ${prop.adaptacion}`,
@@ -30,18 +31,17 @@ export async function crearDesdePropuesta(archivo, n, b = {}) {
       const pedido = prop.estilo ? leerEstilo(prop.estilo) : null;
       const est = pedido?.listo && pedido.tipo !== "motion" ? pedido : leerEstilo("frases-desenfocado");
       const esFrases = est.id === "frases-desenfocado";
-      const opciones = b.opciones || (esFrases ? { tema: "noche", letra: "serif" } : Object.fromEntries((est.opciones || []).map((o) => [o.clave, Object.keys(o.valores)[0]])));
+      const opciones = b.opciones || { ...(esFrases ? { tema: "noche", letra: "serif" } : Object.fromEntries((est.opciones || []).map((o) => [o.clave, Object.keys(o.valores)[0]]))), ...(cfg.opciones?.[est.id] || {}) };
       const datos = { estilo: est.id, titulo: prop.tituloPost || prop.tema, idea: prop.idea || prop.frase, formato: b.formato || "9:16", duracion: "corto", conVoz: est.vozOpcional ? (b.conVoz ?? false) : true, opciones };
       let guion;
-      if (esFrases) guion = INV.guionDesdePropuesta(prop);
+      if (esFrases) guion = INV.guionDesdePropuesta(prop, cfg);
       else {
-        const cfg = INV.leerConfig();
-        const idea = `${prop.idea || prop.frase}\nÁngulo: ${prop.tema || ""}. Gancho sugerido: "${prop.frase}".${(prop.beats || []).length ? ` Momentos: ${prop.beats.join(" | ")}.` : ""}${(prop.inspiradaEn || []).length ? ` Inspirado en (viral): ${prop.inspiradaEn.join(" ")}.` : ""}${prop.adaptacion ? ` Adaptación al público hispano: ${prop.adaptacion}.` : ""}\nMarca: ${cfg.nombre}. Audiencia: ${cfg.descripcion} ${cfg.marca}\n${INV.cierreValido(prop.cierre) ? `Cierre (úsalo tal cual): ${INV.cierreValido(prop.cierre)}` : (cfg.cierres || []).length ? `Cierre: usa uno de estos tal cual: ${cfg.cierres.join(" / ")}` : "Sin cierre de 'comenta una palabra': no inventes ninguno."}`;
+        const idea = `${prop.idea || prop.frase}\nÁngulo: ${prop.tema || ""}. Gancho sugerido: "${prop.frase}".${(prop.beats || []).length ? ` Momentos: ${prop.beats.join(" | ")}.` : ""}${(prop.inspiradaEn || []).length ? ` Inspirado en (viral): ${prop.inspiradaEn.join(" ")}.` : ""}${prop.adaptacion ? ` Adaptación al público: ${prop.adaptacion}.` : ""}\nMarca: ${cfg.nombre}. Audiencia: ${cfg.descripcion} ${cfg.marca}\n${INV.cierreValido(prop.cierre, cfg) ? `Cierre (úsalo tal cual): ${INV.cierreValido(prop.cierre, cfg)}` : (cfg.cierres || []).length ? `Cierre: usa uno de estos tal cual: ${cfg.cierres.join(" / ")}` : "Sin cierre de 'comenta una palabra': no inventes ninguno."}`;
         try { if (b.sinIA) throw new Error("Creado sin IA: el guion lo escribe Claude Code."); guion = await escribirGuion({ ...datos, idea }); }
         catch (e) { // sin IA (cuota, saturación): el proyecto se crea igual y el guion lo escribe Claude Code
           const p = P.crearProyecto({ ...datos, idea });
           p.flowPrompt = prop.flowPrompt; p.fondoBuscar = prop.pexels; p.desdeInvestigacion = { archivo, n: prop.n }; p.tema = prop.tema || ""; p.guionPendiente = e.message;
-          if (b.canal) p.canal = b.canal;
+          if (canal) p.canal = canal; p.nicho = cfg.id;
           P.guardar(p.id, "proyecto.json", p);
           return { ...P.detalle(p.id), guionPendiente: true, aviso: e.message };
         }
@@ -50,7 +50,7 @@ export async function crearDesdePropuesta(archivo, n, b = {}) {
       }
       const p = P.crearProyecto(datos);
       p.flowPrompt = prop.flowPrompt; p.fondoBuscar = prop.pexels; p.desdeInvestigacion = { archivo, n: prop.n }; p.tema = prop.tema || "";
-      if (b.canal) p.canal = b.canal;
+      if (canal) p.canal = canal; p.nicho = cfg.id;
       P.guardar(p.id, "proyecto.json", p);
       P.guardar(p.id, "guion.json", guion);
       P.marcar(p.id, "guion", "listo");

@@ -16,7 +16,9 @@
 //   node fabrica.js motion-pendientes             (Claude Code) lista los motion graphics con brief que faltan por construir
 //   node fabrica.js listo-motion <id>             (Claude Code) marca terminado un motion graphics y lo copia a listos/
 //   node fabrica.js convertir                     convierte en propuestas los informes pendientes (Gemini o Claude)
-//   node fabrica.js recolectar                    junta y puntúa publicaciones virales (Apify) para que Claude Code las analice
+//   node fabrica.js recolectar [--nicho id]       junta y puntúa publicaciones virales (Apify) para que Claude Code las analice
+//   node fabrica.js nichos [id]                   lista los nichos (Levania, Monarca…) y, con id, deja ese activo
+//   node fabrica.js investigaciones [--nicho id]  lista las investigaciones
 import path from "node:path";
 import { exec } from "node:child_process";
 import { CFG } from "./core/config.js";
@@ -92,16 +94,17 @@ async function main() {
       const motion = ps.filter((p) => p.estilo === "motion" && p.motion?.estiloMotion && p.estado?.render !== "listo" && !MOT.estadoMotion(p.id).construido);
       const sinVozM = motion.filter((p) => p.motion?.narracion?.trim() && !p.motionVoz);
       const sinVideo = ps.filter((p) => p.estilo !== "motion" && p.estado?.guion === "listo" && p.estado?.render !== "listo" && !["trabajando", "en-fila"].includes(p.estado?.render));
-      const ultima = INV.listarInvestigaciones()[0];
+      // la última investigación de CADA nicho (Levania, Monarca…)
       let sinCrear = [];
-      if (ultima) {
+      const base = (a) => String(a || "").split(/[\\/]/).pop(); // "investigacion/x.json" y "x.json" son la misma
+      for (const ni of INV.listarNichos()) {
+        const ultima = INV.listarInvestigaciones(ni.id)[0]; if (!ultima) continue;
         const inv = INV.leerInvestigacion(ultima.archivo);
-        const base = (a) => String(a || "").split(/[\\/]/).pop(); // "investigacion/x.json" y "x.json" son la misma
         const hechas = new Set(ps.filter((p) => base(p.desdeInvestigacion?.archivo) === base(ultima.archivo)).map((p) => p.desdeInvestigacion.n));
-        sinCrear = (inv.propuestas || []).filter((x) => !hechas.has(x.n) && (x.viral ?? (x.inspiradaEn || []).length > 0)).map((x) => ({ n: x.n, estilo: x.estilo || "frases-desenfocado", tema: x.tema || x.frase }));
+        sinCrear.push(...(inv.propuestas || []).filter((x) => !hechas.has(x.n) && (x.viral ?? (x.inspiradaEn || []).length > 0)).map((x) => ({ archivo: ultima.archivo, nicho: ni.nombre, n: x.n, estilo: x.estilo || "frases-desenfocado", tema: x.tema || x.frase })));
       }
       const lin = (t, l, f) => console.log(`\n${t} (${l.length})` + (l.length ? "\n" + l.map(f).join("\n") : ""));
-      lin(`Propuestas sin crear de ${ultima?.archivo || "(ninguna investigación)"}`, sinCrear, (x) => `  #${x.n} · ${x.estilo} · ${x.tema}`);
+      lin("Propuestas sin crear (última investigación de cada nicho)", sinCrear, (x) => `  ${x.archivo} #${x.n} · ${x.nicho} · ${x.estilo} · ${x.tema}`);
       lin("Videos sin guion", sinGuion, (p) => `  ${p.id} · ${p.estilo} · ${p.titulo}`);
       lin("Motion que necesitan voz antes de construir (node fabrica.js voz-motion <id>)", sinVozM, (p) => `  ${p.id} · ${p.titulo}`);
       lin("Motion graphics sin construir", motion, (p) => `  ${p.id} · ${p.motion.estiloMotion} · ${p.titulo}${p.motionVoz ? " · con voz (" + p.motionVoz.duracion.toFixed(1) + " s)" : ""}`);
@@ -137,7 +140,7 @@ async function main() {
     }
     case "investigaciones": {
       const INV = await import("./core/investigador.js");
-      for (const x of INV.listarInvestigaciones()) console.log(`${x.archivo}  ·  ${x.propuestas} propuestas  ·  ${x.modo}`);
+      for (const x of INV.listarInvestigaciones(opc("nicho"))) console.log(`${x.archivo}  ·  ${x.nicho}  ·  ${x.propuestas} propuestas  ·  ${x.modo}`);
       return;
     }
     case "convertir": {
@@ -154,8 +157,15 @@ async function main() {
     }
     case "recolectar": {
       const { soloDatos } = await import("./core/investigador.js");
-      const r = await soloDatos(avisar);
+      const r = await soloDatos(avisar, opc("nicho"));
       console.log(`\nListo: ${r.total} publicaciones. Las 40 mejores están en ${r.archivo}`); return;
+    }
+    case "nichos": {
+      const INV = await import("./core/investigador.js");
+      if (libres[0]) INV.activarNicho(libres[0]);
+      const act = INV.nichoActivo();
+      for (const n of INV.listarNichos()) console.log(`${n.id === act ? "→" : " "} ${n.id}  ·  ${n.nombre}${n.canal ? "  ·  " + n.canal : ""}  (investigacion/nichos/${n.id}.json)`);
+      return;
     }
     default: console.log("Orden desconocida. Mira la cabecera de fabrica.js.");
   }

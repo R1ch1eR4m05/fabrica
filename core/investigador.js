@@ -12,46 +12,110 @@ import { listarEstilos } from "./estilos.js";
 
 export const DIR_INV = path.join(RAIZ, "investigacion");
 fs.mkdirSync(DIR_INV, { recursive: true });
-const F_CONFIG = path.join(DIR_INV, "nicho.json");
+// Un nicho por marca (Levania, Monarca…): cada uno con sus cuentas, hashtags, público, cierres, estilos y canal.
+// Viven en investigacion/nichos/<id>.json; el que está activo en el panel se guarda en investigacion/nicho-activo.txt.
+const F_VIEJO = path.join(DIR_INV, "nicho.json"); // antes había uno solo (Levania): se migra solo
+export const DIR_NICHOS = path.join(DIR_INV, "nichos");
+fs.mkdirSync(DIR_NICHOS, { recursive: true });
+const F_ACTIVO = path.join(DIR_INV, "nicho-activo.txt");
+const slug = (t) => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30);
 
-const CONFIG_INICIAL = {
-  nombre: "Levania · crianza y familia",
-  descripcion: "Mamás hispanas (México y EE. UU.) con hijos de 3 a 10 años: rutinas, paciencia, culpa de mamá, tiempo de calidad, disciplina con amor.",
-  redes: ["tiktok", "instagram"],
-  cuentasTiktok: [],
-  cuentasInstagram: [
-    // disciplina positiva / dejar de gritar
-    "drbeckyatgoodinside", "biglittlefeelings", "dr.siggie", "themompsychologist", "transformingtoddlerhood", "destini.ann", "simplyonpurpose", "responsive_parenting", "janetlansbury", "unconditional_parenting",
-    // rutinas visuales e independencia (nicho exacto)
-    "busytoddler", "agnes.more.than.mom", "miss_crafty_mama", "parentingtranslator", "thrivinglittles",
-    // mentalidad de crecimiento, resiliencia, inteligencia emocional
-    "nurturedfirst", "biglifejournal", "biglifejournal.espanol", "doctorshefali", "instituteofchildpsych", "curious.parenting", "seed.and.sew", "resilientlittlehearts",
-    // armonía familiar
-    "gottmaninstitute", "happily.family",
-  ],
-  hashtags: ["maternidad", "crianzarespetuosa", "frasesdemama", "mamaprimeriza", "crianzaconamor"],
-  busquedas: ["frases para mamás", "reflexión maternidad"],
+const COMUN = {
+  redes: ["tiktok", "instagram"], cuentasTiktok: [], cuentasInstagram: [], hashtags: [], busquedas: [],
   dias: 45,
   porFuente: 10,   // por hashtag o búsqueda
   porCuenta: 6,    // publicaciones recientes por cada cuenta de referencia
   topeUsd: 0.3,    // tope de gasto de Apify por cada tarea (la corrida se corta sola al llegar)
   propuestas: 10,
-  marca: "Levania vende rutinas y checklists para familias. Las frases NO venden: conectan.",
-  cierres: [], // los llamados a la acción que TÚ autorizas (p. ej. la palabra que responde tu automatización). Vacío = sin "comenta X"
+  cierres: [],     // los llamados a la acción que TÚ autorizas. Vacío = sin "comenta X"
+  canal: "",       // @ del canal con que nacen los videos de este nicho
+  estilos: [],     // estilos que puede proponer (vacío = todos)
+  opciones: {},    // opciones por estilo con que nacen los videos, p. ej. { "reflexion-estatuas": { "tono": "turquesa" } }
+  historia: false, // obligar al menos una propuesta en historia-flow
+  adaptacion: "",  // cómo adaptar al público (va tal cual a la IA)
+  reglas: "",      // qué sí y qué no del tono (va tal cual a la IA)
 };
 
-export function leerConfig() {
-  if (!fs.existsSync(F_CONFIG)) fs.writeFileSync(F_CONFIG, JSON.stringify(CONFIG_INICIAL, null, 2));
-  const guardado = JSON.parse(fs.readFileSync(F_CONFIG, "utf8"));
-  // si nunca pusiste cuentas, se usan las de referencia sugeridas
-  for (const k of ["cuentasInstagram", "cuentasTiktok"]) if (Array.isArray(guardado[k]) && !guardado[k].length && !guardado.cuentasEditadas) delete guardado[k];
-  return { ...CONFIG_INICIAL, ...guardado };
-}
-export function guardarConfig(c) { fs.writeFileSync(F_CONFIG, JSON.stringify({ ...leerConfig(), ...c, cuentasEditadas: true }, null, 2)); return leerConfig(); }
+const PLANTILLAS = {
+  levania: {
+    nombre: "Levania · crianza y familia",
+    descripcion: "Mamás hispanas (México y EE. UU.) con hijos de 3 a 10 años: rutinas, paciencia, culpa de mamá, tiempo de calidad, disciplina con amor.",
+    cuentasInstagram: [
+      "drbeckyatgoodinside", "biglittlefeelings", "dr.siggie", "themompsychologist", "transformingtoddlerhood", "destini.ann", "simplyonpurpose", "responsive_parenting", "janetlansbury", "unconditional_parenting",
+      "busytoddler", "agnes.more.than.mom", "miss_crafty_mama", "parentingtranslator", "thrivinglittles",
+      "nurturedfirst", "biglifejournal", "biglifejournal.espanol", "doctorshefali", "instituteofchildpsych", "curious.parenting", "seed.and.sew", "resilientlittlehearts",
+      "gottmaninstitute", "happily.family",
+    ],
+    hashtags: ["maternidad", "crianzarespetuosa", "frasesdemama", "mamaprimeriza", "crianzaconamor"],
+    busquedas: ["frases para mamás", "reflexión maternidad"],
+    marca: "Levania vende rutinas y checklists para familias. Las frases NO venden: conectan.",
+    historia: true,
+    reglas: "Nada de culpa ni de vergüenza hacia las mamás; sí de reconocimiento y ternura.",
+    adaptacion: "Muchas fuentes son cuentas en inglés de EE. UU. a propósito, porque ahí aparecen primero las tendencias. Trátalas como señal temprana de lo que viene. No traduzcas literal: adapta la idea a mamás hispanas de México y EE. UU. (familia extendida y abuelas, la escuela y las tareas, las mañanas con prisa, el trabajo y la culpa, la fe cuando venga al caso, la comida, el 'mijo/mija'), con español natural de México. Para EE. UU. se vale un toque bilingüe solo si suena natural.",
+  },
+  monarca: {
+    nombre: "Monarca · reflexión estoica",
+    descripcion: "Hispanos de 20 a 45 años (México y EE. UU.) que buscan disciplina, fortaleza mental y paz: soledad, energía, vejez, dinero, familia, propósito.",
+    hashtags: ["estoicismo", "disciplina", "reflexion", "mentalidadfuerte", "crecimientopersonal"],
+    busquedas: ["reflexiones estoicas", "frases de disciplina"],
+    marca: "Monarca: monólogos sobrios y directos, voz grave de hombre, estatuas y paisajes en un solo tono. Verdades incómodas y qué hacer hoy.",
+    estilos: ["reflexion-estatuas"],
+    opciones: { "reflexion-estatuas": { tono: "turquesa", logo: "monarca" } },
+    reglas: "Tono sobrio, firme y respetuoso; nada de odio hacia nadie, nada de promesas de dinero o salud, nada de frases atribuidas a filósofos sin verificar.",
+    adaptacion: "Las tendencias suelen nacer en cuentas en inglés (stoic, discipline, self-improvement). No traduzcas literal: adapta la idea a hispanos de México y EE. UU. (familia, trabajo, deudas, padres que envejecen, amigos que se van), en español natural de México.",
+  },
+};
 
-export function listarInvestigaciones() {
+export function nichoActivo() {
+  try { const id = fs.readFileSync(F_ACTIVO, "utf8").trim(); if (id && fs.existsSync(path.join(DIR_NICHOS, id + ".json"))) return id; } catch {}
+  return "levania";
+}
+export function activarNicho(id) { if (!fs.existsSync(path.join(DIR_NICHOS, id + ".json"))) throw new Error("No existe ese nicho."); fs.writeFileSync(F_ACTIVO, id); return id; }
+
+function sembrar() {
+  if (!fs.existsSync(path.join(DIR_NICHOS, "levania.json"))) {
+    let viejo = {}; try { viejo = JSON.parse(fs.readFileSync(F_VIEJO, "utf8")); } catch {}
+    for (const k of ["cuentasInstagram", "cuentasTiktok"]) if (Array.isArray(viejo[k]) && !viejo[k].length && !viejo.cuentasEditadas) delete viejo[k];
+    fs.writeFileSync(path.join(DIR_NICHOS, "levania.json"), JSON.stringify({ ...COMUN, ...PLANTILLAS.levania, ...viejo, id: "levania" }, null, 2));
+  }
+  if (!fs.existsSync(path.join(DIR_NICHOS, "monarca.json")) && !fs.existsSync(path.join(DIR_NICHOS, "monarca.borrado")))
+    fs.writeFileSync(path.join(DIR_NICHOS, "monarca.json"), JSON.stringify({ ...COMUN, ...PLANTILLAS.monarca, id: "monarca" }, null, 2));
+}
+
+export function listarNichos() {
+  sembrar();
+  return fs.readdirSync(DIR_NICHOS).filter((f) => f.endsWith(".json")).map((f) => { const c = leerConfig(f.slice(0, -5)); return { id: c.id, nombre: c.nombre, canal: c.canal }; });
+}
+
+export function leerConfig(id = nichoActivo()) {
+  sembrar();
+  const f = path.join(DIR_NICHOS, path.basename(String(id)) + ".json");
+  if (!fs.existsSync(f)) return leerConfig("levania");
+  const guardado = JSON.parse(fs.readFileSync(f, "utf8"));
+  const c = { ...COMUN, ...guardado, id: path.basename(f, ".json") };
+  // la marca vieja no tenía estas reglas: se toman de su plantilla si están vacías
+  for (const k of ["adaptacion", "reglas"]) if (!c[k] && PLANTILLAS[c.id]?.[k]) c[k] = PLANTILLAS[c.id][k];
+  if (c.id === "levania" && guardado.historia == null) c.historia = true;
+  return c;
+}
+export function guardarConfig(c, id = c?.id || nichoActivo()) {
+  const actual = leerConfig(id);
+  fs.writeFileSync(path.join(DIR_NICHOS, actual.id + ".json"), JSON.stringify({ ...actual, ...c, id: actual.id, cuentasEditadas: true }, null, 2));
+  return leerConfig(actual.id);
+}
+export function crearNicho(nombre) {
+  let id = slug(nombre) || "nicho"; while (fs.existsSync(path.join(DIR_NICHOS, id + ".json"))) id += "-2";
+  fs.writeFileSync(path.join(DIR_NICHOS, id + ".json"), JSON.stringify({ ...COMUN, nombre, descripcion: "", marca: "", id }, null, 2));
+  activarNicho(id); return leerConfig(id);
+}
+// de qué nicho es una investigación (las viejas, sin marca, son de Levania)
+export const nichoDe = (inv) => inv?.nicho || inv?.config?.id || "levania";
+export const configDe = (inv) => leerConfig(nichoDe(inv));
+
+export function listarInvestigaciones(nicho) {
   return fs.readdirSync(DIR_INV).filter((f) => /^\d{4}-.*\.json$/.test(f) && !f.startsWith("datos-")).sort().reverse()
-    .map((f) => { const j = JSON.parse(fs.readFileSync(path.join(DIR_INV, f), "utf8")); return { archivo: f, fecha: j.fecha, modo: j.modo, propuestas: j.propuestas?.length || 0, analizadas: j.publicaciones?.length || 0 }; });
+    .map((f) => { const j = JSON.parse(fs.readFileSync(path.join(DIR_INV, f), "utf8")); return { archivo: f, fecha: j.fecha, modo: j.modo, nicho: nichoDe(j), propuestas: j.propuestas?.length || 0, analizadas: j.publicaciones?.length || 0 }; })
+    .filter((x) => !nicho || x.nicho === nicho);
 }
 export const leerInvestigacion = (f) => JSON.parse(fs.readFileSync(path.join(DIR_INV, path.basename(f)), "utf8"));
 
@@ -130,13 +194,13 @@ async function imagenBase64(url) {
 }
 
 // Solo recolecta y puntúa (sin Claude). Lo usa Claude Code: `node fabrica.js recolectar`
-export async function soloDatos(avisar = () => {}) {
+export async function soloDatos(avisar = () => {}, nicho) {
   if (!CFG.apifyToken) throw new Error("Para recolectar métricas hace falta APIFY_TOKEN en el .env. Sin él, Claude Code puede investigar con búsqueda web.");
-  const cfg = leerConfig();
+  const cfg = leerConfig(nicho);
   const { lista, errores } = await recolectar(cfg, avisar);
   const ranking = lista.map(puntuar).sort((a, b) => b.puntaje - a.puntaje).slice(0, 40);
   const archivo = `datos-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-")}.json`;
-  fs.writeFileSync(path.join(DIR_INV, archivo), JSON.stringify({ fecha: new Date().toISOString(), config: cfg, errores, publicaciones: ranking }, null, 2));
+  fs.writeFileSync(path.join(DIR_INV, archivo), JSON.stringify({ fecha: new Date().toISOString(), nicho: cfg.id, config: cfg, errores, publicaciones: ranking }, null, 2));
   return { archivo: path.join("investigacion", archivo), total: lista.length };
 }
 
@@ -155,10 +219,10 @@ const FORMATO = `Devuelve SOLO JSON válido:
     "tema": "1-3 palabras",
     "origen": "en" | "es" | "ambos" (de dónde viene la tendencia),
     "llegada": "ya está en español" | "poco en español" | "aún no llega" (qué tanto existe ya en español),
-    "adaptacion": "qué cambiaste para que conecte con mamás hispanas (si viene del inglés)",
+    "adaptacion": "qué cambiaste para que conecte con la audiencia hispana (si viene del inglés)",
     "porque": "por qué debería funcionar, citando el patrón y las publicaciones que la inspiran",
     "inspiradaEn": ["url REAL de las publicaciones que la inspiran, copiada de los datos o del informe; nunca inventes una. Si no hay, lista vacía"],
-    "flowPrompt": "prompt EN INGLÉS para Google Flow/Veo, vertical 9:16, ~8 s: slow motion, shallow depth of field, soft natural light, una sola acción emotiva y simple (ej. a child running into their mother's arms in a sunlit field), cámara suave, cinematic, warm tones, no text, no logos, no subtitles",
+    "flowPrompt": "prompt EN INGLÉS para Google Flow/Veo, vertical 9:16, ~8 s: slow motion, shallow depth of field, soft natural light, una sola acción o imagen emotiva y simple que vaya con la marca, cámara suave, cinematic, no text, no logos, no subtitles",
     "pexels": "2-4 palabras en inglés para buscar un clip parecido en Pexels",
     "tituloPost": "título/gancho para publicar",
     "descripcion": "1-2 líneas para la descripción",
@@ -167,35 +231,38 @@ const FORMATO = `Devuelve SOLO JSON válido:
 }`;
 
 // estilos que puede elegir el investigador (los motion graphics quedan con su brief listo y los construye Claude Code)
-export function estilosDisponibles() {
+export function estilosDisponibles(cfg) {
   const lista = [];
   for (const e of listarEstilos().filter((x) => x.listo)) {
     if (e.tipo !== "motion") lista.push({ id: e.id, nombre: e.nombre, descripcion: e.descripcion });
     else for (const c of e.catalogo || []) lista.push({ id: `motion:${c.id}`, nombre: `Motion graphics · ${c.nombre}`, descripcion: `${c.que} (sin voz, texto animado; bueno para pasos, listas, un dato fuerte o un anuncio)` });
   }
-  return lista;
+  const permitidos = (cfg?.estilos || []).filter(Boolean);
+  return permitidos.length ? lista.filter((e) => permitidos.includes(e.id) || (e.id.startsWith("motion:") && permitidos.includes("motion"))) : lista;
 }
 
 function sistemaDe(cfg) {
+  const estilos = estilosDisponibles(cfg);
   return [
     "Eres investigador de contenido viral para redes sociales y estratega creativo. Trabajas para esta marca:",
     `${cfg.nombre}. Audiencia: ${cfg.descripcion}`, cfg.marca,
     "Todos los videos son 9:16 vertical. Cada propuesta es una IDEA de video y debes elegir para ella el estilo que mejor le queda, según el contenido (no fuerces variedad; si todo son frases, todo va en frases). Estilos disponibles:\n" +
-      estilosDisponibles().map((e) => `- ${e.id}: ${e.nombre}. ${e.descripcion}`).join("\n") +
+      estilos.map((e) => `- ${e.id}: ${e.nombre}. ${e.descripcion}`).join("\n") +
       "\nPon en \"estilo\" el id exacto. Si eliges un estilo con datos o cifras, la idea debe apoyarse en datos reales verificables (nada inventado)." +
       "\nElige un motion graphics SOLO si la publicación que inspira la idea ya es un formato visual que funcionó (lista, pasos, comparación, un dato que se anima) y tienes su enlace; para una frase emotiva usa frases. Un motion necesita contenido para 15-25 s: gancho, 4-6 momentos y remate, no una sola frase.",
     "REGLAS: no copies frases de otras cuentas (eso es plagio y la plataforma lo castiga): toma el patrón y escribe algo nuevo con la voz de la marca.",
-    "Nunca atribuyas una frase a una persona real si no puedes verificarla. Nada de culpa ni de vergüenza hacia las mamás; sí de reconocimiento y ternura.",
-    "ADAPTACIÓN AL PÚBLICO HISPANO: muchas fuentes son cuentas en inglés de EE. UU. a propósito, porque ahí aparecen primero las tendencias. Trátalas como señal temprana de lo que viene. No traduzcas literal: adapta la idea a mamás hispanas de México y EE. UU. (familia extendida y abuelas, la escuela y las tareas, las mañanas con prisa, el trabajo y la culpa, la fe cuando venga al caso, la comida, el 'mijo/mija'), con español natural de México. Para EE. UU. se vale un toque bilingüe solo si suena natural.",
+    `Nunca atribuyas una frase a una persona real si no puedes verificarla. ${cfg.reglas || ""}`,
+    cfg.adaptacion ? `ADAPTACIÓN AL PÚBLICO: ${cfg.adaptacion}` : "",
     "Prioriza las tendencias que ya funcionan en inglés y todavía casi no existen en español: ahí está la ventaja. Márcalo en cada propuesta.",
     "LO MÁS IMPORTANTE: cada propuesta tiene que nacer de una publicación concreta que YA fue viral o rindió muy por encima de lo normal (vistas, guardados, compartidos, rebase de seguidores). Pon su url exacta en \"inspiradaEn\", copiada de los datos o del informe. Una propuesta sin publicación viral detrás no sirve: no la incluyas. En \"porque\" di qué cifra o señal la hace viral.",
     (cfg.cierres || []).length
       ? `CIERRES: en "cierre" usa EXACTAMENTE uno de estos (cópialo tal cual, elige el que mejor le quede), o déjalo vacío. Nunca inventes otra palabra para comentar:\n${cfg.cierres.map((c) => "- " + c).join("\n")}`
       : `CIERRES: deja "cierre" vacío. No inventes llamados a "comenta una palabra": la marca no ha autorizado ninguno.`,
-    estilosDisponibles().some((e) => e.id === "historia-flow") ? "Al menos UNA propuesta debe ir en el estilo historia-flow: toma una publicación viral (una anécdota, un momento, un antes/después) y adáptala a una micro-historia de 5-7 escenas con personajes de una familia hispana. En sus \"beats\" pon lo que pasa en cada escena." : "",
+    cfg.historia && estilos.some((e) => e.id === "historia-flow") ? "Al menos UNA propuesta debe ir en el estilo historia-flow: toma una publicación viral (una anécdota, un momento, un antes/después) y adáptala a una micro-historia de 5-7 escenas con personajes de una familia hispana. En sus \"beats\" pon lo que pasa en cada escena." : "",
     `Da exactamente ${cfg.propuestas} propuestas, variadas en tema y emoción.`,
+    estilos.length === 1 ? `Este nicho solo usa el estilo ${estilos[0].id}: todas las propuestas van en ese estilo.` : "",
     FORMATO,
-  ].join("\n\n");
+  ].filter(Boolean).join("\n\n");
 }
 
 import { hayIA as _hayIA, pedir, jsonDe as _jsonDe } from "./llm.js";
@@ -229,8 +296,8 @@ export const DIR_INFORMES = path.join(DIR_INV, "informes");
 export const DIR_ENTRADA = path.join(DIR_INV, "entrada");
 for (const d of [DIR_INFORMES, DIR_ENTRADA]) fs.mkdirSync(d, { recursive: true });
 
-export function promptDeepResearch() {
-  const c = leerConfig();
+export function promptDeepResearch(nicho) {
+  const c = leerConfig(nicho);
   return `Investiga qué videos cortos (TikTok, Instagram Reels, YouTube Shorts y Facebook) de frases, reflexiones y mensajes emotivos se están haciendo virales en los últimos ${c.dias} días para esta audiencia: ${c.descripcion}
 
 ${c.cuentasTiktok.length || c.cuentasInstagram.length ? `Revisa en especial estas cuentas: ${[...c.cuentasTiktok, ...c.cuentasInstagram].join(", ")}.
@@ -244,12 +311,12 @@ Cita las fuentes. No inventes métricas: si no hay datos, dilo.`;
 }
 
 // guarda el informe y, si hay IA configurada, lo convierte en propuestas
-export function guardarInforme(texto, fuente = "informe") {
+export function guardarInforme(texto, fuente = "informe", nicho = nichoActivo()) {
   texto = String(texto || "").trim();
   if (texto.length < 80) throw new Error("El informe está vacío o es demasiado corto.");
   const fecha = new Date().toISOString();
   const nombre = `${fecha.slice(0, 19).replace(/[:T]/g, "-")}-${(fuente || "informe").replace(/[^\w-]+/g, "-").slice(0, 30)}.md`;
-  fs.writeFileSync(path.join(DIR_INFORMES, nombre), texto);
+  fs.writeFileSync(path.join(DIR_INFORMES, nombre), `<!-- nicho: ${leerConfig(nicho).id} -->\n` + texto);
   return nombre;
 }
 
@@ -268,15 +335,15 @@ export async function convertirInforme(nombre, fuente = "informe", avisar = () =
 
 async function convertirConCandado(nombre, fuente, avisar, fecha, texto) {
   avisar({ progreso: 0.5, msg: `Convirtiendo el informe en propuestas (${CFG.geminiKey ? "Gemini" : "Claude"})…` });
-  const cfg = leerConfig();
+  const cfg = leerConfig(texto.match(/^<!-- nicho: ([\w-]+) -->/)?.[1] || nichoActivo());
   const j = jsonDe(await pedirIA(sistemaDe(cfg), `Este es un informe de investigación de tendencias (${fuente}). Úsalo como base: saca los patrones y propón.\n\n${texto.slice(0, 120000)}`));
-  const r = guardarResultado({ fecha, config: cfg, modo: "informe", fuente, informe: nombre, errores: [] }, j, texto);
+  const r = guardarResultado({ fecha, nicho: cfg.id, config: cfg, modo: "informe", fuente, informe: nombre, errores: [] }, j, texto);
   const f = path.join(DIR_INFORMES, nombre); if (fs.existsSync(f)) fs.renameSync(f, f.replace(/\.md$/, ".hecho.md"));
   return r;
 }
 
-export async function importarInforme(texto, fuente = "informe", avisar = () => {}) {
-  return convertirInforme(guardarInforme(texto, fuente), fuente, avisar);
+export async function importarInforme(texto, fuente = "informe", avisar = () => {}, nicho) {
+  return convertirInforme(guardarInforme(texto, fuente, nicho), fuente, avisar);
 }
 
 // reintenta solos los informes que no se pudieron convertir (cada 15 min, hasta 8 veces)
@@ -312,16 +379,16 @@ export async function revisarEntrada(avisar = () => {}) {
   return hechos;
 }
 
-export async function investigar(avisar = () => {}) {
+export async function investigar(avisar = () => {}, nicho) {
   if (!hayIA()) throw new Error("El botón necesita GEMINI_API_KEY (gratis en aistudio.google.com) o ANTHROPIC_API_KEY. Sin ellas, pídeselo a Claude Code o importa un informe.");
-  const cfg = leerConfig();
-  const salida = { fecha: new Date().toISOString(), config: cfg, modo: CFG.apifyToken ? "metricas" : "web", errores: [] };
+  const cfg = leerConfig(nicho);
+  const salida = { fecha: new Date().toISOString(), nicho: cfg.id, config: cfg, modo: CFG.apifyToken ? "metricas" : "web", errores: [] };
   const sistema = sistemaDe(cfg);
 
   let contenido;
   if (CFG.apifyToken) {
     // Apify cuesta: si Gemini falla después, el siguiente intento reutiliza lo ya recolectado (hasta 12 h, misma configuración)
-    const F_RECOL = path.join(DIR_INV, "recoleccion.json");
+    const F_RECOL = path.join(DIR_INV, `recoleccion-${cfg.id}.json`);
     const huella = JSON.stringify({ r: cfg.redes, a: cfg.cuentasTiktok, b: cfg.cuentasInstagram, c: cfg.hashtags, d: cfg.busquedas, e: cfg.dias, f: cfg.porFuente, g: cfg.porCuenta });
     let rec = null;
     try { const x = JSON.parse(fs.readFileSync(F_RECOL, "utf8")); if (x.huella === huella && Date.now() - new Date(x.fecha) < 12 * 3600e3 && x.lista?.length) rec = x; } catch {}
@@ -342,7 +409,7 @@ export async function investigar(avisar = () => {}) {
     contenido.push({ type: "text", text: "Analiza y propón." });
   } else {
     avisar({ progreso: 0.2, msg: "Sin Apify: investigando con búsqueda web (sin métricas exactas)…" });
-    contenido = `Investiga en la web qué videos de frases y reflexiones para este nicho se están haciendo virales ahora en TikTok, Instagram Reels y Facebook (cuentas, temas, formatos, ejemplos con enlace). Usa la búsqueda. Luego analiza y propón. Aclara en "patrones" que no hay métricas exactas.`;
+    contenido = `Investiga en la web qué videos cortos para este nicho (${cfg.nombre}: ${cfg.descripcion}) se están haciendo virales ahora en TikTok, Instagram Reels y Facebook (cuentas, temas, formatos, ejemplos con enlace). Usa la búsqueda. Luego analiza y propón. Aclara en "patrones" que no hay métricas exactas.`;
   }
 
   if (!CFG.anthropicKey) { // solo Gemini: va el texto de las publicaciones (sin portadas ni búsqueda web)
@@ -376,8 +443,8 @@ export async function investigar(avisar = () => {}) {
 }
 
 // El cierre solo puede ser uno de los que Richie autorizó en el nicho (si la IA inventó otro, se quita)
-export function cierreValido(c) {
-  const ok = leerConfig().cierres || [];
+export function cierreValido(c, cfg = leerConfig()) {
+  const ok = cfg.cierres || [];
   const n = (x) => String(x || "").trim().toLowerCase();
   return ok.find((x) => n(x) === n(c)) || "";
 }
@@ -385,7 +452,7 @@ export function cierreValido(c) {
 // Vuelve a sacar propuestas de una investigación ya hecha (mismo informe o mismas publicaciones), con las reglas de hoy
 // (estilos y cierres). No vuelve a gastar Apify.
 export async function reproponer(archivo, avisar = () => {}) {
-  const inv = leerInvestigacion(archivo), cfg = leerConfig();
+  const inv = leerInvestigacion(archivo), cfg = configDe(inv);
   let base;
   if (inv.informe) { const f = path.join(DIR_INFORMES, inv.informe.replace(/\.md$/, ".hecho.md")); const g = path.join(DIR_INFORMES, inv.informe);
     base = fs.existsSync(f) ? fs.readFileSync(f, "utf8") : fs.existsSync(g) ? fs.readFileSync(g, "utf8") : null; }
@@ -394,14 +461,14 @@ export async function reproponer(archivo, avisar = () => {}) {
   avisar({ progreso: 0.4, msg: "Volviendo a proponer con los estilos y cierres de hoy…" });
   const j = jsonDe(await pedirIA(sistemaDe(cfg), `Esta es la base de una investigación anterior. Saca los patrones y propón de nuevo.\n\n${base.slice(0, 120000)}`));
   const { propuestas, publicaciones, patrones, ...resto } = inv;
-  return guardarResultado({ ...resto, fecha: new Date().toISOString(), config: cfg, publicaciones, rehechaDe: archivo }, j, base);
+  return guardarResultado({ ...resto, fecha: new Date().toISOString(), nicho: cfg.id, config: cfg, publicaciones, rehechaDe: archivo }, j, base);
 }
 
 // Convierte una propuesta en el guion del estilo de frases
-export function guionDesdePropuesta(p) {
+export function guionDesdePropuesta(p, cfg) {
   const escenas = [{ tipo: "frase", texto: p.frase }];
   if (p.autor) escenas.push({ tipo: "autor", texto: p.autor });
-  const cierre = cierreValido(p.cierre);
+  const cierre = cierreValido(p.cierre, cfg);
   if (cierre) escenas.push({ tipo: "cierre", texto: cierre });
   return {
     titulo: p.tituloPost || p.tema || "Frase",

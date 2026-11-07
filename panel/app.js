@@ -667,12 +667,15 @@ const lista = (v) => String(v || "").split(/[,\n]/).map((x) => x.trim()).filter(
 async function investigador(archivo) {
   S.actual = null; S.vista = "inv"; parar(); pintarLista(); history.replaceState(null, "", "#investigador");
   const d = await api("/api/investigacion");
-  const c = d.config;
+  const c = d.config, nq = `nicho=${encodeURIComponent(c.id)}`;
+  const estilosBase = S.info.estilos.filter((e) => e.listo); // para elegir cuáles puede proponer este nicho
+  const permitidos = c.estilos || [];
   archivo = archivo || d.lista[0]?.archivo;
   const inv = archivo ? await api(`/api/investigacion/${archivo}`) : null;
   $("#main").innerHTML = `
     <h1>Investigador de virales</h1>
-    <p class="sub">Revisa lo que está funcionando en tu nicho y te propone frases originales con su clip para Flow (9:16).</p>
+    <div class="fila" style="margin:-4px 0 10px"><label style="margin:0">Nicho</label><select id="iNicho" style="width:auto;font-weight:600">${d.nichos.map((n) => `<option value="${h(n.id)}" ${n.id === c.id ? "selected" : ""}>${h(n.nombre)}</option>`).join("")}</select><button class="btn peq" id="iNuevoNicho" title="Otra marca o página con sus propias cuentas, público y estilos">+ Nuevo nicho</button></div>
+    <p class="sub">Revisa lo que está funcionando en <b>${h(c.nombre)}</b> y te propone videos originales en sus estilos. Cada nicho tiene sus cuentas, hashtags, público, cierres y estilos.</p>
     ${!d.ia ? `<div class="nota">Sin IA conectada: pon <code>GEMINI_API_KEY</code> (gratis en aistudio.google.com) en el <code>.env</code>, o pídeselo a <b>Claude Code</b> en la carpeta de la fábrica: <code>investiga mi nicho y dame frases virales</code> (o <code>convierte los informes pendientes</code>). Recarga esta página al terminar.</div>` : `<div class="estado" style="margin-bottom:8px">Motor: ${h(d.motor)}</div>`}
     ${d.pendientes?.length ? `<div class="nota">Informes guardados sin convertir: ${d.pendientes.map(h).join(", ")}. ${d.ia ? "Se reintentan solos cada 15 minutos (Gemini a veces está saturado)." : "Dile a Claude Code: <code>convierte los informes pendientes</code>."}</div>` : ""}
     <details class="card" style="margin-bottom:16px"><summary style="cursor:pointer;font-weight:600">Importar un informe (Gemini Deep Research, muse.ai…)</summary>
@@ -682,19 +685,26 @@ async function investigador(archivo) {
       <div class="fila" style="margin-top:8px"><input id="iFuente" value="gemini" style="max-width:200px" title="De dónde viene"><button class="btn primario peq" id="iImportar">Importar y proponer</button></div>
     </details>
     ${!d.apify ? `<div class="nota">Sin <code>APIFY_TOKEN</code> investiga con búsqueda web: sirve, pero <b>sin métricas reales</b> (vistas, guardados, compartidos). Con Apify mide de verdad lo viral en TikTok e Instagram.</div>` : ""}
-    <details class="card" ${inv ? "" : "open"} style="margin-bottom:16px"><summary style="cursor:pointer;font-weight:600">Tu nicho y fuentes</summary>
+    <details class="card" ${inv ? "" : "open"} style="margin-bottom:16px"><summary style="cursor:pointer;font-weight:600">Nicho ${h(c.nombre)}: público, referencias y estilos</summary>
       <div class="fila" style="align-items:flex-start">
         <div style="flex:1;min-width:260px"><label>Nombre</label><input id="iNombre" value="${h(c.nombre)}">
           <label>Audiencia</label><textarea id="iDesc">${h(c.descripcion)}</textarea>
           <label>Sobre la marca (qué sí y qué no)</label><textarea id="iMarca">${h(c.marca)}</textarea>
           <label>Cierres que autorizas (uno por línea, tal cual se dirán; vacío = sin "comenta X")</label>
-          <textarea id="iCierres" placeholder="Comenta RUTINA y te mando gratis tu checklist">${h((c.cierres || []).join("\n"))}</textarea></div>
+          <textarea id="iCierres" placeholder="Comenta RUTINA y te mando gratis tu checklist">${h((c.cierres || []).join("\n"))}</textarea>
+          <label>Cómo adaptar al público (va tal cual a la IA)</label><textarea id="iAdapta">${h(c.adaptacion || "")}</textarea>
+          <label>Reglas de tono (qué sí y qué no)</label><textarea id="iReglas">${h(c.reglas || "")}</textarea>
+          <label>Canal con que nacen los videos</label><input id="iCanal" value="${h(c.canal || "")}" placeholder="@tucanal"></div>
         <div style="flex:1;min-width:260px"><label>Cuentas de TikTok de referencia (una por línea)</label><textarea id="iTk" placeholder="@cuenta">${h(c.cuentasTiktok.join("\n"))}</textarea>
           <label>Cuentas de Instagram de referencia</label><textarea id="iIg" placeholder="@cuenta">${h(c.cuentasInstagram.join("\n"))}</textarea>
           <label>Hashtags (sin #, separados por coma)</label><input id="iHash" value="${h(c.hashtags.join(", "))}">
           <label>Búsquedas</label><input id="iBus" value="${h(c.busquedas.join(", "))}">
           <div class="fila"><div><label>Últimos días</label><input id="iDias" type="number" value="${c.dias}" style="width:100px"></div><div><label>Por hashtag</label><input id="iPor" type="number" value="${c.porFuente}" style="width:100px"></div><div><label>Propuestas</label><input id="iProp" type="number" value="${c.propuestas}" style="width:100px"></div></div></div>
       </div>
+      <label style="margin-top:12px">Estilos que puede proponer (ninguno marcado = todos)</label>
+      <div class="fila" style="gap:4px 14px">${[...estilosBase.filter((e) => e.tipo !== "motion"), { id: "motion", nombre: "Motion graphics" }].map((e) => `<label class="estado" style="display:flex;gap:6px;align-items:center;margin:0"><input type="checkbox" data-iest="${h(e.id)}" style="width:auto" ${permitidos.includes(e.id) ? "checked" : ""}> ${h(e.nombre)}</label>`).join("")}</div>
+      ${permitidos.filter((id) => estiloDe(id)?.opciones?.length).map((id) => `<div class="fila" style="margin-top:8px"><span class="estado">${h(estiloNombre(id))}:</span>${estiloDe(id).opciones.map((o) => `<select data-iop="${h(id)}|${h(o.clave)}" style="width:auto" title="${h(o.nombre)}">${Object.entries(o.valores).map(([k, v]) => `<option value="${h(k)}" ${(c.opciones?.[id]?.[o.clave] || Object.keys(o.valores)[0]) === k ? "selected" : ""}>${h(o.nombre)}: ${h(v)}</option>`).join("")}</select>`).join("")}</div>`).join("")}
+      <label class="estado" style="display:flex;gap:6px;align-items:center;margin-top:8px"><input type="checkbox" id="iHistoria" style="width:auto" ${c.historia ? "checked" : ""}> Pedir al menos una historia con Flow por investigación</label>
       <div class="fila" style="margin-top:14px"><button class="btn" id="iGuardar">Guardar</button></div>
     </details>
     <div class="fila">${inv ? `<button class="btn" id="iRehacer" title="Vuelve a sacar las propuestas de esta misma investigación con los estilos y cierres de hoy (no gasta Apify)">Volver a proponer</button>` : ""}${inv ? `<button class="btn" id="iTodas" title="Crea un video por propuesta y los manda a hacer (voz + video) uno tras otro">Crear y hacer todas</button>` : ""}<button class="btn primario" id="iCorrer" ${!d.ia || d.trabajando ? "disabled" : ""} title="${d.ia ? "" : "Necesita GEMINI_API_KEY o ANTHROPIC_API_KEY"}">Investigar ahora</button>
@@ -726,17 +736,20 @@ async function investigador(archivo) {
         <div style="overflow:auto"><table style="width:100%;font-size:13px;border-collapse:collapse;margin-top:8px">${inv.publicaciones.map((x, i) => `<tr style="border-bottom:1px solid var(--b)"><td>${i + 1}</td><td>${h(x.red)}</td><td><a href="${h(x.url)}" target="_blank" style="color:var(--t)">@${h(x.autor)}</a></td><td>${(x.vistas || 0).toLocaleString()} vistas</td><td>${x.rebase ? x.rebase + "× seguidores" : ""}</td><td>${(x.guardados || 0).toLocaleString()} guard.</td><td>${(x.compartidos || 0).toLocaleString()} comp.</td><td style="color:var(--t2)">${h((x.texto || "").slice(0, 80))}</td></tr>`).join("")}</table></div></details>` : ""}`
     : `<p class="estado" style="margin-top:14px">Todavía no hay investigaciones.</p>`}`;
   $("#iGuardar").onclick = async () => {
-    await api("/api/investigacion", "PUT", { nombre: $("#iNombre").value, descripcion: $("#iDesc").value, marca: $("#iMarca").value, cierres: $("#iCierres").value.split("\n").map((x) => x.trim()).filter(Boolean),
+    const opciones = {}; for (const sel of document.querySelectorAll("[data-iop]")) { const [e, k] = sel.dataset.iop.split("|"); (opciones[e] ||= {})[k] = sel.value; }
+    await api("/api/investigacion", "PUT", { id: c.id, nombre: $("#iNombre").value, descripcion: $("#iDesc").value, marca: $("#iMarca").value,
+      adaptacion: $("#iAdapta").value, reglas: $("#iReglas").value, canal: $("#iCanal").value.trim(), historia: $("#iHistoria").checked,
+      estilos: [...document.querySelectorAll("[data-iest]")].filter((x) => x.checked).map((x) => x.dataset.iest), opciones: { ...(c.opciones || {}), ...opciones }, cierres: $("#iCierres").value.split("\n").map((x) => x.trim()).filter(Boolean),
       cuentasTiktok: lista($("#iTk").value), cuentasInstagram: lista($("#iIg").value), hashtags: lista($("#iHash").value).map((x) => x.replace(/^#/, "")),
       busquedas: lista($("#iBus").value), dias: Number($("#iDias").value), porFuente: Number($("#iPor").value), propuestas: Number($("#iProp").value) });
     avisar("Nicho guardado.");
   };
-  $("#iCorrer").onclick = async () => { if (S.info.apify && !confirm("Esto trae publicaciones con Apify y GASTA de tu saldo (tope de unos $1.5 USD por investigación; tu plan gratis da $5 al mes). ¿Seguir?")) return; await $("#iGuardar").onclick(); api("/api/investigacion", "POST").catch((e) => avisar(e.message, true)); };
-  $("#iPrompt").onclick = async () => navigator.clipboard.writeText(await api("/api/investigacion/prompt")).then(() => avisar("Prompt copiado. Pégalo en Gemini con Deep Research."));
+  $("#iCorrer").onclick = async () => { if (S.info.apify && !confirm("Esto trae publicaciones con Apify y GASTA de tu saldo (tope de unos $1.5 USD por investigación; tu plan gratis da $5 al mes). ¿Seguir?")) return; await $("#iGuardar").onclick(); api("/api/investigacion", "POST", { nicho: c.id }).catch((e) => avisar(e.message, true)); };
+  $("#iPrompt").onclick = async () => navigator.clipboard.writeText(await api(`/api/investigacion/prompt?${nq}`)).then(() => avisar("Prompt copiado. Pégalo en Gemini con Deep Research."));
   $("#iImportar").onclick = async () => {
     const texto = $("#iInforme").value.trim(); if (texto.length < 80) return avisar("Pega el informe completo.", true);
     $("#iImportar").disabled = true; avisar("Importando…");
-    try { const r = await api("/api/investigacion/importar", "POST", { texto, fuente: $("#iFuente").value || "informe" }); avisar(r.pendiente ? "Guardado. Pídele a Claude Code que lo convierta." : "Recibido. Convirtiendo en propuestas… (aparecen aquí solas)"); investigador(); }
+    try { const r = await api("/api/investigacion/importar", "POST", { texto, nicho: c.id, fuente: $("#iFuente").value || "informe" }); avisar(r.pendiente ? "Guardado. Pídele a Claude Code que lo convierta." : "Recibido. Convirtiendo en propuestas… (aparecen aquí solas)"); investigador(); }
     catch (e) { avisar(e.message, true); $("#iImportar").disabled = false; }
   };
   const conFlow = () => { const c = $("#iFlow"); if (!c) return null; localStorage.setItem("invFlow", c.checked ? "1" : "0"); localStorage.setItem("invFlowMax", $("#iFlowMax").value); return c.checked ? { maxCreditos: Number($("#iFlowMax").value) || 25 } : null; };
@@ -749,7 +762,7 @@ async function investigador(archivo) {
     if (!confirm(`Se crearán ${virales.length} videos 9:16${sinRef ? ` (se saltan ${sinRef} sin referencia viral)` : ""}, cada uno en el estilo que el investigador eligió, y se harán completos uno tras otro.${f ? ` Los fondos se harán con Google Flow (gasta créditos, tope ${f.maxCreditos} por clip).` : " Los fondos salen de Pexels."} Los motion graphics quedan listos para que Claude Code los construya. ¿Seguir?`)) return;
     let ok = 0, motion = 0, sinGuion = 0; const fallos = [];
     for (const pr of virales) {
-      try { const p = await api(`/api/investigacion/${archivo}/crear`, "POST", { n: pr.n, formato: "9:16", canal: localStorage.getItem("canal") || "" }); if (p.guionPendiente) sinGuion++; else if (await hacerTodo(p.id)) ok++; else motion++; }
+      try { const p = await api(`/api/investigacion/${archivo}/crear`, "POST", { n: pr.n, formato: "9:16", canal: c.canal || localStorage.getItem("canal") || "" }); if (p.guionPendiente) sinGuion++; else if (await hacerTodo(p.id)) ok++; else motion++; }
       catch (e) { fallos.push(`#${pr.n}: ${e.message}`); }
     }
     S.proyectos = await api("/api/proyectos"); pintarLista();
@@ -757,11 +770,13 @@ async function investigador(archivo) {
   };
   if ($("#iRehacer")) $("#iRehacer").onclick = async () => { await $("#iGuardar").onclick(); api(`/api/investigacion/${archivo}/reproponer`, "POST").then(() => avisar("Volviendo a proponer… (aparecen aquí solas)")).catch((e) => avisar(e.message, true)); };
   if ($("#iHist")) $("#iHist").onchange = (e) => investigador(e.target.value);
+  $("#iNicho").onchange = async (e) => { await api("/api/investigacion/activo", "PUT", { id: e.target.value }); investigador(); };
+  $("#iNuevoNicho").onclick = async () => { const nombre = prompt("Nombre del nicho nuevo (p. ej. la página o marca):"); if (!nombre?.trim()) return; await api("/api/investigacion/nichos", "POST", { nombre }); avisar("Nicho creado: llénalo y dale Guardar."); investigador(); };
   for (const b of document.querySelectorAll("[data-copiar]")) b.onclick = () => navigator.clipboard.writeText(inv.propuestas.find((x) => x.n == b.dataset.copiar).flowPrompt || "").then(() => avisar("Prompt copiado."));
   for (const b of document.querySelectorAll("[data-crear],[data-hacer]")) b.onclick = async () => {
     const hacer = b.dataset.hacer != null; b.disabled = true; b.textContent = "Creando…";
     try {
-      const p = await api(`/api/investigacion/${archivo}/crear`, "POST", { n: Number(b.dataset.crear ?? b.dataset.hacer), formato: "9:16", canal: localStorage.getItem("canal") || "" });
+      const p = await api(`/api/investigacion/${archivo}/crear`, "POST", { n: Number(b.dataset.crear ?? b.dataset.hacer), formato: "9:16", canal: c.canal || localStorage.getItem("canal") || "" });
       if (p.guionPendiente) avisar(`Creado sin guion (${p.aviso}). En Claude Code di: escribe el guion de ${p.id}`, true);
       else if (hacer && !(await hacerTodo(p.id))) avisar(`Brief listo. La fábrica está haciendo la voz; cuando termine (punto de voz en verde), dile a Claude Code: haz los pendientes`);
       S.proyectos = await api("/api/proyectos"); S.vista = null; abrir(p.id);

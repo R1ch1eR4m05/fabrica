@@ -13,8 +13,8 @@ function base(id) {
   const s = g.subir || {};
   let prop = null;
   if (p.desdeInvestigacion) try { prop = INV.leerInvestigacion(p.desdeInvestigacion.archivo).propuestas.find((x) => x.n === p.desdeInvestigacion.n); } catch {}
-  const cfg = INV.leerConfig();
-  const cierre = INV.cierreValido(prop?.cierre) || (cfg.cierres || [])[0] || "";
+  const cfg = INV.leerConfig(p.nicho || (p.desdeInvestigacion ? (() => { try { return INV.nichoDe(INV.leerInvestigacion(p.desdeInvestigacion.archivo)); } catch { return undefined; } })() : undefined));
+  const cierre = INV.cierreValido(prop?.cierre, cfg) || (cfg.cierres || [])[0] || "";
   const hashtags = [...new Set([...(s.hashtags || []), ...(prop?.hashtags || [])].map((h) => "#" + String(h).replace(/^#/, "").replace(/\s+/g, "")))].filter((h) => h.length > 1);
   const ia = ""; // la etiqueta de IA se marca en la app al publicar (regla de Levania), no en el texto
   const fuentes = (g.fuentes || []).map((f) => f.dato ? `${f.dato}${f.url ? " (" + f.url + ")" : ""}` : "").filter(Boolean);

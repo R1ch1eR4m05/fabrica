@@ -79,7 +79,7 @@ Cuando Richie diga "investiga" o "dame frases virales":
    Descarga las portadas de las 12 mejores a una carpeta temporal y míralas: ahí suele ir la frase. Si no hay Apify, investiga con búsqueda web y dilo (sin métricas reales).
 2. Saca 5-8 patrones concretos y escribe `investigacion/AAAA-MM-DD-HH-MM.json` con este formato:
    `{ "fecha", "modo": "metricas"|"web", "errores": [], "patrones": [...], "propuestas": [{ "n", "frase" (original, con *palabra clave*), "autor" (solo cita real verificada), "cierre", "tema", "porque", "inspiradaEn": [urls], "flowPrompt" (inglés, 9:16, slow motion, shallow depth of field, una acción emotiva, no text), "pexels", "tituloPost", "descripcion", "hashtags" }], "publicaciones": [...] }`
-   Usa `investigacion/nicho.json` (audiencia, marca, número de propuestas). Nunca copies frases de otras cuentas.
+   Usa el nicho que diga Richie (`investigacion/nichos/<id>.json`: audiencia, marca, adaptación, reglas, estilos permitidos, número de propuestas; si no dice, el activo: `node fabrica.js nichos`) y pon `"nicho": "<id>"` en el archivo. Con Apify: `node fabrica.js recolectar --nicho <id>`. Nunca copies frases de otras cuentas.
    Las cuentas en inglés son señal temprana: adapta (no traduzcas) a mamás hispanas de México y EE. UU. y llena `origen` (en/es/ambos), `llegada` (ya está en español / poco en español / aún no llega) y `adaptacion`. Prioriza lo que "aún no llega".
 3. Dile a Richie que recargue el Investigador del panel: ahí puede crear los videos.
 
@@ -88,18 +88,19 @@ Cuando Richie diga "investiga" o "dame frases virales":
 - Los que no terminan en `.hecho.md` están pendientes. Si Richie dice "convierte los informes pendientes": léelos, escribe la investigación en el formato de arriba (`"modo": "informe"`, `"fuente"`) y renombra el informe a `.hecho.md`.
 
 ## "Vuelve a proponer" desde Claude Code (sin Gemini)
-Lee la investigación más reciente de `investigacion/` (o la que diga Richie) y su informe en `investigacion/informes/*.hecho.md` si lo hay. Escribe una investigación NUEVA en el mismo formato, con `estilo`, `porQueEstilo`, `idea` y los `cierres` de `investigacion/nicho.json` (tal cual, o vacío). Los estilos válidos salen de `node fabrica.js estilos` y de `estilos/motion/catalogo.json` (como `motion:<id>`).
+Lee la investigación más reciente de `investigacion/` (o la que diga Richie) y su informe en `investigacion/informes/*.hecho.md` si lo hay. Escribe una investigación NUEVA en el mismo formato y del mismo `nicho`, con `estilo` (solo de los permitidos en ese nicho), `porQueEstilo`, `idea` y los `cierres` de su nicho (tal cual, o vacío). Los estilos válidos salen de `node fabrica.js estilos` y de `estilos/motion/catalogo.json` (como `motion:<id>`).
 
 ## Propuestas del investigador y estilos
 - **Regla número uno: cada propuesta nace de una publicación que ya fue viral** (o rindió muy por encima de lo normal) y lleva su url real en `inspiradaEn`, copiada de los datos o del informe. Sin eso no es propuesta: no la escribas. La fábrica descarta enlaces que no estaban en los datos y marca la propuesta "Sin referencia viral"; "Crear y hacer todas" y `pendientes` se las saltan.
 - Cada propuesta lleva `estilo` (id exacto de un estilo listo, o `motion:<id del catálogo>` para motion graphics), `porQueEstilo` e `idea`. Elige el que mejor le queda al contenido; si todo son frases, todo va en `frases-desenfocado`.
 - Al crear el video desde una propuesta, `frases-desenfocado` usa la frase tal cual; los demás estilos escriben el guion con la IA siguiendo el GUION.md de ese estilo. Propuestas viejas sin `estilo` se hacen como frases. Los `motion:` quedan creados con su brief y esperan a "construye los motion pendientes".
-- Cierres: solo los que Richie puso en `investigacion/nicho.json` → `cierres`, copiados tal cual. Si la lista está vacía, sin cierre de "comenta X". Nunca inventes la palabra.
+- Cierres: solo los que Richie puso en el nicho de esa investigación (`investigacion/nichos/<id>.json` → `cierres`), copiados tal cual. Si la lista está vacía, sin cierre de "comenta X". Nunca inventes la palabra.
 - Música: pistas libres de derechos en `musica/` o `musica/<estilo>/` (cada video toma una distinta).
 - "Crear y hacer" con la casilla de Flow: si flow-mcp está abierto y el estilo usa fondo, primero genera el clip con el `flowPrompt` (con tope de créditos); si falla, sigue con Pexels.
 
 ## Investigador y Flow
-- El nicho vive en `investigacion/nicho.json`; cada investigación en `investigacion/<fecha>.json` (patrones + propuestas).
+- Un nicho por marca: `investigacion/nichos/<id>.json` (levania, monarca…), editables en el panel (selector "Nicho"). Cada uno con sus cuentas, hashtags, público, adaptación, reglas, cierres, canal, estilos permitidos y opciones por estilo. Cada investigación en `investigacion/<fecha>.json` con `"nicho"` (las viejas sin él son de Levania).
+- Monarca (página de reflexión estoica) solo usa `reflexion-estatuas`; Levania, los demás.
 - Si Richie pide investigar desde Claude Code sin API: busca en la web, sigue el mismo formato de propuestas y guarda el archivo ahí; el panel lo muestra.
 - Si flow-mcp está conectado como MCP, puedes generar el clip de una propuesta con su `flowPrompt` (9:16) y copiarlo como `proyectos/<id>/fondo-propio.mp4`; luego en el panel "Buscar otro fondo" o rehacer la voz lo vuelve a preparar.
 - Frases de otras cuentas: solo como inspiración. Nunca copiarlas.
