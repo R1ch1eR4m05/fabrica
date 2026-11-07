@@ -30,7 +30,9 @@ function armar(proyecto, { cambios = "", guionActual = null } = {}) {
     `Eres guionista de videos para redes en español de México (neutro, natural, nada de España: nada de "vosotros", "vale", "ordenador").`,
     `Estilo del video: ${estilo.nombre}.`,
     instruccionesGuion(proyecto.estilo),
-    `Formato: ${proyecto.formato}. Duración: ${proyecto.duracion === "largo" ? estilo.duraciones?.largo || "6 a 10 minutos" : estilo.duraciones?.corto || "45 a 90 segundos"}.`,
+    proyecto.segundos > 0
+      ? `Formato: ${proyecto.formato}. Duración EXACTA pedida: unos ${proyecto.segundos} segundos de voz (± 10%), es decir, alrededor de ${Math.max(3, Math.round(proyecto.segundos / 5))} escenas. Esta indicación manda sobre cualquier otra duración que aparezca arriba.`
+      : `Formato: ${proyecto.formato}. Duración: ${proyecto.duracion === "largo" ? estilo.duraciones?.largo || "6 a 10 minutos" : estilo.duraciones?.corto || "45 a 90 segundos"}.`,
     `Nunca inventes una cifra, estudio o fecha. Verifica cada dato con la búsqueda web en al menos 2 fuentes fiables y ponlas en "fuentes". Si un dato no se sostiene, usa otro que sí.`,
     FORMATO_SALIDA,
   ].join("\n\n");

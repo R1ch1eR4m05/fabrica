@@ -128,6 +128,7 @@ function nuevo(estiloId, motionId = "") {
       <div class="fila" style="margin-top:6px">
         <div><label>Formato</label><div class="seg" id="nFormato"></div></div>
         <div><label>Duración</label><div class="seg" id="nDur"><button data-v="corto">Corto</button><button data-v="largo">Largo</button></div></div>
+        <div><label>Segundos exactos (opcional)</label><input id="nSeg" type="number" min="15" max="600" step="5" placeholder="Ej.: 60" style="width:130px"></div>
       </div>
       <div id="nExtra"></div>
       <div id="nGaleria"></div>
@@ -168,7 +169,7 @@ function nuevo(estiloId, motionId = "") {
     localStorage.setItem("canal", $("#nCanal").value.trim());
     const opciones = {}; for (const sel of document.querySelectorAll("[data-op]")) opciones[sel.dataset.op] = sel.value;
     const conVoz = !$("#nVoz") || $("#nVoz button.on").dataset.v === "si";
-    const p = await api("/api/proyectos", "POST", { estilo: $("#nEstilo").value, idea, titulo: idea, conVoz, opciones, ...st });
+    const p = await api("/api/proyectos", "POST", { estilo: $("#nEstilo").value, idea, titulo: idea, conVoz, opciones, ...st, segundos: Number($("#nSeg")?.value) || null });
     if ($("#nCanal").value.trim()) await api(`/api/proyectos/${p.id}`, "PATCH", { canal: $("#nCanal").value.trim() });
     if (esMotion) { const c = (estiloDe("motion").catalogo || []).find((x) => x.id === motionElegido); await api(`/api/proyectos/${p.id}/brief`, "PUT", { estiloMotion: motionElegido, formato: st.formato, para: "Reels / TikTok", segundos: Math.round(c?.seg || 12), loop: false, textos: "", marca: "", medios: "ninguno, solo gráfico", notas: "" }); }
     S.proyectos = await api("/api/proyectos"); abrir(p.id);
@@ -204,7 +205,7 @@ function pintarProyecto() {
         <div class="seg" id="pFormato">${(est?.formatos || ["9:16"]).map((k) => `<button data-v="${k}" class="${p.formato === k ? "on" : ""}">${k}</button>`).join("")}</div>
       </div>
     </div>
-    <p class="sub">${h(est?.nombre)} · ${p.duracion === "largo" ? "Largo" : "Corto"} · <span style="opacity:.7">${h(p.idea)}</span> ${S.info.espejo ? `<button class="mini" id="pEnviarVPS" title="Manda este video (imágenes, voz, copy, portada y video final) al VPS para verlo desde el celular">Enviar al VPS</button>` : ""}</p>
+    <p class="sub">${h(est?.nombre)} · ${p.duracion === "largo" ? "Largo" : "Corto"} · <span style="opacity:.7">${h(p.idea)}</span> · <label style="display:inline;font-size:12px">Segundos <input id="pSeg" type="number" min="15" max="600" step="5" value="${p.segundos || ""}" placeholder="auto" title="Duración que se le pide al guion (vale para el próximo guion que escribas)" style="width:80px;padding:2px 6px"></label> ${S.info.espejo ? `<button class="mini" id="pEnviarVPS" title="Manda este video (imágenes, voz, copy, portada y video final) al VPS para verlo desde el celular">Enviar al VPS</button>` : ""}</p>
     ${panelInspiracion(p)}
 
     <div class="pasos">
@@ -510,6 +511,7 @@ async function abrirBanco(p, n) {
   caja.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 function eventoEnviarVPS(p) {
+  if ($("#pSeg")) $("#pSeg").onchange = async (e) => { await api(`/api/proyectos/${p.id}`, "PATCH", { segundos: Number(e.target.value) || null }); avisar(e.target.value ? `El próximo guion se pide de ~${e.target.value} s.` : "Duración automática (corto/largo)."); };
   if ($("#pEnviarVPS")) $("#pEnviarVPS").onclick = async () => { const b = $("#pEnviarVPS"); b.disabled = true; avisar("Enviando al VPS…"); try { const r = await api("/api/banco/sincronizar", "POST", { id: p.id }); avisar(r.enviados ? `Listo: ${r.enviados} archivos enviados. Ya lo ves desde el celular.` : "El VPS ya tiene todo de este video."); } catch (e) { avisar(e.message, true); } b.disabled = false; };
 }
 function eventosClips(p) {

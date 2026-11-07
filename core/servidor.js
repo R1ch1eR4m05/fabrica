@@ -240,7 +240,7 @@ async function api(req, res, partes) {
   }
   if (!accion && m === "PATCH") { // cambiar título, formato, duración
     const b = await cuerpo(req);
-    for (const k of ["titulo", "formato", "duracion", "idea", "canal", "vozId", "conVoz", "fondoBuscar", "flowPrompt", "musicaParametros"]) if (b[k] !== undefined) p[k] = b[k];
+    for (const k of ["titulo", "formato", "duracion", "segundos", "idea", "canal", "vozId", "conVoz", "fondoBuscar", "flowPrompt", "musicaParametros"]) if (b[k] !== undefined) p[k] = b[k];
     if (b.opciones) p.opciones = { ...(p.opciones || {}), ...b.opciones };
     if ((b.formato || b.opciones) && p.estado.render === "listo") p.estado.render = "desactualizado";
     if (b.conVoz !== undefined && p.estado.voz === "listo") p.estado.voz = "desactualizado";

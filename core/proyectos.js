@@ -15,13 +15,13 @@ export function slug(txt) {
     .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "video";
 }
 
-export function crearProyecto({ estilo, titulo, formato = "9:16", duracion = "corto", idea = "", conVoz = true, opciones = {} }) {
+export function crearProyecto({ estilo, titulo, formato = "9:16", duracion = "corto", idea = "", conVoz = true, opciones = {}, segundos = null }) {
   let id = slug(titulo || idea);
   let n = 2;
   while (fs.existsSync(dirProyecto(id))) id = `${slug(titulo || idea)}-${n++}`;
   fs.mkdirSync(dirProyecto(id), { recursive: true });
   const p = {
-    id, estilo, titulo: titulo || idea.slice(0, 60), formato, duracion, idea, conVoz, opciones,
+    id, estilo, titulo: titulo || idea.slice(0, 60), formato, duracion, segundos: Number(segundos) > 0 ? Math.round(Number(segundos)) : null, idea, conVoz, opciones,
     creado: new Date().toISOString(),
     estado: { guion: "pendiente", voz: "pendiente", render: "pendiente" },
   };
