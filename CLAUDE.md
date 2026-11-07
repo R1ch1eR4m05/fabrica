@@ -124,6 +124,10 @@ Lee la investigación más reciente de `investigacion/` (o la que diga Richie) y
 - Si flow-mcp está conectado como MCP, puedes generar el clip de una propuesta con su `flowPrompt` (9:16) y copiarlo como `proyectos/<id>/fondo-propio.mp4`; luego en el panel "Buscar otro fondo" o rehacer la voz lo vuelve a preparar.
 - Frases de otras cuentas: solo como inspiración. Nunca copiarlas.
 
+## Voz
+- El modelo de voz se elige por estilo en el panel (junto a la voz): Eleven v4, v4 Turbo (mitad de precio), Multilingual v2, Flash v2.5 o Google Chirp 3 HD (`GOOGLE_TTS_KEY`; tiempos de subtítulos estimados).
+- "Comparar modelos" (panel) o `node fabrica.js comparar-voces` hace el mismo párrafo con cada uno en `listos/comparar-voces/`.
+
 ## Reglas
 - No pidas llaves por el chat: van en `.env`.
 - No borres nada de `proyectos/` ni de `listos/` sin que Richie lo pida.

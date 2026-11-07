@@ -233,8 +233,9 @@ function pintarProyecto() {
             ${est?.vozOpcional ? `<div class="seg" id="vModo"><button data-v="si" class="${p.conVoz !== false ? "on" : ""}">Con voz</button><button data-v="no" class="${p.conVoz === false ? "on" : ""}">Solo música</button></div>` : ""}
             ${p.conVoz !== false ? `<input id="vId" placeholder="ID de voz de ElevenLabs para este video (opcional)" value="${h(p.vozId || "")}" style="max-width:380px">` : ""}
             ${p.conVoz !== false && S.info.voz ? `<button class="mini" id="vTodos" title="Guarda el ID de voz de arriba como la voz de todos los videos de este estilo">Usar esta voz en todos los de ${h(est?.nombre || "este estilo")}</button>` : ""}
-            ${p.conVoz !== false && S.info.voz ? `<select id="vModelo" title="Modelo de voz para todos los videos" style="max-width:340px"><option>Modelo de voz…</option></select>` : ""}
+            ${p.conVoz !== false && S.info.voz ? `<select id="vModelo" title="Modelo de voz para los videos de este estilo" style="max-width:340px"><option>Modelo de voz…</option></select><button class="mini" id="vComparar" title="Genera el mismo párrafo con cada modelo para oírlos y ver cuánto cuesta cada uno">Comparar modelos</button>` : ""}
           </div>
+          <div id="vComparacion"></div>
           ${p.conVoz !== false && !S.info.voz ? `<div class="nota">Sin llave de ElevenLabs se genera una <b>voz de prueba muda</b> con tiempos estimados, para ensayar el video. Pon <code>ELEVENLABS_API_KEY</code> y <code>ELEVENLABS_VOICE_ID</code> en el <code>.env</code> para la voz real.${est?.vozSugerida ? "<br>Voz sugerida: " + h(est.vozSugerida) : ""}</div>` : ""}
           <div class="barra oculto" id="bar-voz"><div></div></div>
           ${est?.fondo ? panelFondo(p) : ""}
@@ -292,10 +293,24 @@ function pintarProyecto() {
   if ($("#vTodos")) $("#vTodos").onclick = async () => { const v = $("#vId").value.trim(); if (!v) return avisar("Pega primero el ID de la voz (ElevenLabs → Voices → ⋯ → Copy voice ID).", true); await api("/api/ajustes", "PUT", { vozPorEstilo: { [p.estilo]: v } }); avisar(`Listo: los videos de ${est?.nombre} usarán esa voz.`); };
   if ($("#vModelo")) api("/api/ajustes").then((a) => {
     if ($("#vId") && !$("#vId").value && a.vozPorEstilo?.[p.estilo]) $("#vId").placeholder = `Voz del estilo: ${a.vozPorEstilo[p.estilo]} (pon otra solo para este video)`;
-    const actual = a.modeloVoz || String(a.modeloVozEnv).replace(/^eleven_multilingual_v(3|4)$/, "eleven_v$1");
+    const actual = a.modeloPorEstilo?.[p.estilo] || a.modeloVoz || String(a.modeloVozEnv).replace(/^eleven_multilingual_v(3|4)$/, "eleven_v$1");
     $("#vModelo").innerHTML = Object.entries(a.modelosVoz).map(([k, n]) => `<option value="${h(k)}" ${k === actual ? "selected" : ""}>Voz: ${h(n)}</option>`).join("");
-    $("#vModelo").onchange = async () => { await api("/api/ajustes", "PUT", { modeloVoz: $("#vModelo").value }); avisar("Modelo de voz guardado para todos los videos. Dale \"Rehacer voz\" para oírlo."); };
+    $("#vModelo").onchange = async () => { await api("/api/ajustes", "PUT", { modeloPorEstilo: { [p.estilo]: $("#vModelo").value } }); avisar(`Modelo de voz guardado para ${est?.nombre || "este estilo"}. Dale "Rehacer voz" para oírlo.`); };
   });
+  if ($("#vComparar")) {
+    const pintar = (r) => {
+      if (!r?.modelos?.length) return;
+      $("#vComparacion").innerHTML = `<div class="nota"><b>Mismo texto con cada modelo</b> (${r.modelos[0].letras} letras). Un video de 30 min son unas 30 mil letras.
+        ${r.modelos.map((x) => `<div style="margin-top:8px"><b>${h(x.nombre)}</b>${x.error ? ` · <span style="opacity:.7">${h(x.error)}</span>` : `<br><audio controls preload="none" src="${h(x.archivo)}?v=${Date.now()}" style="width:100%;max-width:380px"></audio><br>${h(x.costo)} · video de 30 min: ${h(x.video30)} · subtítulos ${h(x.tiempos)}`}</div>`).join("")}</div>`;
+    };
+    api("/api/voces/comparar").then(pintar).catch(() => {});
+    $("#vComparar").onclick = async () => {
+      const b = $("#vComparar"); b.disabled = true; b.textContent = "Generando…";
+      try { pintar(await api("/api/voces/comparar", "POST", { vozId: $("#vId")?.value.trim() || p.vozId || "", estiloId: p.estilo })); avisar("Listo: dale play a cada una."); }
+      catch (e) { avisar(e.message, true); }
+      b.disabled = false; b.textContent = "Comparar modelos";
+    };
+  }
   if ($("#vId")) $("#vId").onchange = (e) => api(`/api/proyectos/${p.id}`, "PATCH", { vozId: e.target.value.trim() });
   if ($("#flowCopiar")) {
     $("#flowCopiar").onclick = () => navigator.clipboard.writeText($("#flowPrompt").value).then(() => avisar("Prompt copiado. Pégalo en Flow en formato 9:16."));

@@ -19,6 +19,7 @@
 //   node fabrica.js recolectar [--nicho id]       junta y puntúa publicaciones virales (Apify) para que Claude Code las analice
 //   node fabrica.js nichos [id]                   lista los nichos (Levania, Monarca…) y, con id, deja ese activo
 //   node fabrica.js investigaciones [--nicho id]  lista las investigaciones
+//   node fabrica.js comparar-voces ["texto"] [--estilo id]   mismo texto con cada modelo de voz → listos/comparar-voces/
 import path from "node:path";
 import { exec } from "node:child_process";
 import { CFG } from "./core/config.js";
@@ -173,6 +174,13 @@ async function main() {
       if (libres[0]) INV.activarNicho(libres[0]);
       const act = INV.nichoActivo();
       for (const n of INV.listarNichos()) console.log(`${n.id === act ? "→" : " "} ${n.id}  ·  ${n.nombre}${n.canal ? "  ·  " + n.canal : ""}  (investigacion/nichos/${n.id}.json)`);
+      return;
+    }
+    case "comparar-voces": {
+      const VOZ = await import("./core/voz.js");
+      const r = await VOZ.compararVoces({ texto: libres[0], estiloId: opc("estilo") }, avisar);
+      console.log("");
+      for (const x of r.modelos) console.log(`${x.nombre}\n   ${x.error ? "✗ " + x.error : `${x.archivo} · ${x.segundos} s · ${x.costo} · 30 min: ${x.video30}`}`);
       return;
     }
     default: console.log("Orden desconocida. Mira la cabecera de fabrica.js.");

@@ -1,7 +1,7 @@
 // Servidor del panel. En la laptop escucha solo en 127.0.0.1.
 // En el VPS: HOST=0.0.0.0 y PANEL_CLAVE=algo en el .env (pide usuario "fabrica" y esa clave).
 import http from "node:http";
-import { CFG, FORMATOS } from "./config.js";
+import { CFG, FORMATOS, DIR_LISTOS } from "./config.js";
 import { listarEstilos, leerEstilo } from "./estilos.js";
 import * as P from "./proyectos.js";
 import { servirArchivo } from "./estatico.js";
@@ -138,6 +138,15 @@ async function api(req, res, partes) {
     try { return json(res, 200, await GHL.cuentas({ forzar: new URL(req.url, "http://x").searchParams.has("forzar") })); }
     catch (e) { return json(res, 502, { error: e.message }); }
   }
+  if (recurso === "voces" && id === "comparar") {
+    const f = path.join(DIR_LISTOS, "comparar-voces", "comparacion.json");
+    if (m === "GET") { try { return json(res, 200, JSON.parse(fs.readFileSync(f, "utf8"))); } catch { return json(res, 200, { modelos: [] }); } }
+    if (m === "POST") {
+      const VOZ = await import("./voz.js");
+      try { return json(res, 200, await VOZ.compararVoces(await cuerpo(req))); }
+      catch (e) { return json(res, 500, { error: e.message }); }
+    }
+  }
   if (recurso === "ajustes") {
     if (m === "GET") return json(res, 200, { ...leerAjustes(), modelosVoz: MODELOS_VOZ, modeloVozEnv: CFG.elevenModelo, modelosFlowVideo: MODELOS_VIDEO, modelosFlowImagen: MODELOS_IMAGEN });
     if (m === "PUT") return json(res, 200, guardarAjustes(await cuerpo(req)));
@@ -233,7 +242,7 @@ async function api(req, res, partes) {
   if (recurso === "info") return json(res, 200, {
     flow: await flowDisponible(), flowSkill: flowSkillListo(), laptop: BANCO.hayLaptop(), espejo: BANCO.hayEspejo(), apify: !!CFG.apifyToken, ghl: GHL.ghlListo(),
     estilos: listarEstilos(), formatos: FORMATOS, efectos: EFECTOS,
-    ia: INV.hayIA(), motorIA: CFG.anthropicKey ? "Claude" : CFG.geminiKey ? "Gemini" : null, voz: !!CFG.elevenKey, pexels: !!(CFG.pexelsKey || CFG.pixabayKey), gemini: !!CFG.geminiKey, apimart: !!CFG.apimartKey, trabajando: actual ? { id: actual.id, paso: actual.paso } : null,
+    ia: INV.hayIA(), motorIA: CFG.anthropicKey ? "Claude" : CFG.geminiKey ? "Gemini" : null, voz: !!(CFG.elevenKey || CFG.googleTtsKey), pexels: !!(CFG.pexelsKey || CFG.pixabayKey), gemini: !!CFG.geminiKey, apimart: !!CFG.apimartKey, trabajando: actual ? { id: actual.id, paso: actual.paso } : null,
   });
 
   if (recurso === "eventos") {
