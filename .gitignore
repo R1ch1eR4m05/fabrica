@@ -11,3 +11,4 @@ package-lock.json
 musica/*
 !musica/LEEME.md
 ajustes.json
+banco/

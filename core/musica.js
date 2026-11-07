@@ -60,7 +60,10 @@ export async function musicaIA(id, avisar = () => {}, { prompt, reusar, desdePan
   const audio = Buffer.from(await r.arrayBuffer());
   fs.writeFileSync(destino, audio);
   if (reusar) { fs.mkdirSync(dirLib, { recursive: true }); fs.writeFileSync(enLib, audio); fs.writeFileSync(meta, JSON.stringify({ segundos, prompt: texto, fecha: new Date().toISOString() }, null, 2)); }
-  p.musicaIA = { prompt: texto, segundos }; guardar(id, "proyecto.json", p);
+  // toda pista generada queda en la biblioteca de su nicho para reutilizarla en otros videos
+  let enNicho = null;
+  try { const B = await import("./banco.js"); enNicho = B.guardarPista(await B.nichoDeProyecto(p), destino, { segundos, prompt: texto, estilo: est.id, tema: p.tema || p.titulo || "", de: id }); } catch (e) { console.warn("Biblioteca:", e.message); }
+  p.musicaIA = { prompt: texto, segundos }; if (enNicho) p.musicaElegida = enNicho; guardar(id, "proyecto.json", p);
   avisar({ progreso: 1, msg: "Música lista." });
   return { reusada: false, segundos };
 }

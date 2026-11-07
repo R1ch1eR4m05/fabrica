@@ -84,7 +84,9 @@ export async function render(id, avisar = () => {}) {
   const t0 = Date.now();
 
   avisar({ paso: "render", progreso: 0, msg: "Preparando el audio…" });
-  const mezcla = await mezclar({ estilo, guion, tiempos, voz: path.join(dir, "voz.mp3"), salida: path.join(tmp, "mezcla.m4a"), tmp: path.join(tmp, "sfx"), dirProyecto: dir });
+  let sugerida = null; // sin música propia: la que recomienda la fábrica (generadas del nicho, del estilo o la biblioteca)
+  try { const B = await import("./banco.js"); const o = await B.opcionesMusica(id); if (o.recomendada) sugerida = B.archivoMusica(o.recomendada); } catch {}
+  const mezcla = await mezclar({ estilo, guion, tiempos, voz: path.join(dir, "voz.mp3"), salida: path.join(tmp, "mezcla.m4a"), tmp: path.join(tmp, "sfx"), dirProyecto: dir, sugerida });
 
   const { s, base } = await servidorTemporal();
   const nav = await abrirNavegador();

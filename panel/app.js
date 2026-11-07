@@ -466,27 +466,58 @@ async function pintarGHL(p, leerForm, guardarAntes) {
 }
 
 // ---------- historia con Flow: un clip por escena ----------
+const ORIGEN_CLIP = { banco: "del banco", pexels: "Pexels" };
 function panelClips(p) {
-  const cs = p.clips || [], faltan = cs.filter((x) => x.tipo !== "cierre" && !x.archivo).length;
+  const cs = p.clips || [], faltan = cs.filter((x) => x.tipo !== "cierre" && !x.archivo).length, est = estiloDe(p.estilo) || {}, img = est.clipsFlow === "imagen";
   return `<div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--b)">
-    <div class="estado" id="est-fondo">Clips por escena: ${cs.length - faltan - cs.filter((x) => x.tipo === "cierre").length} listos · ${faltan} sin clip (sin clip usa Pexels con "buscar" o un dibujo animado)</div>
+    <div class="estado" id="est-fondo">Clips por escena: ${cs.length - faltan - cs.filter((x) => x.tipo === "cierre").length} listos · ${faltan} sin ${img ? "imagen" : "clip"} (${est.banco ? "al hacer el video se llenan solas: banco de videos anteriores → Pexels → banco" : 'sin clip usa Pexels con "buscar" o un dibujo animado'})</div>
     <div class="barra oculto" id="bar-fondo"><div></div></div>
     <div class="fila" style="margin:8px 0">
-      <button class="btn peq primario" id="cFlow" ${S.info.flow && faltan ? "" : "disabled"} title="${S.info.flow ? "Genera en Flow los que faltan" : "Abre Flow Studio (flow-mcp)"}">Generar en Flow los que faltan</button>
-      ${S.info.flowSkill ? `<select id="cModelo" style="width:auto" title="Modelo de video de Flow (más caro = mejor)"></select>
+      <button class="btn peq primario" id="cFlow" ${S.info.flow && faltan ? "" : "disabled"} title="${S.info.flow ? "Genera en Flow los que faltan" : "Flow solo funciona en la laptop con la skill instalada"}">Generar en Flow ${img ? "las imágenes" : "los"} que faltan</button>
+      ${S.info.flowSkill && !img ? `<select id="cModelo" style="width:auto" title="Modelo de video de Flow (más caro = mejor)"></select>
         <label class="estado" style="display:flex;gap:6px;align-items:center" title="Primero hace una imagen de los personajes y el primer cuadro de cada escena con ella; luego anima. Gasta un poco más pero la familia sale igual en todas."><input type="checkbox" id="cCuadros" style="width:auto" checked> personajes iguales (imagen → video)</label>`
-        : `<span class="estado">Tope de créditos por clip</span><input id="cMax" type="number" value="25" min="1" style="width:80px">`}
+        : S.info.flowSkill ? "" : `<span class="estado">Tope de créditos por clip</span><input id="cMax" type="number" value="25" min="1" style="width:80px">`}
       ${S.info.flow ? "" : `<span class="estado">Flow cerrado: copia cada prompt, hazlo en Flow y súbelo aquí.</span>`}
+      ${est.banco && S.info.espejo ? `<button class="btn peq" id="cEspejo" title="Manda al VPS las imágenes del banco y la música generada que aún no tenga">Enviar banco y música al VPS</button>` : ""}
     </div>
     <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(230px,1fr))">${cs.map((x) => `
       <div class="card" style="padding:10px">
-        <div class="estado"><b style="color:var(--t)">Escena ${x.n}</b> · ${x.tipo === "cierre" ? "cierre (sin clip)" : x.archivo ? `<span style="color:var(--ok)">✓ ${h(x.archivo)}</span>` : "<span style='color:var(--am)'>sin clip</span>"}</div>
+        <div class="estado"><b style="color:var(--t)">Escena ${x.n}</b> · ${x.tipo === "cierre" && !img ? "cierre (sin clip)" : x.archivo ? `<span style="color:var(--ok)">✓ ${ORIGEN_CLIP[x.origen] || (img ? "imagen" : "clip")}</span>` : "<span style='color:var(--am)'>sin clip</span>"}</div>
         ${x.archivo && /\.(mp4|mov|webm|m4v)$/i.test(x.archivo) ? `<video src="/proyectos/${h(p.id)}/clips/${h(x.archivo)}" muted loop playsinline preload="metadata" style="width:100%;max-height:200px;border-radius:8px;background:#000;margin-top:6px" onmouseenter="this.play()" onmouseleave="this.pause()"></video>` : x.archivo ? `<img src="/proyectos/${h(p.id)}/clips/${h(x.archivo)}" style="width:100%;max-height:200px;object-fit:cover;border-radius:8px;margin-top:6px">` : ""}
-        ${x.tipo !== "cierre" ? `<div class="fila" style="margin-top:6px"><button class="mini" data-csub="${x.n}">${x.archivo ? "Cambiar" : "Subir clip"}</button>${x.flowPrompt ? `<button class="mini" data-cprom="${x.n}">Copiar prompt</button>` : ""}${x.archivo ? `<button class="mini" data-cdel="${x.n}">Quitar</button>` : ""}</div>` : ""}
+        ${x.buscar ? `<div class="estado" style="font-size:12px">buscar: ${h(x.buscar)}</div>` : ""}
+        ${x.tipo !== "cierre" || img ? `<div class="fila" style="margin-top:6px"><button class="mini" data-csub="${x.n}">${x.archivo ? "Cambiar" : "Subir"}</button>${est.banco ? `<button class="mini" data-cbanco="${x.n}" title="Imágenes de videos anteriores de este estilo">Banco</button>` : ""}<button class="mini" data-cpex="${x.n}" ${S.info.pexels ? "" : "disabled title='Pon PEXELS_API_KEY en el .env (gratis en pexels.com/api)'"}>Pexels</button>${x.flowPrompt ? `<button class="mini" data-cprom="${x.n}">Copiar prompt</button>` : ""}${x.archivo ? `<button class="mini" data-cdel="${x.n}">Quitar</button>` : ""}</div>` : ""}
       </div>`).join("")}</div>
+    <div id="cBancoCaja"></div>
   </div>`;
 }
+async function abrirBanco(p, n) {
+  const caja = $("#cBancoCaja"), x = (p.clips || []).find((c) => c.n === n) || {};
+  caja.innerHTML = `<div class="card" style="margin-top:12px"><div class="estado">Cargando banco…</div></div>`;
+  const { lista } = await api(`/api/banco?estilo=${encodeURIComponent(p.estilo)}`);
+  const quiero = String(`${x.buscar} ${x.flowPrompt}`).toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2);
+  const pts = (b) => (b.etiquetas || []).filter((w) => quiero.includes(w)).length;
+  lista.sort((a, b) => pts(b) - pts(a));
+  caja.innerHTML = `<div class="card" style="margin-top:12px">
+    <div class="fila" style="justify-content:space-between"><b>Banco · escena ${n}</b><button class="mini" id="cBancoCerrar">Cerrar</button></div>
+    ${lista.length ? `<p class="estado">${lista.length} imágenes de videos anteriores (primero las que más se parecen a "${h(x.buscar || "")}"). Toca una para usarla.</p>
+    <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;max-height:420px;overflow:auto">${lista.map((b) => /\.(mp4|mov|webm|m4v)$/i.test(b.archivo)
+      ? `<video src="/${h(b.ruta)}" muted preload="metadata" data-bsel="${h(b.archivo)}" title="${h(b.buscar || b.prompt)}" style="width:100%;aspect-ratio:9/16;object-fit:cover;border-radius:6px;cursor:pointer;background:#000"></video>`
+      : `<img src="/${h(b.ruta)}" loading="lazy" data-bsel="${h(b.archivo)}" title="${h(b.buscar || b.prompt)}" style="width:100%;aspect-ratio:9/16;object-fit:cover;border-radius:6px;cursor:pointer">`).join("")}</div>`
+    : `<p class="estado">El banco de este estilo está vacío. Se llena solo con las imágenes que generes con Flow (o subas) en cada video.</p>`}</div>`;
+  $("#cBancoCerrar").onclick = () => (caja.innerHTML = "");
+  for (const el of caja.querySelectorAll("[data-bsel]")) el.onclick = async () => { await api(`/api/proyectos/${p.id}/clip-banco`, "POST", { n, archivo: el.dataset.bsel }); avisar(`Escena ${n}: imagen del banco.`); abrir(p.id, { mantener: true }); };
+  caja.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
 function eventosClips(p) {
+  if ($("#cEspejo")) $("#cEspejo").onclick = async () => { $("#cEspejo").disabled = true; avisar("Enviando al VPS…"); try { const r = await api("/api/banco/sincronizar", "POST"); avisar(r.enviados ? `Listo: ${r.enviados} archivos enviados al VPS.` : "El VPS ya tenía todo."); } catch (e) { avisar(e.message, true); } $("#cEspejo").disabled = false; };
+  for (const b of document.querySelectorAll("[data-cbanco]")) b.onclick = () => abrirBanco(p, Number(b.dataset.cbanco));
+  for (const b of document.querySelectorAll("[data-cpex]")) b.onclick = async () => {
+    const x = (p.clips || []).find((c) => c.n == b.dataset.cpex) || {};
+    const q = prompt("Buscar en Pexels (en inglés):", x.buscar || ""); if (!q?.trim()) return;
+    b.disabled = true; b.textContent = "Buscando…";
+    try { const r = await api(`/api/proyectos/${p.id}/clip-pexels`, "POST", { n: x.n, buscar: q.trim() }); avisar(`Escena ${x.n}: ${r.credito}`); abrir(p.id, { mantener: true }); }
+    catch (e) { avisar(e.message, true); b.disabled = false; b.textContent = "Pexels"; }
+  };
   if ($("#cModelo")) api("/api/ajustes").then((a) => { $("#cModelo").innerHTML = a.modelosFlowVideo.map((m) => `<option ${m === (a.flowVideo || "Veo 3.1 - Lite") ? "selected" : ""}>${h(m)}</option>`).join(""); $("#cModelo").onchange = () => api("/api/ajustes", "PUT", { flowVideo: $("#cModelo").value }); });
   if ($("#cFlow")) $("#cFlow").onclick = () => { if (confirm("Esto gasta créditos de tu cuenta de Flow (un clip por escena que falte, más las imágenes si dejas 'personajes iguales') y usa automatización no oficial de la página de Flow. ¿Seguir?")) api(`/api/proyectos/${p.id}/clips`, "POST", { maxCreditos: $("#cMax")?.value, conCuadros: $("#cCuadros") ? $("#cCuadros").checked : true }).catch((e) => avisar(e.message, true)); };
   for (const b of document.querySelectorAll("[data-csub]")) b.onclick = () => subir(p.id, `clip&n=${b.dataset.csub}`, "video/*,image/*");
@@ -531,6 +562,7 @@ function panelMusica(p, est) {
     <div class="cont">
       <div class="estado" id="est-musica">Ahora: ${tiene ? (p.musicaIA?.reusada ? "reutilizada de tu biblioteca" : p.musicaIA ? `a la medida (${p.musicaIA.segundos} s)` : "la que subiste") : "la de tu biblioteca musica/ (o el ambiente del estilo)"}</div>
       <div class="barra oculto" id="bar-musica"><div></div></div>
+      <div id="muLibCaja" style="margin:10px 0"></div>
       ${tiene ? `<div class="fila" style="margin:8px 0"><audio controls src="/proyectos/${h(p.id)}/${h(tiene)}?v=${Date.now()}" style="flex:1"></audio><button class="mini" id="muQuitar">Quitar</button></div>` : ""}
       <div class="fila">${sel("animo")}${sel("ritmo")}${sel("energia")}</div>
       <label>Instrumentos</label>
@@ -544,6 +576,28 @@ function panelMusica(p, est) {
       </div>
     </div></section>`;
 }
+// pistas de la biblioteca: las generadas del nicho, las del estilo y las generales (se ajustan solas al largo del video)
+async function bibliotecaMusica(p) {
+  const caja = $("#muLibCaja"); if (!caja) return;
+  let o; try { o = await api(`/api/proyectos/${p.id}/musicas`); } catch { return; }
+  if (!o.lista.length) { caja.innerHTML = `<p class="estado">Aún no hay pistas para reutilizar en ${h(o.nicho)}. Las que generes aquí se guardan solas y aparecen en los demás videos de este nicho.</p>`; return; }
+  const sel = o.elegida || o.recomendada, grupo = { generada: "Generadas en " + o.nicho, estilo: "Del estilo", general: "Biblioteca general" };
+  const op = (x) => `<option value="${h(x.ruta)}" ${x.ruta === sel ? "selected" : ""}>${x.ruta === o.recomendada ? "★ " : ""}${h(x.nombre)}${x.segundos ? ` · ${x.segundos} s` : ""}${x.ruta === o.recomendada ? " (recomendada)" : ""}</option>`;
+  caja.innerHTML = `<label>Reutilizar una pista (sin gastar): ${o.elegida ? "la que tiene este video" : "★ la que recomienda la fábrica"} viene seleccionada</label>
+    <div class="fila"><select id="muLib" style="flex:1;min-width:220px">${Object.keys(grupo).map((g) => { const l = o.lista.filter((x) => x.origen === g); return l.length ? `<optgroup label="${h(grupo[g])}">${l.map(op).join("")}</optgroup>` : ""; }).join("")}</select>
+      <button class="btn peq primario" id="muUsar">Usar esta en el video</button></div>
+    <audio id="muEscuchar" controls preload="none" style="width:100%;margin-top:6px"></audio>
+    <p class="estado" style="font-size:12px">Se ajusta sola al video: si es más corta se repite, si es más larga se corta con fundido. ${!o.elegida && !p.archivos?.find((n) => n.startsWith("musica.")) ? "Si no eliges, el video sale con la recomendada." : ""}</p>`;
+  const lib = $("#muLib"), oir = $("#muEscuchar");
+  oir.src = "/" + encodeURI(lib.value);
+  lib.onchange = () => { oir.src = "/" + encodeURI(lib.value); oir.play().catch(() => {}); };
+  $("#muUsar").onclick = async () => {
+    const hay = !!p.tiempos;
+    await api(`/api/proyectos/${p.id}/musica-elegir`, "POST", { ruta: lib.value, rehacer: hay && p.tieneFinal });
+    avisar(p.tieneFinal ? "Pista puesta. Volviendo a sacar el video con ella…" : "Pista puesta: el video saldrá con ella.");
+    abrir(p.id, { mantener: true });
+  };
+}
 function eventosMusica(p, est) {
   const leer = () => ({ ...Object.fromEntries([...document.querySelectorAll("[data-mu]")].map((x) => [x.dataset.mu, x.value])),
     instrumentos: [...document.querySelectorAll("#muInst input:checked")].map((x) => x.value), extra: $("#muExtra").value.trim() });
@@ -552,6 +606,7 @@ function eventosMusica(p, est) {
   for (const x of document.querySelectorAll("[data-mu], #muInst input, #muExtra")) x.oninput = x.onchange = armar;
   $("#muPrompt").oninput = () => (editado = true);
   armar();
+  bibliotecaMusica(p);
   $("#muGenerar").onclick = async () => {
     const parametros = leer();
     await api(`/api/proyectos/${p.id}`, "PATCH", { musicaParametros: parametros });
@@ -611,7 +666,7 @@ function pintarEscenas() {
       <div class="n">${i + 1}</div>
       <select data-k="tipo" title="Tipo">${opciones(est.tipos, e.tipo)}</select>
       <select data-k="visual" title="Fondo" style="${est.visuales?.length ? "" : "visibility:hidden"}">${opciones(est.visuales, e.visual)}</select>
-      <textarea data-k="texto" placeholder="Lo que dice la voz">${h(e.texto)}</textarea>
+      <textarea data-k="texto" placeholder="Lo que dice la voz">${h(e.texto ?? e.voz ?? "")}</textarea>
       <div class="acc"><button class="mini" data-a="sube" title="Subir">↑</button><button class="mini" data-a="baja" title="Bajar">↓</button><button class="mini" data-a="borra" title="Quitar">✕</button></div>
       <div></div><div></div><div></div>
       <div class="extra">
@@ -627,8 +682,9 @@ function pintarEscenas() {
     const i = Number(row.dataset.i);
     for (const el of row.querySelectorAll("[data-k]")) {
       el.oninput = el.onchange = (ev) => {
-        const k = el.dataset.k, v = el.value;
-        if (v === "" && k !== "texto") delete g.escenas[i][k]; else g.escenas[i][k] = v;
+        // escenas que solo traen "voz" (Estatuas, Historia): se edita y se guarda ahí mismo
+        const k = el.dataset.k === "texto" && g.escenas[i].texto === undefined && g.escenas[i].voz !== undefined ? "voz" : el.dataset.k, v = el.value;
+        if (v === "" && k !== "texto" && k !== "voz") delete g.escenas[i][k]; else g.escenas[i][k] = v;
         if (!S.sucio) { S.sucio = true; const der = $(".paso .der"); if (der && !$("#gGuardar")) { der.insertAdjacentHTML("afterbegin", `<button class="btn primario peq" id="gGuardar">Guardar cambios</button>`); $("#gGuardar").onclick = guardarGuion; } }
         if (ev.type === "change" && ["tipo", "visual"].includes(k)) pintarEscenas();
       };

@@ -38,6 +38,8 @@ export const CFG = {
   apimartKey: e.APIMART_API_KEY || "",
   apifyToken: e.APIFY_TOKEN || "",
   flowSkillDir: e.FLOW_SKILL_DIR || "", python: e.PYTHON || "",
+  // laptop → VPS: cada imagen del banco y pista de música nueva se manda también al panel del VPS
+  espejoUrl: e.ESPEJO_URL || "", espejoClave: e.ESPEJO_CLAVE || "",
   ghlToken: e.GHL_TOKEN || "", ghlLocation: e.GHL_LOCATION_ID || "", ghlUsuario: e.GHL_USER_ID || "",
   flowUrl: (e.FLOW_MCP_URL || "http://127.0.0.1:8787").replace(/\/$/, ""),
   hilos: Math.max(1, Number(e.RENDER_HILOS || Math.min(4, os.cpus().length))),

@@ -10,7 +10,7 @@ const TIPOS = {
   ".wav": "audio/wav", ".mp4": "video/mp4", ".txt": "text/plain; charset=utf-8", ".md": "text/plain; charset=utf-8",
 };
 
-const PERMITIDAS = ["estilos", "proyectos", "panel", "listos", "cache", "motion"];
+const PERMITIDAS = ["estilos", "proyectos", "panel", "listos", "cache", "motion", "banco", "musica"];
 
 export function servirArchivo(req, res, rutaUrl) {
   const limpia = decodeURIComponent(rutaUrl.split("?")[0]).replace(/^\/+/, "");

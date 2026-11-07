@@ -53,6 +53,7 @@ Si `FLOW_SKILL_DIR` está en el .env, la fábrica usa esa skill (https://github.
 - Guion según `estilos/reflexion-estatuas/GUION.md`: `estiloVisual` en inglés y por escena `voz`, `flowPrompt` (la imagen) y `buscar`.
 - Imágenes: `proyectos/<id>/clips/escena-N.jpg|png|mp4`. Richie autorizó que este estilo SIEMPRE las genere con la skill de Flow (como imágenes, no video) al darle "Hacer todo"; solo las que falten. Sin skill usa Pexels y si no, niebla.
 - Sello: "M" de Monarca (la página se llama Monarca).
+- Banco de imágenes (`banco/<estilo>/`, con `indice.json`): las imágenes de Flow o subidas de cada video entran solas. Si una escena no tiene imagen: banco (la que más se parezca) → Pexels → cualquier imagen del banco no usada en ese video. En el panel cada escena tiene "Banco" y "Pexels".
 - Voz de hombre grave: en el panel "Usar esta voz en todos los de Reflexión · Estatuas".
 
 ## Motion graphics ("construye el motion de <id>")
@@ -95,7 +96,8 @@ Lee la investigación más reciente de `investigacion/` (o la que diga Richie) y
 - Cada propuesta lleva `estilo` (id exacto de un estilo listo, o `motion:<id del catálogo>` para motion graphics), `porQueEstilo` e `idea`. Elige el que mejor le queda al contenido; si todo son frases, todo va en `frases-desenfocado`.
 - Al crear el video desde una propuesta, `frases-desenfocado` usa la frase tal cual; los demás estilos escriben el guion con la IA siguiendo el GUION.md de ese estilo. Propuestas viejas sin `estilo` se hacen como frases. Los `motion:` quedan creados con su brief y esperan a "construye los motion pendientes".
 - Cierres: solo los que Richie puso en el nicho de esa investigación (`investigacion/nichos/<id>.json` → `cierres`), copiados tal cual. Si la lista está vacía, sin cierre de "comenta X". Nunca inventes la palabra.
-- Música: pistas libres de derechos en `musica/` o `musica/<estilo>/` (cada video toma una distinta).
+- Música: pistas libres de derechos en `musica/` o `musica/<estilo>/`, y las generadas con ElevenLabs en `musica/nichos/<nicho>/` (con su .json). Sin música propia, cada video sale con la que recomienda la fábrica (generada del nicho y del mismo estilo/tema primero). En el panel se elige y se escucha.
+- Espejo laptop → VPS: con `ESPEJO_URL` y `ESPEJO_CLAVE` en el .env de la laptop, banco y música nueva se mandan solos al VPS.
 - "Crear y hacer" con la casilla de Flow: si flow-mcp está abierto y el estilo usa fondo, primero genera el clip con el `flowPrompt` (con tope de créditos); si falla, sigue con Pexels.
 
 ## Investigador y Flow

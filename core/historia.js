@@ -23,7 +23,8 @@ export function clipDeEscena(id, n) {
 
 export function estadoClips(id) {
   const g = leer(id, "guion.json") || { escenas: [] };
-  return g.escenas.map((e, k) => { const f = clipDeEscena(id, k + 1); return { n: k + 1, tipo: e.tipo, archivo: f ? path.basename(f) : null, flowPrompt: e.flowPrompt || "", buscar: e.buscar || "" }; });
+  let org = {}; try { org = JSON.parse(fs.readFileSync(path.join(dirClips(id), "origen.json"), "utf8")); } catch {}
+  return g.escenas.map((e, k) => { const f = clipDeEscena(id, k + 1); return { n: k + 1, tipo: e.tipo, archivo: f ? path.basename(f) : null, origen: f ? org[k + 1] || "" : "", flowPrompt: e.flowPrompt || "", buscar: e.buscar || "" }; });
 }
 
 // prompt de Flow de una escena: estilo visual y personajes del guion + la acción de la escena (así los personajes salen iguales)
@@ -113,10 +114,16 @@ export async function prepararHistoria(id, avisar = () => {}) {
   const w = Math.round((fmt.w * 0.75) / 2) * 2, h = Math.round((fmt.h * 0.75) / 2) * 2;
   const filtro = `scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h}`;
   const info = [];
+  const est = leerEstilo(p.estilo), B = est?.banco ? await import("./banco.js") : null;
+  const usados = new Set();
+  if (B) { await B.guardarDeProyecto(id).catch(() => {}); }
+  const nicho = B ? await B.nichoDeProyecto(p) : null;
   for (const [k, e] of g.escenas.entries()) {
     const n = k + 1, te = t.escenas[k], D = Math.max(1, te.fin - te.ini + 0.4);
     const sal = path.join(dirClips(id), String(n)); fs.rmSync(sal, { recursive: true, force: true }); fs.mkdirSync(sal, { recursive: true });
-    let fuente = clipDeEscena(id, n), credito = "", origen = fuente ? "tuyo/Flow" : "";
+    let fuente = clipDeEscena(id, n), credito = "", origen = fuente ? (B?.origenes(id)[n] || "tuyo/Flow") : "";
+    // banco de imágenes de videos anteriores: si hay una que se parezca, va antes que Pexels
+    if (!fuente && B) { const x = B.delBanco(est.id, e, usados, { nicho }); if (x) { fuente = B.archivoBanco(est.id, x.archivo); usados.add(x.archivo); origen = "banco"; } }
     if (!fuente && e.buscar && (CFG.pexelsKey || CFG.pixabayKey)) {
       avisar({ paso: "render", msg: `Escena ${n}: buscando "${e.buscar}"…` });
       try {
@@ -125,6 +132,8 @@ export async function prepararHistoria(id, avisar = () => {}) {
         if (r) { fuente = path.join(dirClips(id), `pexels-${n}${r.ext}`); fs.writeFileSync(fuente, Buffer.from(await (await fetch(r.url)).arrayBuffer())); credito = r.credito; origen = "pexels"; }
       } catch (er) { console.warn("Pexels:", er.message); }
     }
+    // Pexels no dio nada: cualquier imagen del banco que no se haya usado en este video
+    if (!fuente && B) { const x = B.cualquieraDelBanco(est.id, usados, n * 7 + id.length); if (x) { fuente = B.archivoBanco(est.id, x.archivo); usados.add(x.archivo); origen = "banco"; } }
     if (!fuente) { info.push({ n, tipo: "ninguno" }); continue; }
     avisar({ paso: "render", msg: `Preparando el clip de la escena ${n}…` });
     if (VIDEO.test(fuente)) {

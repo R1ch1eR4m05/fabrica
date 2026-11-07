@@ -9,6 +9,7 @@
   "camposAvanzados": ["flowPrompt", "buscar"],
   "preparar": "historia",
   "clipsFlow": "imagen",
+  "banco": true,
   "inicioVoz": 0.3,
   "pausaEntreEscenas": 0.35,
   "colaFinal": 2.0,

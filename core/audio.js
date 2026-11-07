@@ -67,7 +67,7 @@ export function musicaDeBiblioteca(estiloId, dirProyecto, ambiente) {
   return null;
 }
 
-export async function mezclar({ estilo, guion, tiempos, voz, salida, tmp, dirProyecto }) {
+export async function mezclar({ estilo, guion, tiempos, voz, salida, tmp, dirProyecto, sugerida }) {
   fs.mkdirSync(tmp, { recursive: true });
   const s = estilo.sonido || {};
   const D = tiempos.duracion;
@@ -80,7 +80,7 @@ export async function mezclar({ estilo, guion, tiempos, voz, salida, tmp, dirPro
   let amb = null;
   // música propia del video: proyectos/<id>/musica.mp3 (o .m4a/.wav) manda sobre la del estilo
   const propia = dirProyecto && ["musica.mp3", "musica.m4a", "musica.wav"].map((n) => path.join(dirProyecto, n)).find((f) => fs.existsSync(f));
-  const deBiblioteca = !propia && musicaDeBiblioteca(estilo.id, dirProyecto, s.ambiente);
+  const deBiblioteca = !propia && (sugerida || musicaDeBiblioteca(estilo.id, dirProyecto, s.ambiente));
   if (propia) amb = propia;
   else if (deBiblioteca) amb = deBiblioteca;
   else if (s.ambiente && SINTE[s.ambiente]) amb = await sintetizar(tmp, s.ambiente, D.toFixed(2));

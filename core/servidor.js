@@ -21,6 +21,8 @@ import { crearDesdePropuesta } from "./propuestas.js";
 import * as HIS from "./historia.js";
 import * as COPY from "./copy.js";
 import * as GHL from "./ghl.js";
+import * as BANCO from "./banco.js";
+import { pexels, pixabay } from "./fondos.js";
 import { flowSkillListo, MODELOS_VIDEO, MODELOS_IMAGEN } from "./flowskill.js";
 import { leerAjustes, guardarAjustes, MODELOS_VOZ } from "./ajustes.js";
 
@@ -107,6 +109,19 @@ async function api(req, res, partes) {
       return;
     }
   }
+  if (recurso === "banco") { // banco de imágenes y música compartida (y el espejo laptop → VPS)
+    if (id === "recibir" && m === "POST") {
+      const partes = []; for await (const d of req) partes.push(d);
+      try { BANCO.recibir(decodeURIComponent(req.headers["x-ruta"] || ""), JSON.parse(decodeURIComponent(req.headers["x-datos"] || "{}")), Buffer.concat(partes)); return json(res, 200, { ok: true }); }
+      catch (e) { return json(res, 400, { error: e.message }); }
+    }
+    if (id === "inventario" && m === "GET") return json(res, 200, BANCO.inventario());
+    if (id === "sincronizar" && m === "POST") {
+      try { const r = await BANCO.sincronizar(); return json(res, 200, r); } catch (e) { return json(res, 400, { error: e.message }); }
+    }
+    if (!id && m === "GET") { const est = new URL(req.url, "http://x").searchParams.get("estilo") || ""; return json(res, 200, { lista: BANCO.listarBanco(path.basename(est)), espejo: BANCO.hayEspejo() }); }
+    return json(res, 404, { error: "No existe" });
+  }
   if (recurso === "investigacion") {
     const qn = new URL(req.url, "http://x").searchParams.get("nicho") || undefined;
     if (id === "nichos" && m === "POST") { const b = await cuerpo(req); if (!String(b.nombre || "").trim()) return json(res, 400, { error: "Ponle nombre al nicho." }); return json(res, 200, INV.crearNicho(String(b.nombre).trim())); }
@@ -159,7 +174,7 @@ async function api(req, res, partes) {
   }
 
   if (recurso === "info") return json(res, 200, {
-    flow: await flowDisponible(), flowSkill: flowSkillListo(), apify: !!CFG.apifyToken, ghl: GHL.ghlListo(),
+    flow: await flowDisponible(), flowSkill: flowSkillListo(), espejo: BANCO.hayEspejo(), apify: !!CFG.apifyToken, ghl: GHL.ghlListo(),
     estilos: listarEstilos(), formatos: FORMATOS, efectos: EFECTOS,
     ia: INV.hayIA(), motorIA: CFG.anthropicKey ? "Claude" : CFG.geminiKey ? "Gemini" : null, voz: !!CFG.elevenKey, pexels: !!(CFG.pexelsKey || CFG.pixabayKey), gemini: !!CFG.geminiKey, apimart: !!CFG.apimartKey, trabajando: actual ? { id: actual.id, paso: actual.paso } : null,
   });
@@ -262,6 +277,7 @@ async function api(req, res, partes) {
       fs.mkdirSync(HIS.dirClips(id), { recursive: true });
       for (const x of fs.readdirSync(HIS.dirClips(id))) if (x.startsWith(`escena-${n}.`)) fs.rmSync(path.join(HIS.dirClips(id), x));
       destino = path.join(HIS.dirClips(id), `escena-${n}${ext}`);
+      BANCO.marcarOrigen(id, n, null); // subido por ti: entra al banco
     }
     else if (tipo === "imagen") { fs.mkdirSync(path.join(dir, "img"), { recursive: true }); destino = path.join(dir, "img", P.slug(path.basename(nombre, ext)) + ext); }
     else return json(res, 400, { error: "Tipo de archivo no válido." });
@@ -313,6 +329,32 @@ async function api(req, res, partes) {
   if (accion === "voz-motion" && m === "POST") { encolar(id, "voz", (av) => MOT.vozMotion(id, av)); return json(res, 200, { ok: true }); }
   if (accion === "remezclar" && m === "POST") { encolar(id, "render", () => MOT.terminar(id)); return json(res, 200, { ok: true }); } // motion: vuelve a mezclar la música (o la quita)
   if (accion === "musica" && m === "GET") return json(res, 200, { prompt: promptMusica(id) });
+  if (accion === "musicas" && m === "GET") return json(res, 200, await BANCO.opcionesMusica(id));
+  if (accion === "musica-elegir" && m === "POST") { // usa una pista de la biblioteca (se ajusta sola al largo del video)
+    const b = await cuerpo(req);
+    try { BANCO.elegirMusica(id, b.ruta); } catch (e) { return json(res, 400, { error: e.message }); }
+    if (b.rehacer && P.leer(id, "tiempos.json")) { const esMot = leerEstilo(p.estilo)?.tipo === "motion"; encolar(id, "render", (av) => (esMot ? MOT.terminar(id) : render(id, av))); }
+    return json(res, 200, P.detalle(id));
+  }
+  if (accion === "clip-banco" && m === "POST") {
+    const b = await cuerpo(req);
+    try { BANCO.usarDelBanco(id, Number(b.n), b.archivo); } catch (e) { return json(res, 400, { error: e.message }); }
+    return json(res, 200, { ok: true });
+  }
+  if (accion === "clip-pexels" && m === "POST") { // busca en Pexels/Pixabay y lo pone como clip de la escena
+    const b = await cuerpo(req), n = Number(b.n), buscar = String(b.buscar || "").trim();
+    if (!n || !buscar) return json(res, 400, { error: "Falta qué buscar." });
+    if (!CFG.pexelsKey && !CFG.pixabayKey) return json(res, 400, { error: "Falta PEXELS_API_KEY (gratis en pexels.com/api) en el .env." });
+    const vertical = p.formato !== "16:9";
+    let r = CFG.pexelsKey ? await pexels(buscar, vertical).catch(() => null) : null;
+    if (!r && CFG.pixabayKey) r = await pixabay(buscar, vertical).catch(() => null);
+    if (!r) return json(res, 404, { error: `Pexels no encontró nada con "${buscar}". Prueba otras palabras en inglés o usa el banco.` });
+    const d = HIS.dirClips(id); fs.mkdirSync(d, { recursive: true });
+    for (const x of fs.readdirSync(d)) if (x.startsWith(`escena-${n}.`)) fs.rmSync(path.join(d, x));
+    fs.writeFileSync(path.join(d, `escena-${n}${r.ext}`), Buffer.from(await (await fetch(r.url)).arrayBuffer()));
+    BANCO.marcarOrigen(id, n, "pexels");
+    return json(res, 200, { ok: true, credito: r.credito });
+  }
   if (accion === "musica" && m === "POST") {
     const b = await cuerpo(req);
     const esMot = leerEstilo(p.estilo)?.tipo === "motion";
@@ -358,6 +400,8 @@ export function arrancar() {
       res.writeHead(404); res.end("No existe");
     } catch (e) { console.error(e); json(res, 500, { error: e.message }); }
   });
+  // banco de imágenes: mete lo que ya se generó antes (una vez al arrancar)
+  BANCO.llenarBancoDeAntes().then((n) => n && console.log(`  · Banco de imágenes: ${n} nuevas de videos anteriores`)).catch(() => {});
   // carpeta de entrada: lo que caiga en investigacion/entrada/ se importa solo (cada minuto)
   setInterval(async () => {
     if (investigando) return;
