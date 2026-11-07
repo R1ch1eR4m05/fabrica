@@ -51,7 +51,8 @@ function emitir(ev) {
 }
 
 function encolar(id, paso, fn) {
-  if (actual?.id === id || fila.some((t) => t.id === id && t.paso === paso)) throw new Error("Ese video ya tiene un trabajo en marcha.");
+  // el mismo paso no se pide dos veces; pasos distintos (voz e imágenes de Flow, p. ej.) se forman en fila
+  if ((actual?.id === id && actual.paso === paso) || fila.some((t) => t.id === id && t.paso === paso)) throw new Error("Eso ya se está haciendo en este video. Espera a que termine.");
   fila.push({ id, paso, fn });
   P.marcar(id, paso, "en-fila");
   emitir({ id, paso, estado: "en-fila", msg: fila.length > 1 || actual ? "En fila…" : "Empezando…" });
