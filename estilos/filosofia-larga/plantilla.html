@@ -89,7 +89,7 @@ function subtitulos(c, M, t, te) {
     if (t >= a && t < b) cur = f;
   });
   if (!cur) return;
-  const tam = vertical ? 64 * (W / 1080) : 56 * (H / 1080), margen = vertical ? H * 0.2 : 62 * (H / 1080);
+  const tam = vertical ? 76 * (W / 1080) : 56 * (H / 1080), margen = vertical ? H * 0.2 : 62 * (H / 1080);
   c.font = `600 ${tam}px Montserrat`; c.textAlign = "center"; c.textBaseline = "alphabetic";
   const lineas = M.lineas(c, cur.map((p) => p.w).join(" "), W * 0.84), al = tam * 1.22;
   const y0 = H - margen - (lineas.length - 1) * al - tam * 0.18;

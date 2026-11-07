@@ -472,6 +472,12 @@ async function api(req, res, partes) {
     encolar(id, "render", (av) => (esMotion ? MOT.renderMotion(id, av) : render(id, av)));
     return json(res, 200, { ok: true });
   }
+  if (accion === "capitulos" && m === "POST") { // video largo → un video por capítulo + un Reel vertical de cada uno
+    const b = await cuerpo(req).catch(() => ({}));
+    const CAP = await import("./capitulos.js");
+    encolar(id, "render", (av) => CAP.cortarCapitulos(id, av, { reels: b?.reels !== false }));
+    return json(res, 200, { ok: true });
+  }
   if (accion === "ghl" && m === "POST") { // programar en el Social Planner de GHL
     const b = await cuerpo(req);
     try { return json(res, 200, { ok: true, programados: await GHL.programar(id, { cuentasIds: b.cuentas || [], fecha: b.fecha }) }); }

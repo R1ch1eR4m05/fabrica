@@ -257,7 +257,8 @@ function pintarProyecto() {
               ${p.tieneFinal ? `
                 <video controls src="/proyectos/${h(p.id)}/final.mp4?v=${Date.now()}"></video>
                 <div class="fila" style="margin:10px 0"><a class="btn peq" href="/proyectos/${h(p.id)}/final.mp4" download="${h(p.id)}.mp4">Descargar video</a><a class="btn peq" href="/proyectos/${h(p.id)}/portada.jpg" download="${h(p.id)}.jpg">Portada</a></div>
-                <div class="estado">También queda guardado en la carpeta <b>listos</b>.</div>`
+                <div class="estado">También queda guardado en la carpeta <b>listos</b>.</div>
+                ${p.guion?.escenas?.filter((e) => e.capitulo).length > 1 ? panelCortes(p) : ""}`
               : `<div class="estado">Cuando tengas la voz, revisa la vista previa y pulsa "Sacar el video".</div>`}
             </div>
           </div>
@@ -297,6 +298,11 @@ function pintarProyecto() {
     $("#vModelo").innerHTML = Object.entries(a.modelosVoz).map(([k, n]) => `<option value="${h(k)}" ${k === actual ? "selected" : ""}>Voz: ${h(n)}</option>`).join("");
     $("#vModelo").onchange = async () => { await api("/api/ajustes", "PUT", { modeloPorEstilo: { [p.estilo]: $("#vModelo").value } }); avisar(`Modelo de voz guardado para ${est?.nombre || "este estilo"}. Dale "Rehacer voz" para oírlo.`); };
   });
+  if ($("#cCortar")) $("#cCortar").onclick = () => api(`/api/proyectos/${p.id}/capitulos`, "POST", { reels: $("#cCortarReels").checked }).then(() => avisar("Cortando por capítulos… sale en la barra de la fila.")).catch((e) => avisar(e.message, true));
+  for (const b of document.querySelectorAll("[data-copiacap]")) b.onclick = async () => {
+    const t = await (await fetch(`/proyectos/${p.id}/capitulos/${b.dataset.copiacap}?v=${Date.now()}`)).text();
+    try { await navigator.clipboard.writeText(t); avisar("Texto copiado."); } catch { prompt("Copia el texto:", t); }
+  };
   if ($("#vComparar")) {
     const pintar = (r) => {
       if (!r?.modelos?.length) return;
@@ -524,6 +530,20 @@ function panelProductoAPIMart(p, faltan) {
     <div class="fila" style="margin:4px 0 10px;align-items:center;gap:8px"><span class="estado"><b>Foto del producto</b> (referencia para que salga igual):</span>
       ${fs_.map((f) => `<span style="position:relative"><img src="/proyectos/${h(p.id)}/producto/${h(f)}?v=1" style="height:64px;border-radius:6px"><button class="mini" data-pdel="${h(f)}" style="position:absolute;top:-6px;right:-6px">×</button></span>`).join("")}
       <button class="mini" id="cProd">Subir foto</button></div>`;
+}
+function panelCortes(p) {
+  const cs = p.cortes || [], caps = cs.filter((c) => c.tipo === "capitulo"), reels = cs.filter((c) => c.tipo === "reel");
+  const tarjeta = (c) => `<div class="card" style="padding:8px">
+      <video controls preload="none" poster="/proyectos/${h(p.id)}/capitulos/${h(c.archivo.replace(/\.mp4$/, ".jpg"))}?v=${Date.now()}" src="/proyectos/${h(p.id)}/capitulos/${h(c.archivo)}" style="width:100%;max-height:${c.tipo === "reel" ? 300 : 180}px;background:#000;border-radius:8px"></video>
+      <div class="estado" style="margin-top:4px"><b style="color:var(--t)">${c.tipo === "reel" ? "Reel" : "Capítulo"} ${c.n}</b> · ${h(c.titulo || "")} · ${Math.floor(c.segundos / 60)}:${String(c.segundos % 60).padStart(2, "0")}</div>
+      <div class="fila" style="margin-top:4px"><a class="mini" href="/proyectos/${h(p.id)}/capitulos/${h(c.archivo)}" download="${h(p.id)}-${h(c.archivo)}">Descargar</a><button class="mini" data-copiacap="${h(c.archivo.replace(/\.mp4$/, ".txt"))}">Copiar texto</button></div></div>`;
+  return `<div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--b)">
+    <div class="fila"><button class="btn peq primario" id="cCortar">${cs.length ? "Volver a cortar" : "Cortar por capítulos"}</button>
+      <label class="estado" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="cCortarReels" style="width:auto" checked> con un Reel vertical de cada capítulo</label></div>
+    <div class="estado">Cada capítulo sale como video propio para Facebook (título al inicio y cierre suave) y, si quieres, un Reel de 35-60 s en 9:16.</div>
+    ${caps.length ? `<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr));margin-top:8px">${caps.map(tarjeta).join("")}</div>` : ""}
+    ${reels.length ? `<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin-top:8px">${reels.map(tarjeta).join("")}</div>` : ""}
+  </div>`;
 }
 function panelClips(p) {
   const cs = p.clips || [], faltan = cs.filter((x) => (x.tipo !== "cierre" || estiloDe(p.estilo)?.clipsFlow === "imagen") && !x.archivo && !x.misma).length, est = estiloDe(p.estilo) || {}, img = est.clipsFlow === "imagen";

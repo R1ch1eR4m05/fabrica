@@ -58,14 +58,14 @@ export function frasesSubtitulo(palabras, maxLetras = 44) {
   for (let j = out.length - 1; j > 0; j--) if (out[j].length <= 2 && !/[.!?…]$/.test(out[j - 1].at(-1).w) && lg(out[j - 1]) + lg(out[j]) <= maxLetras * 1.25) { out[j - 1].push(...out[j]); out.splice(j, 1); }
   return out;
 }
-export function archivoASS(guion, tiempos, fmt, { fuente = "Montserrat SemiBold" } = {}) {
+export function archivoASS(guion, tiempos, fmt, { fuente = "Montserrat SemiBold", sinFrases = false } = {}) {
   const vertical = fmt.h > fmt.w, u = fmt.h / 1080;
-  const tam = Math.round((vertical ? 64 : 56) * (vertical ? fmt.w / 1080 : u));
+  const tam = Math.round((vertical ? 76 : 56) * (vertical ? fmt.w / 1080 : u));
   const margen = Math.round(vertical ? fmt.h * 0.2 : 62 * u);
   const lin = [];
   for (const [k, te] of tiempos.escenas.entries()) {
     const e = guion.escenas[k] || {};
-    if (e.subtitulos === false) continue;
+    if (e.subtitulos === false || sinFrases) continue;
     const fr = frasesSubtitulo(te.palabras || [], vertical ? 30 : 46);
     fr.forEach((f, j) => {
       const ini = f[0].t0 - 0.05, sig = fr[j + 1]?.[0].t0 ?? Infinity;
@@ -83,6 +83,8 @@ ScaledBorderAndShadow: yes
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
 Style: S,${fuente},${tam},&H00FFFFFF,&H00FFFFFF,&H00141414,&H96000000,0,0,0,0,100,100,0.5,0,1,${(2.6 * u).toFixed(1)},${(1.6 * u).toFixed(1)},2,${Math.round(fmt.w * 0.08)},${Math.round(fmt.w * 0.08)},${margen},1
+Style: T,${fuente},${Math.round(tam * (vertical ? 1.45 : 1.75))},&H00FFFFFF,&H00FFFFFF,&H00141414,&H96000000,0,0,0,0,100,100,1,0,1,${(3.4 * u).toFixed(1)},${(2 * u).toFixed(1)},${vertical ? 8 : 5},${Math.round(fmt.w * 0.1)},${Math.round(fmt.w * 0.1)},${Math.round(vertical ? fmt.h * 0.14 : 0)},1
+Style: C,${fuente},${Math.round(tam * 0.8)},&H00E8EEF2,&H00FFFFFF,&H00141414,&H96000000,0,0,0,0,100,100,4,0,1,${(2.2 * u).toFixed(1)},${(1.2 * u).toFixed(1)},${vertical ? 8 : 5},0,0,${Math.round(vertical ? fmt.h * 0.1 : 0)},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -102,12 +104,13 @@ async function enParalelo(tareas, hilos) {
 }
 
 // devuelve la ruta del video sin audio con subtítulos
-export async function renderImagenes({ id, guion, tiempos, estilo, fmt, tmp, avisar = () => {} }) {
+// (info: fotos por escena; por defecto clips/historia.json; los cortes por capítulo mandan solo un tramo)
+export async function renderImagenes({ id, guion, tiempos, estilo, fmt, tmp, avisar = () => {}, info = null, extraASS = "" }) {
   const dir = dirProyecto(id), fps = estilo.fps || 24;
-  const info = leer(id, path.join("clips", "historia.json")) || [];
+  info = info || leer(id, path.join("clips", "historia.json")) || [];
   const ass = path.join(tmp, "subs.ass");
-  const conSubs = (leer(id, "proyecto.json")?.opciones || {}).subtitulos !== "no";
-  fs.writeFileSync(ass, archivoASS(guion, tiempos, fmt));
+  const frases = (leer(id, "proyecto.json")?.opciones || {}).subtitulos !== "no", conSubs = frases || !!extraASS;
+  fs.writeFileSync(ass, archivoASS(guion, tiempos, fmt, { sinFrases: !frases }) + extraASS);
   const fuentes = path.join(RAIZ, "estilos", "_comun", "fuentes");
   const fondo = (estilo.colorFondo || "#EDE6D8").replace("#", "0x");
   // escala de trabajo para que el movimiento lento no tiemble (zoompan redondea a píxeles enteros)

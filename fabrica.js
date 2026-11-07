@@ -19,6 +19,7 @@
 //   node fabrica.js recolectar [--nicho id]       junta y puntúa publicaciones virales (Apify) para que Claude Code las analice
 //   node fabrica.js nichos [id]                   lista los nichos (Levania, Monarca…) y, con id, deja ese activo
 //   node fabrica.js investigaciones [--nicho id]  lista las investigaciones
+//   node fabrica.js capitulos <id> [--sin-reels]  video largo → un video por capítulo (+ Reel vertical de cada uno)
 //   node fabrica.js comparar-voces ["texto"] [--estilo id]   mismo texto con cada modelo de voz → listos/comparar-voces/
 import path from "node:path";
 import { exec } from "node:child_process";
@@ -175,6 +176,11 @@ async function main() {
       const act = INV.nichoActivo();
       for (const n of INV.listarNichos()) console.log(`${n.id === act ? "→" : " "} ${n.id}  ·  ${n.nombre}${n.canal ? "  ·  " + n.canal : ""}  (investigacion/nichos/${n.id}.json)`);
       return;
+    }
+    case "capitulos": {
+      const CAP = await import("./core/capitulos.js");
+      const r = await CAP.cortarCapitulos(libres[0], avisar, { reels: !args.includes("--sin-reels") });
+      console.log(`\nListo: ${r.capitulos} capítulos y ${r.reels} reels en proyectos/${libres[0]}/capitulos/ (y en listos/)`); return;
     }
     case "comparar-voces": {
       const VOZ = await import("./core/voz.js");

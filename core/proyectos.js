@@ -69,6 +69,7 @@ export function detalle(id) {
     tiempos: leer(id, "tiempos.json"),
     tieneVoz: existe(id, "voz.mp3"),
     tieneFinal: existe(id, "final.mp4"),
+    cortes: (() => { try { return JSON.parse(fs.readFileSync(path.join(dirProyecto(id), "capitulos", "cortes.json"), "utf8")); } catch { return []; } })(),
     fondo: leer(id, "fondo.json"),
     archivos: fs.readdirSync(dirProyecto(id)).filter((n) => /^(fondo-propio|musica)\./.test(n)),
   };

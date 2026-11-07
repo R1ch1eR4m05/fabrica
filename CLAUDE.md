@@ -69,6 +69,7 @@ Estado: noviembre 2026, Flow genera desde el panel del agente ("Configuración d
 - Guion según `estilos/filosofia-larga/GUION.md`: por escena `voz` (15-22 palabras), `flowPrompt`, `buscar`, opcional `misma: true` (reusa la imagen anterior), `camara` y `capitulo`. Con la API, los largos se escriben por capítulos (`guionPorPartes`).
 - Render con ffmpeg (`"render": "ffmpeg"` → `core/render-ffmpeg.js`), sin navegador: ~1/3 del tiempo real con 2 núcleos. La plantilla.html es solo la vista previa (mismos movimientos).
 - Imágenes: Flow (16:9), APIMart o banco. Cada imagen de Flow/APIMart gasta: no las generes desde Claude Code sin que Richie lo pida.
+- "Cortar por capítulos" (panel, debajo del video) o `node fabrica.js capitulos <id> [--sin-reels]`: de `final.mp4` saca un video por capítulo (título al inicio, cierre suave; para Facebook) y un Reel 9:16 de 45-60 s de cada uno (empieza en el capítulo o en la escena con `"reel": true`). Quedan en `proyectos/<id>/capitulos/` y en `listos/`, con portada y texto.
 
 ## Anuncios (`anuncios`) — ver ANUNCIOS.md
 - 8 plantillas (oferta, advertorial, dato, testimonio, versus, antes-despues, notificaciones, ugc) como imágenes (cada escena = una variación) o video, en 9:16, 4:5 y 1:1.

@@ -18,7 +18,8 @@ Video largo y pausado para YouTube (también sirve en 3-5 min para Reels largos)
   - `buscar` (inglés, 2-3 palabras): por si no hay imagen.
   - `misma: true` (opcional): la escena sigue con la imagen de la anterior con otro movimiento de cámara. Úsalo en 1 de cada 3 escenas para ahorrar imágenes en videos largos; nunca más de dos seguidas.
   - `camara` (opcional): `acercar`, `alejar`, `derecha`, `izquierda`, `subir` o `quieto`. Si no lo pones, la fábrica alterna sola.
-  - `capitulo`: solo en la primera escena de cada capítulo (sale en la descripción de YouTube con su minuto).
+  - `capitulo`: solo en la primera escena de cada capítulo (sale en la descripción de YouTube con su minuto). Cada capítulo debe entenderse solo: se publica aparte en Facebook.
+  - `reel: true` (opcional, una por capítulo): dónde empieza el Reel vertical de ese capítulo (45-60 s). Que sea un arranque con gancho; si no la pones, el Reel empieza con el capítulo.
 - `fuentes`: si citas un texto clásico (capítulo del Tao Te Ching, Meditaciones de Marco Aurelio…), pon de dónde sale.
 
 ## Reglas
