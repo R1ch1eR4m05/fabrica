@@ -74,7 +74,8 @@ async function siguiente() {
     const r = await fn((a) => { if (mia.cancelado) throw new Error("Cancelado"); emitir({ id, paso, estado: "trabajando", ...a }); });
     if (mia.cancelado) return;
     P.marcar(id, paso, "listo");
-    emitir({ id, paso, estado: "listo", msg: "Listo", resultado: r });
+    const faltan = r?.fallos?.length || 0;
+    emitir({ id, paso, estado: "listo", msg: faltan ? `Listo, pero ${faltan} no salieron (${r.fallos.slice(0, 6).join(", ")}${faltan > 6 ? "…" : ""})${r.motivo ? `: ${String(r.motivo).slice(0, 120)}` : ""}. Dale otra vez a «Generar en Flow las imágenes que faltan».` : "Listo", resultado: r });
     if (BANCO.hayEspejo() && !id.startsWith("_")) BANCO.sincronizar(undefined, id).catch((e) => console.warn("Espejo:", e.message)); // el celular (VPS) ve el video, el copy y las imágenes
   } catch (e) {
     if (mia.cancelado) return;

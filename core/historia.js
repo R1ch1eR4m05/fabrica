@@ -49,16 +49,28 @@ async function clipsConSkill(id, avisar, { soloFaltantes = true, conCuadros = tr
   const jobs = [];
   // estilos de imagen fija con movimiento de cámara (p. ej. Reflexión · Estatuas): solo imágenes, mucho más barato
   if (soloImagen) {
-    for (const { e, n } of pend) jobs.push({ type: "image", name: `escena-${n}`, prompt: `${estilo}. ${String(e.flowPrompt).trim()} No text, no letters, no logos, no watermark.` });
-    avisar({ paso: "fondo", progreso: 0.02, msg: `Flow: ${jobs.length} imágenes…` });
-    const { archivos, fallos } = await lote(id, `imagenes-${Date.now()}`, jobs, (a) => avisar({ ...a, paso: "fondo" }), { ratio, minutos: Math.max(60, jobs.length * 2) });
+    // Flow a veces se satura y deja escenas sin salir ("no completó en 120s"): se reintentan solo las que faltan,
+    // hasta 3 vueltas, con una pausa para que Flow respire. Lo que siga faltando se avisa (no se da por listo).
     fs.mkdirSync(dirClips(id), { recursive: true });
-    let generados = 0;
-    for (const { n } of pend) { const f = archivos[`escena-${n}`]; if (!f) continue;
-      for (const x of fs.readdirSync(dirClips(id))) if (x.startsWith(`escena-${n}.`)) fs.rmSync(path.join(dirClips(id), x));
-      fs.copyFileSync(f, path.join(dirClips(id), `escena-${n}${path.extname(f).toLowerCase()}`)); generados++; }
+    let generados = 0, fallos = [], faltan = pend;
+    for (let vuelta = 1; vuelta <= 3 && faltan.length; vuelta++) {
+      if (vuelta > 1) {
+        avisar({ paso: "fondo", progreso: 0.9, msg: `Flow dejó ${faltan.length} sin salir; espero 90 s y reintento (vuelta ${vuelta} de 3)…` });
+        await new Promise((r) => setTimeout(r, 90000));
+      }
+      const jobs = faltan.map(({ e, n }) => ({ type: "image", name: `escena-${n}`, prompt: `${estilo}. ${String(e.flowPrompt).trim()} No text, no letters, no logos, no watermark.` }));
+      avisar({ paso: "fondo", progreso: 0.02, msg: `Flow: ${jobs.length} imágenes${vuelta > 1 ? ` (vuelta ${vuelta})` : ""}…` });
+      let r;
+      try { r = await lote(id, `imagenes-${Date.now()}`, jobs, (a) => avisar({ ...a, paso: "fondo" }), { ratio, minutos: Math.max(60, jobs.length * 3) }); }
+      catch (err) { fallos = [err.message]; if (generados) break; throw err; }
+      fallos = r.fallos;
+      for (const { n } of faltan) { const f = r.archivos[`escena-${n}`]; if (!f) continue;
+        for (const x of fs.readdirSync(dirClips(id))) if (x.startsWith(`escena-${n}.`)) fs.rmSync(path.join(dirClips(id), x));
+        fs.copyFileSync(f, path.join(dirClips(id), `escena-${n}${path.extname(f).toLowerCase()}`)); generados++; }
+      faltan = faltan.filter(({ n }) => !clipDeEscena(id, n));
+    }
     if (!generados) throw new Error("Flow no entregó imágenes: " + fallos.join(" | "));
-    return { generados, fallos };
+    return { generados, fallos: faltan.map(({ n }) => `escena-${n}`), motivo: fallos[0] || "" };
   }
   const conRef = conCuadros && g.personajes;
   if (conRef) jobs.push({ type: "image", name: "personajes", prompt: `${estilo}. Character reference, full body, front view, neutral pose, plain soft background, no text: ${g.personajes}` });
