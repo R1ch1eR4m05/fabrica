@@ -83,6 +83,16 @@ function errorLegible(salida) {
   return (clave || l.slice(-3).join(" ")).replace(/<[^>]{60,}>/g, "<…>").slice(0, 300);
 }
 
+// busca en la carpeta del lote archivos ya generados (escena-N.png, etc.) por si no quedó el reporte
+function rescatar(dir, nombres) {
+  const salida = {};
+  const ver = (d, nivel = 0) => { let ls = []; try { ls = fs.readdirSync(d, { withFileTypes: true }); } catch { return; }
+    for (const e of ls) { const f = path.join(d, e.name);
+      if (e.isDirectory() && nivel < 3) ver(f, nivel + 1);
+      else if (/\.(png|jpe?g|webp|mp4)$/i.test(e.name)) { const base = e.name.replace(/\.[^.]+$/, ""); const n = nombres.find((x) => base === x || base.startsWith(x + "_") || base.startsWith(x + "-")); if (n && !salida[n] && fs.statSync(f).size > 5000) salida[n] = f; } } };
+  ver(dir); return salida;
+}
+
 // corre un lote; devuelve { nombre: archivo } de lo que salió bien y la lista de fallos
 let flowActivo = null;
 export function matarFlow() { try { flowActivo?.kill(); } catch {} flowActivo = null; }
@@ -99,7 +109,8 @@ export function lote(id, nombre, jobs, avisar = () => {}, { minutos = 60, ratio 
     flowActivo = p;
     let salida = "", hechos = 0;
     const t0 = Date.now();
-    const reloj = setTimeout(() => { p.kill(); mal(new Error(`Flow tardó más de ${minutos} minutos.`)); }, minutos * 60000);
+    let sePaso = false;
+    const reloj = setTimeout(() => { sePaso = true; p.kill(); }, minutos * 60000);
     const leerLinea = (txt) => {
       salida += txt;
       for (const l of String(txt).split(/\r?\n/)) {
@@ -117,6 +128,12 @@ export function lote(id, nombre, jobs, avisar = () => {}, { minutos = 60, ratio 
       try { fs.writeFileSync(path.join(dir, `${nombre}.log`), salida); } catch {}
       // casi siempre que Flow falla así es porque Google cambió la página: se avisa para adaptarla
       const cambio = /Timeout|locator|selector|no encontr|strict mode|not visible|intercepts/i.test(salida);
+      if (!fs.existsSync(rep)) {
+        // si Flow se cortó (tiempo, cierre) pero ya había sacado imágenes, se rescatan: no se vuelve a pedir lo que ya salió
+        const rescatados = rescatar(path.join(dir, nombre), jobs.map((j) => j.name));
+        if (Object.keys(rescatados).length) return ok({ archivos: rescatados, fallos: jobs.filter((j) => !rescatados[j.name]).map((j) => `${j.name}: ${sePaso ? `Flow tardó más de ${minutos} minutos` : "se cortó"}`) });
+        if (sePaso) return mal(new Error(`Flow tardó más de ${minutos} minutos.`));
+      }
       if (!fs.existsSync(rep)) return mal(new Error(`Flow falló: ${errorLegible(salida)}.${cambio ? " Parece que Google cambió la página de Flow: abre Claude Code en la fábrica y dile \"adapta Flow\"." : ""} (detalle en proyectos/${id}/flow/${nombre}.log)`));
       const r = JSON.parse(fs.readFileSync(rep, "utf8"));
       const archivos = Object.fromEntries(r.filter((x) => x.ok && x.file).map((x) => [x.name, path.isAbsolute(x.file) ? x.file : path.join(CFG.flowSkillDir, x.file)]));
