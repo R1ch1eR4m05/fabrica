@@ -41,15 +41,26 @@ const PARCHES = [
         return await configurar(page, "imagen", aspect_ratio, count, model)`],
   ["flow_provider/configure.py", [`    from playwright.async_api import expect
     page = await get_page()
-    panel = await _open_settings(page)`],
-    `    from playwright.async_api import expect
-    page = await get_page()
-    from .agente import es_agente, configurar
+    panel = await _open_settings(page)`, `    from .agente import es_agente, configurar
     if await es_agente(page):
         if mode != "texto":
             raise RuntimeError("El Flow nuevo (con agente) todavía no está adaptado para video desde fotogramas o ingredientes; solo video de texto.")
-        return await configurar(page, "video", aspect_ratio, count, model)
-    panel = await _open_settings(page)`],
+        return await configurar(page, "video", aspect_ratio, count, model)`],
+    `    from .agente import es_agente, configurar
+    if await es_agente(page):
+        if mode == "ingredientes":
+            raise RuntimeError("El Flow nuevo (con agente) todavía no está adaptado para video con ingredientes.")
+        return await configurar(page, "video", aspect_ratio, count, model)`],
+  // video desde imagen con agente: se adjunta la imagen en el panel del agente (no hay ranuras de fotograma)
+  ["flow_provider/canvas.py", [`"""Sube un frame para modo Fotogramas. slot: 'initial' o 'final'."""
+    page = await get_page()`],
+    `"""Sube un frame para modo Fotogramas. slot: 'initial' o 'final'."""
+    page = await get_page()
+    from .agente import es_agente, adjuntar_imagen
+    if await es_agente(page):
+        if slot != "initial":
+            raise RuntimeError("El Flow nuevo (con agente) solo admite imagen inicial, no fotograma final.")
+        return await adjuntar_imagen(page, file_path)`],
   // con agente, el prompt va envuelto para que genere 1 sin reescribirlo
   ["flow_provider/prompt.py", [`"""Escribe el prompt y hace click en submit. Debe llamarse con lock."""
     page = await get_page()`],
