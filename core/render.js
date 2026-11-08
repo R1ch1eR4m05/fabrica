@@ -98,7 +98,7 @@ export async function render(id, avisar = () => {}) {
     const final = path.join(dir, "final.mp4");
     await ffmpeg(["-i", soloVideo, "-i", mezcla, "-c:v", "copy", "-c:a", "copy", "-shortest", "-movflags", "+faststart", final]);
     await ffmpeg(["-ss", String(estilo.portadaEn ?? 1.2), "-i", final, "-frames:v", "1", "-q:v", "2", path.join(dir, "portada.jpg")]);
-    return terminar();
+    return await terminar();
   }
 
   const { s, base } = await servidorTemporal();
@@ -148,14 +148,15 @@ export async function render(id, avisar = () => {}) {
     const [b64] = await pag.evaluate(([t]) => window.__frames(t, 1, 0, 0.92), [estilo.portadaEn ?? 1.2]);
     fs.writeFileSync(path.join(dir, "portada.jpg"), Buffer.from(b64, "base64"));
   } finally { await nav.close(); s.close(); }
-  return terminar();
+  return await terminar();
 
-  function terminar() {
+  async function terminar() {
   const nombre = `${id}-${proyecto.formato.replace(":", "x")}`;
   fs.copyFileSync(path.join(dir, "final.mp4"), path.join(DIR_LISTOS, `${nombre}.mp4`));
   fs.copyFileSync(path.join(dir, "portada.jpg"), path.join(DIR_LISTOS, `${nombre}.jpg`));
   fs.writeFileSync(path.join(DIR_LISTOS, `${nombre}.txt`), textoParaSubir(guion, estilo, tiempos, leer(id, "fondo.json")));
   fs.rmSync(tmp, { recursive: true, force: true });
+  try { const { revisar } = await import("./revision.js"); await revisar(id); } catch (e) { console.error("Revisión antes de publicar:", e.message); }
   return { segundos: Math.round((Date.now() - t0) / 1000), archivo: `listos/${nombre}.mp4` };
   }
 }

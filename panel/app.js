@@ -260,6 +260,7 @@ function pintarProyecto() {
                 <div class="estado">También queda guardado en la carpeta <b>listos</b>.</div>
                 ${p.guion?.escenas?.filter((e) => e.capitulo).length > 1 ? panelCortes(p) : ""}`
               : `<div class="estado">Cuando tengas la voz, revisa la vista previa y pulsa "Sacar el video".</div>`}
+              ${p.tieneFinal ? panelRevision(p) : ""}
               ${est?.miniaturas && p.guion?.escenas?.length ? panelMiniaturas(p) : ""}
               ${est?.imagenesPost && p.guion?.escenas?.length ? panelImagenes(p) : ""}
             </div>
@@ -300,6 +301,7 @@ function pintarProyecto() {
     $("#vModelo").innerHTML = Object.entries(a.modelosVoz).map(([k, n]) => `<option value="${h(k)}" ${k === actual ? "selected" : ""}>Voz: ${h(n)}</option>`).join("");
     $("#vModelo").onchange = async () => { await api("/api/ajustes", "PUT", { modeloPorEstilo: { [p.estilo]: $("#vModelo").value } }); avisar(`Modelo de voz guardado para ${est?.nombre || "este estilo"}. Dale "Rehacer voz" para oírlo.`); };
   });
+  if ($("#rRevisar")) $("#rRevisar").onclick = () => api(`/api/proyectos/${p.id}/revisar`, "POST", {}).then(() => avisar("Revisando… sale en la barra de la fila.")).catch((e) => avisar(e.message, true));
   if ($("#iSacar")) $("#iSacar").onclick = () => api(`/api/proyectos/${p.id}/imagenes`, "POST", {}).then(() => avisar("Sacando imágenes… sale en la barra de la fila.")).catch((e) => avisar(e.message, true));
   if ($("#iTexto")) $("#iTexto").onclick = async () => { const t = await (await fetch(`/proyectos/${p.id}/imagenes/texto.txt?v=${Date.now()}`)).text(); try { await navigator.clipboard.writeText(t); avisar("Texto copiado."); } catch { prompt("Copia el texto:", t); } };
   if ($("#mCrear")) $("#mCrear").onclick = () => api(`/api/proyectos/${p.id}/miniatura`, "POST", { ia: $("#mIA").checked }).then(() => avisar("Creando miniaturas… sale en la barra de la fila.")).catch((e) => avisar(e.message, true));
@@ -536,6 +538,16 @@ function panelProductoAPIMart(p, faltan) {
     <div class="fila" style="margin:4px 0 10px;align-items:center;gap:8px"><span class="estado"><b>Foto del producto</b> (referencia para que salga igual):</span>
       ${fs_.map((f) => `<span style="position:relative"><img src="/proyectos/${h(p.id)}/producto/${h(f)}?v=1" style="height:64px;border-radius:6px"><button class="mini" data-pdel="${h(f)}" style="position:absolute;top:-6px;right:-6px">×</button></span>`).join("")}
       <button class="mini" id="cProd">Subir foto</button></div>`;
+}
+function panelRevision(p) {
+  const r = p.revision, ic = { verde: "🟢", amarillo: "🟡", rojo: "🔴" };
+  const nombres = { formato: "Formato", gancho: "Gancho (primeros 2 s)", brillo: "Brillo", volumen: "Volumen", cortes: "Negros / congelados" };
+  return `<div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--b)">
+    <div class="fila" style="align-items:center"><b>Revisar antes de publicar</b> ${r ? `<span>${ic[r.estado]}</span>` : ""}<button class="mini" id="rRevisar">${r ? "Volver a revisar" : "Revisar"}</button></div>
+    ${r ? `<div style="margin-top:6px">${Object.keys(nombres).map((k) => r[k] ? `<div class="estado">${ic[r[k].estado]} <b>${nombres[k]}:</b> ${h(r[k].msg)}</div>` : "").join("")}</div>
+    <div class="estado" style="margin-top:6px">📱 ${h(r.celular?.msg || "")}</div>
+    <img src="/proyectos/${h(p.id)}/revision-celular.jpg?v=${Date.now()}" style="width:100%;max-width:820px;border-radius:8px;margin-top:6px">` : `<div class="estado">Mide el gancho, el brillo, el volumen y cómo se ve en el celular. Se hace solo al terminar cada video.</div>`}
+  </div>`;
 }
 function panelImagenes(p) {
   const im = p.imagenesPost, fs_ = im?.archivos || [], base = `/proyectos/${h(p.id)}/imagenes/`;

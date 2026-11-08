@@ -472,6 +472,12 @@ async function api(req, res, partes) {
     encolar(id, "render", (av) => (esMotion ? MOT.renderMotion(id, av) : render(id, av)));
     return json(res, 200, { ok: true });
   }
+  if (accion === "revisar") { // revisión antes de publicar
+    const REV = await import("./revision.js");
+    if (m === "GET") return json(res, 200, REV.leerRevision(id) || {});
+    encolar(id, "render", (av) => REV.revisar(id, { avisar: av }));
+    return json(res, 200, { ok: true });
+  }
   if (accion === "imagenes") { // imágenes 4:5 para el feed: frase + carrusel
     const IMG = await import("./imagenes-post.js");
     if (m === "GET") return json(res, 200, IMG.leerImagenes(id) || {});
