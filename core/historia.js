@@ -17,6 +17,7 @@ export const dirClips = (id) => path.join(dirProyecto(id), "clips");
 
 export function clipDeEscena(id, n) {
   const d = dirClips(id); if (!fs.existsSync(d)) return null;
+  if (fs.existsSync(path.join(d, `anim-${n}.mp4`))) return path.join(d, `anim-${n}.mp4`); // la escena animada en Flow va antes que su imagen
   const f = fs.readdirSync(d).find((x) => x.startsWith(`escena-${n}.`) && (VIDEO.test(x) || IMAGEN.test(x)));
   return f ? path.join(d, f) : null;
 }
@@ -126,6 +127,50 @@ export async function clipsDeFlow(id, avisar = () => {}, { maxCreditos = 25, sol
     }
     if (Date.now() - t0 > 40 * 60000) throw new Error("Flow tardó más de 40 minutos. Revisa la ventana de Flow.");
   }
+}
+
+// ---------------- animar en Flow solo las escenas que lo piden (imagen → video de 8 s) ----------------
+// Primero salen todas las imágenes (clips/escena-N.png); luego se animan las marcadas con "animar": true en el guion.
+// El video queda en clips/anim-N.mp4 y el render lo usa en lugar de la imagen (estirado a lo que dura la escena).
+const IMG_ESCENA = (id, n) => { const d = dirClips(id); if (!fs.existsSync(d)) return null; const f = fs.readdirSync(d).find((x) => x.startsWith(`escena-${n}.`) && IMAGEN.test(x)); return f ? path.join(d, f) : null; };
+const MOVIBLE = /water|river|stream|waterfall|lake|pond|rain|mist|fog|cloud|steam|smoke|tea|teapot|cup|candle|lantern|fire|flame|brush|ink|calligraph|writ|leaves|petal|snow|wind|bamboo|rice|field|sunset|sunrise|ripple|reflection|breath|walk|pour|stir/i;
+
+// marca (en guion.json) cuáles animar: 1 de cada 3 aprox., las que más se mueven (agua, vapor, pincel…), sin 3 seguidas
+export function elegirAnimadas(id, { proporcion = 1 / 3 } = {}) {
+  const g = leer(id, "guion.json"); if (!g) throw new Error("No hay guion.");
+  if (g.escenas.some((e) => e.animar)) return g.escenas.filter((e) => e.animar).length;
+  const tope = Math.max(1, Math.round(g.escenas.length * proporcion));
+  const puntos = g.escenas.map((e, k) => ({ k, p: (MOVIBLE.test(String(e.flowPrompt || "")) ? 2 : 0) + (e.misma ? -3 : 0) + (e.tipo === "cierre" ? -1 : 0) + (k % 3 === 0 ? 0.5 : 0) }))
+    .filter((x) => x.p > 0 && IMG_ESCENA(id, x.k + 1)).sort((a, b) => b.p - a.p || a.k - b.k);
+  const elegidas = new Set();
+  for (const { k } of puntos) { if (elegidas.size >= tope) break; if (elegidas.has(k - 1) && elegidas.has(k - 2)) continue; if (elegidas.has(k + 1) && elegidas.has(k + 2)) continue; elegidas.add(k); }
+  g.escenas.forEach((e, k) => { if (elegidas.has(k)) e.animar = true; });
+  guardar(id, "guion.json", g);
+  return elegidas.size;
+}
+
+const promptMovimiento = (g, e) => (e.animacion || `Very subtle, calm natural motion only: ${String(e.flowPrompt || "").replace(/\.$/, "")}. Gentle drifting mist or water ripples, soft light changes, slight breathing and small hand movements if a person is present. Camera almost still, no cuts, no new objects, keep the watercolor ink painting style exactly as in the first frame.`) + " No text, no subtitles.";
+
+export async function animarEscenas(id, avisar = () => {}, { soloFaltantes = true } = {}) {
+  if (!flowSkillListo()) throw new Error("Animar necesita la skill de Flow (FLOW_SKILL_DIR en el .env de la laptop).");
+  const pr = leer(id, "proyecto.json"), g = leer(id, "guion.json");
+  const ratio = pr.formato === "16:9" ? "16:9" : "9:16";
+  let faltan = g.escenas.map((e, k) => ({ e, n: k + 1, img: IMG_ESCENA(id, k + 1) })).filter(({ e, n, img }) => e.animar && img && (!soloFaltantes || !fs.existsSync(path.join(dirClips(id), `anim-${n}.mp4`))));
+  if (!faltan.length) return { generados: 0, fallos: [], motivo: "No hay escenas marcadas para animar que tengan imagen." };
+  let generados = 0, fallos = [];
+  for (let vuelta = 1; vuelta <= 3 && faltan.length; vuelta++) {
+    if (vuelta > 1) { avisar({ paso: "fondo", progreso: 0.9, msg: `Flow dejó ${faltan.length} animaciones sin salir; espero 90 s y reintento (vuelta ${vuelta} de 3)…` }); await new Promise((r) => setTimeout(r, 90000)); }
+    const jobs = faltan.map(({ e, n, img }) => ({ type: "video", name: `anim-${n}`, start: img, duration: "8s", prompt: promptMovimiento(g, e) }));
+    avisar({ paso: "fondo", progreso: 0.02, msg: `Flow: animando ${jobs.length} escenas${vuelta > 1 ? ` (vuelta ${vuelta})` : ""}…` });
+    let r;
+    try { r = await lote(id, `animar-${Date.now()}`, jobs, (a) => avisar({ ...a, paso: "fondo" }), { ratio, minutos: Math.max(60, jobs.length * 6) }); }
+    catch (err) { fallos = [err.message]; if (generados) break; throw err; }
+    fallos = r.fallos;
+    for (const { n } of faltan) { const f = r.archivos[`anim-${n}`]; if (!f) continue; fs.copyFileSync(f, path.join(dirClips(id), `anim-${n}.mp4`)); generados++; }
+    faltan = faltan.filter(({ n }) => !fs.existsSync(path.join(dirClips(id), `anim-${n}.mp4`)));
+  }
+  if (!generados) throw new Error("Flow no entregó animaciones: " + fallos.join(" | "));
+  return { generados, fallos: faltan.map(({ n }) => `anim-${n}`), motivo: fallos[0] || "" };
 }
 
 // antes del render: fotogramas de cada escena

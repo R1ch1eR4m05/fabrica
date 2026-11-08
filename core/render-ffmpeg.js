@@ -6,7 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { CFG, RAIZ } from "./config.js";
 import { dirProyecto, leer } from "./proyectos.js";
-import { ffmpeg } from "./ff.js";
+import { ffmpeg, duracion } from "./ff.js";
 
 // movimientos de cámara: "acercar", "alejar", "derecha", "izquierda", "subir", "quieto"
 export const MOVIMIENTOS = ["acercar", "derecha", "alejar", "izquierda", "acercar", "subir"];
@@ -132,8 +132,10 @@ export async function renderImagenes({ id, guion, tiempos, estilo, fmt, tmp, avi
         `scale=${W2}:${H2}:force_original_aspect_ratio=increase,crop=${W2}:${H2},zoompan=z='${m.z}':x='${m.x}':y='${m.y}':d=1:s=${fmt.w}x${fmt.h}:fps=${fps},` +
         `trim=end_frame=${N},${subs}`, ...sal]);
     } else if (src && fs.existsSync(src) && c.tipo === "video") {
-      await ffmpeg(["-stream_loop", "-1", "-i", src, "-vf",
-        `fps=${fps},scale=${fmt.w}:${fmt.h}:force_original_aspect_ratio=increase,crop=${fmt.w}:${fmt.h},trim=end_frame=${N},${subs}`, ...sal]);
+      // el clip (8 s) casi nunca dura lo mismo que la escena: se estira hasta 1.4x (movimiento más lento y suave) y, si aún falta, se sostiene el último cuadro
+      const dv = await duracion(src).catch(() => 0), objetivo = N / fps, f = dv > 0 ? Math.min(1.4, Math.max(1, objetivo / dv)) : 1;
+      await ffmpeg(["-i", src, "-vf",
+        `fps=${fps},setpts=${f.toFixed(4)}*PTS,fps=${fps},tpad=stop_mode=clone:stop_duration=${Math.max(0, objetivo).toFixed(2)},scale=${fmt.w}:${fmt.h}:force_original_aspect_ratio=increase,crop=${fmt.w}:${fmt.h},trim=end_frame=${N},${subs}`, ...sal]);
     } else {
       await ffmpeg(["-f", "lavfi", "-i", `color=c=${fondo}:s=${fmt.w}x${fmt.h}:r=${fps}`, "-vf", `trim=end_frame=${N},vignette=PI/5,${subs}`, ...sal]);
     }

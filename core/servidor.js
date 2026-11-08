@@ -404,6 +404,12 @@ async function api(req, res, partes) {
     encolar(id, "fondo", (av) => HIS.clipsDeFlow(id, (a) => av({ ...a, paso: "fondo" }), { maxCreditos: Number(b.maxCreditos) || 25, soloFaltantes: b.todos !== true, conCuadros: b.conCuadros !== false }));
     return json(res, 200, { ok: true });
   }
+  if (accion === "animar-flow" && m === "POST") { // anima en Flow las escenas marcadas (primero hay que tener las imágenes)
+    const b = await cuerpo(req);
+    let n; try { n = HIS.elegirAnimadas(id, { proporcion: Number(b.proporcion) || 1 / 3 }); } catch (e) { return json(res, 400, { error: e.message }); }
+    encolar(id, "fondo", (av) => HIS.animarEscenas(id, (a) => av({ ...a, paso: "fondo" }), { soloFaltantes: b.todas !== true }));
+    return json(res, 200, { ok: true, marcadas: n });
+  }
   if (accion === "flow-laptop" && m === "POST") { // VPS: la laptop hace las imágenes en Flow y las regresa por el espejo
     const b = await cuerpo(req);
     try { return json(res, 200, await BANCO.flowEnLaptop(id, { maxCreditos: Number(b.maxCreditos) || 25 })); }

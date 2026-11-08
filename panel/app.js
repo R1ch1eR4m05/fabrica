@@ -586,6 +586,7 @@ function panelCortes(p) {
     ${reels.length ? `<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin-top:8px">${reels.map(tarjeta).join("")}</div>` : ""}
   </div>`;
 }
+const faltanImg = (p) => (p.clips || []).filter((x) => x.tipo !== "cierre" && !x.archivo && !x.misma).length;
 function panelClips(p) {
   const cs = p.clips || [], faltan = cs.filter((x) => (x.tipo !== "cierre" || estiloDe(p.estilo)?.clipsFlow === "imagen") && !x.archivo && !x.misma).length, est = estiloDe(p.estilo) || {}, img = est.clipsFlow === "imagen";
   return `<div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--b)">
@@ -597,6 +598,7 @@ function panelClips(p) {
       ${S.info.flowSkill && !img ? `<select id="cModelo" style="width:auto" title="Modelo de video de Flow (más caro = mejor)"></select>
         <label class="estado" style="display:flex;gap:6px;align-items:center" title="Primero hace una imagen de los personajes y el primer cuadro de cada escena con ella; luego anima. Gasta un poco más pero la familia sale igual en todas."><input type="checkbox" id="cCuadros" style="width:auto" checked> personajes iguales (imagen → video)</label>`
         : S.info.flowSkill ? "" : `<span class="estado">Tope de créditos por clip</span><input id="cMax" type="number" value="25" min="1" style="width:80px">`}
+      ${S.info.flowSkill && img && est.animar ? `<button class="btn peq" id="cAnimar" title="Cuando ya estén las imágenes: elige ~1 de cada 3 (agua, vapor, pincel…; o las que marques con animar:true) y las anima en Flow, 8 s cada una">Animar las marcadas en Flow</button>` : ""}
       ${!S.info.flow && S.info.laptop ? `<button class="btn peq primario" id="cLaptop" ${faltan ? "" : "disabled"} title="La laptop (prendida, con la fábrica abierta y Tailscale) las hace en Flow y regresan solas">Generar en la laptop (Flow)</button>` : ""}
       ${!est.anuncios && S.info.apimart ? `<button class="btn peq" id="cAPIhist" ${faltan ? "" : "disabled"} title="Genera con APIMart (Nano Banana 2) las imágenes que faltan; cuesta unos centavos por imagen">Generar con APIMart</button>` : ""}
       ${S.info.flow || S.info.laptop ? "" : `<span class="estado">Flow solo está en la laptop: copia cada prompt, hazlo en Flow y súbelo aquí${S.info.apimart ? ", o usa APIMart" : ""}.</span>`}
@@ -661,6 +663,7 @@ function eventosClips(p) {
     catch (e) { avisar(e.message, true); b.disabled = false; b.textContent = "Pexels"; }
   };
   if ($("#cModelo")) api("/api/ajustes").then((a) => { $("#cModelo").innerHTML = a.modelosFlowVideo.map((m) => `<option ${m === (a.flowVideo || "Veo 3.1 - Lite") ? "selected" : ""}>${h(m)}</option>`).join(""); $("#cModelo").onchange = () => api("/api/ajustes", "PUT", { flowVideo: $("#cModelo").value }); });
+  if ($("#cAnimar")) $("#cAnimar").onclick = () => { if (faltanImg(p)) { if (!confirm(`Todavía faltan ${faltanImg(p)} imágenes. Conviene terminarlas antes. ¿Animar de todos modos las que ya tienen imagen?`)) return; } if (confirm("Esto gasta créditos de Flow (un video de 8 s por escena marcada; si no marcaste ninguna, la fábrica elige ~1 de cada 3). Solo pide las que aún no tienen animación. ¿Seguir?")) api(`/api/proyectos/${p.id}/animar-flow`, "POST", {}).then((r) => avisar(`Animando ${r.marcadas} escenas en Flow…`)).catch((e) => avisar(e.message, true)); };
   if ($("#cFlow")) $("#cFlow").onclick = () => { if (confirm("Esto gasta créditos de tu cuenta de Flow (un clip por escena que falte, más las imágenes si dejas 'personajes iguales') y usa automatización no oficial de la página de Flow. ¿Seguir?")) api(`/api/proyectos/${p.id}/clips`, "POST", { maxCreditos: $("#cMax")?.value, conCuadros: $("#cCuadros") ? $("#cCuadros").checked : true }).catch((e) => avisar(e.message, true)); };
   for (const b of document.querySelectorAll("[data-csub]")) b.onclick = () => subir(p.id, `clip&n=${b.dataset.csub}`, "video/*,image/*");
   for (const b of document.querySelectorAll("[data-cdel]")) b.onclick = async () => { await api(`/api/proyectos/${p.id}/archivo?tipo=clip&n=${b.dataset.cdel}`, "DELETE"); abrir(p.id, { mantener: true }); };
