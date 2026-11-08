@@ -139,6 +139,11 @@ Lee la investigación más reciente de `investigacion/` (o la que diga Richie) y
 - Si flow-mcp está conectado como MCP, puedes generar el clip de una propuesta con su `flowPrompt` (9:16) y copiarlo como `proyectos/<id>/fondo-propio.mp4`; luego en el panel "Buscar otro fondo" o rehacer la voz lo vuelve a preparar.
 - Frases de otras cuentas: solo como inspiración. Nunca copiarlas.
 
+## Sacar el estilo de un video ("clona el estilo de <video>")
+`node fabrica.js clonar-estilo <archivo.mp4|enlace> [--nombre id] [--pedido "qué cambiar"]` mide el video con ffmpeg (duración, cortes, ritmo, brillo, paleta HEX), saca cuadros clave y, con ANTHROPIC_API_KEY, Claude escribe el análisis y el **prompt maestro** (parte cualquier guion en clips con ese estilo, para Flow/Omni Flash). Todo queda en `referencias/<id>/` (`medidas.json`, `cuadros/`, `estilo.json`, `prompt-maestro.md`).
+- Sin API (desde Claude Code): corre el comando, MIRA `referencias/<id>/cuadros/*.jpg` junto con `medidas.json` y guarda el análisis con `guardarEstilo(id, {resumen, formato, paleta, tipografia, composicion, movimiento, transiciones, ritmo, escenas, evitar, promptMaestro, promptClip, estiloFabrica})` de `core/clonar-estilo.js`. Forma del JSON: ver `SISTEMA` en ese archivo. Si el enlace no se puede bajar (YouTube bloquea), pídele el .mp4 a Richie.
+- Solo se copia la forma (movimiento, color, tipografía, ritmo): nunca cuadros, textos, marcas ni personajes del original. Para volverlo estilo de la fábrica, sigue ESTILOS.md usando `estiloFabrica`.
+
 ## Revisar antes de publicar
 Al terminar cada video (y con "Revisar" en el panel o `node fabrica.js revisar <id>`) se mide `final.mp4` y sale un semáforo en `revision.json`: formato (medidas y fps), gancho (movimiento en los primeros 2 s), brillo (promedio y % casi negro), volumen (LUFS y pico; ideal -14 a -16) y pantallas negras/congeladas, más `revision-celular.jpg` (4 cuadros a 390 px para ver si el texto se lee). Si Richie pregunta por qué un video no rinde, empieza por ahí. Idea y umbrales base de `qc.py` de cinecode (MIT).
 

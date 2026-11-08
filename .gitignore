@@ -12,3 +12,5 @@ musica/*
 !musica/LEEME.md
 ajustes.json
 banco/
+referencias/*
+!referencias/.gitkeep

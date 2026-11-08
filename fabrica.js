@@ -21,6 +21,7 @@
 //   node fabrica.js investigaciones [--nicho id]  lista las investigaciones
 //   node fabrica.js miniatura-estudiar [--estilo id] [enlaces de YouTube…]  estudia las miniaturas que mejor van en el nicho
 //   node fabrica.js miniatura <id> [--ia]  3 miniaturas de YouTube (1280x720) para el video; --ia = fondo nuevo con APIMart
+//   node fabrica.js clonar-estilo <archivo.mp4|enlace> [--nombre id] [--pedido "texto"]  saca el estilo de un video (cortes, ritmo, paleta HEX) y el prompt maestro → referencias/<id>/
 //   node fabrica.js revisar <id>  revisión antes de publicar (formato, gancho, brillo, volumen, negros/congelados, vista de celular)
 //   node fabrica.js imagenes <id>  imágenes 4:5 para el feed: la frase más fuerte + carrusel (sin gastar créditos)
 //   node fabrica.js capitulos <id> [--sin-reels]  video largo → un video por capítulo (+ Reel vertical de cada uno)
@@ -190,6 +191,14 @@ async function main() {
       const MIN = await import("./core/miniatura.js");
       const r = await MIN.crearMiniaturas(libres[0], { avisar, ia: args.includes("--ia") });
       console.log(`\nListo: ${r.opciones.length} miniaturas en proyectos/${libres[0]}/miniaturas/ (la A ya está en listos/). Texto: ${r.origen}.${r.sinEstudio ? " Usé la receta base: estudia el nicho para afinarla." : ""}`); return;
+    }
+    case "clonar-estilo": {
+      const CL = await import("./core/clonar-estilo.js");
+      if (!libres[0]) { console.log("Uso: node fabrica.js clonar-estilo <archivo.mp4|enlace> [--nombre id] [--pedido \"texto\"]"); return; }
+      const r = await CL.sacarEstilo(libres[0], { nombre: opc("nombre"), pedido: opc("pedido", ""), avisar });
+      const m = r.medidas;
+      console.log(`\n\n${m.relacion} · ${m.duracion}s · ${m.escenas} escenas (${m.cortesPorSegundo} cortes/s) · brillo ${m.brillo} · movimiento ${m.energiaMovimiento}\nPaleta: ${m.paleta.map((c) => `${c.hex} ${c.pct}%`).join("  ")}`);
+      console.log(r.pendiente ? `Medido en referencias/${r.id}/ (cuadros en cuadros/). Falta el análisis: Claude Code mira los cuadros y lo guarda con guardarEstilo().` : `Listo: referencias/${r.id}/prompt-maestro.md y estilo.json`); return;
     }
     case "revisar": {
       const REV = await import("./core/revision.js");
