@@ -140,7 +140,7 @@ export function elegirAnimadas(id, { proporcion = 1 / 3 } = {}) {
   const g = leer(id, "guion.json"); if (!g) throw new Error("No hay guion.");
   if (g.escenas.some((e) => e.animar)) return g.escenas.filter((e) => e.animar).length;
   const tope = Math.max(1, Math.round(g.escenas.length * proporcion));
-  const puntos = g.escenas.map((e, k) => ({ k, p: (MOVIBLE.test(String(e.flowPrompt || "")) ? 2 : 0) + (e.misma ? -3 : 0) + (e.tipo === "cierre" ? -1 : 0) + (k % 3 === 0 ? 0.5 : 0) }))
+  const puntos = g.escenas.map((e, k) => ({ k, p: (MOVIBLE.test(String(e.flowPrompt || "")) ? 2 : 0) + (e.misma ? -3 : 0) + (e.tipo === "cierre" ? -1 : 0) + (k % 3 === 0 ? 0.5 : 0) + (k === 0 ? 5 : 0) })) // la escena 1 (gancho) se anima siempre
     .filter((x) => x.p > 0 && IMG_ESCENA(id, x.k + 1)).sort((a, b) => b.p - a.p || a.k - b.k);
   const elegidas = new Set();
   for (const { k } of puntos) { if (elegidas.size >= tope) break; if (elegidas.has(k - 1) && elegidas.has(k - 2)) continue; if (elegidas.has(k + 1) && elegidas.has(k + 2)) continue; elegidas.add(k); }

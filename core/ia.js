@@ -24,12 +24,21 @@ ${pedido}
 Responde SOLO con el JSON.`;
 }
 
+// el gancho manda: es lo primero que se mide al revisar el video y lo que decide si la gente se queda
+const REGLA_GANCHO = `PRIORIDAD 1 — EL GANCHO. Antes que todo lo demás, escribe la primera escena para detener el scroll en los primeros 2 segundos:
+- La primera frase se entiende sola, mide 4 a 9 palabras y se dice en 2 segundos o menos. Nada de saludos, presentaciones ni "hoy te voy a hablar de".
+- Es una verdad incómoda, una contradicción, una pregunta directa al espectador o una situación concreta que duela o intrigue. Nada genérico.
+- Justo después (segundo 2-4) viene un giro o una promesa que obligue a quedarse.
+- Su imagen (flowPrompt) debe ser la más potente y con movimiento del video: un rostro cercano, una acción, un contraste fuerte; nunca un paisaje vacío ni oscuro.
+Escribe 3 ganchos posibles en tu cabeza y usa el más fuerte.`;
+
 function armar(proyecto, { cambios = "", guionActual = null } = {}) {
   const estilo = leerEstilo(proyecto.estilo);
   const sistema = [
     `Eres guionista de videos para redes en español de México (neutro, natural, nada de España: nada de "vosotros", "vale", "ordenador").`,
     `Estilo del video: ${estilo.nombre}.`,
     instruccionesGuion(proyecto.estilo),
+    REGLA_GANCHO,
     proyecto.segundos > 0
       ? `Formato: ${proyecto.formato}. Duración EXACTA pedida: unos ${proyecto.segundos} segundos de voz (± 10%), es decir, alrededor de ${Math.max(3, Math.round(proyecto.segundos / 5))} escenas. Esta indicación manda sobre cualquier otra duración que aparezca arriba.`
       : `Formato: ${proyecto.formato}. Duración: ${proyecto.duracion === "largo" ? estilo.duraciones?.largo || "6 a 10 minutos" : estilo.duraciones?.corto || "45 a 90 segundos"}.`,
@@ -69,7 +78,7 @@ export function extraerJSON(texto) {
 async function escribirLargo(proyecto, est, minutos, cambios) {
   const base = [
     `Eres guionista de videos largos de YouTube en español de México (neutro, natural, nada de España).`,
-    `Estilo del video: ${est.nombre}.`, instruccionesGuion(proyecto.estilo),
+    `Estilo del video: ${est.nombre}.`, instruccionesGuion(proyecto.estilo), REGLA_GANCHO,
     `Nunca inventes una cifra, estudio, fecha ni cita. Si citas un texto clásico, que sea real y verificado con la búsqueda web.`,
   ].join("\n\n");
   const nCap = Math.max(3, Math.round(minutos / 5));

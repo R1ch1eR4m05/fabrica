@@ -3,7 +3,7 @@
 Monólogo de 45 a 120 s en segunda persona ("tú"), voz grave de hombre, tono sobrio y directo: una verdad incómoda, su consecuencia y qué hacer hoy. Español de México. Nace siempre de un video viral del formato (estoicismo, disciplina, vejez, soledad, energía): adapta la idea, nunca copies sus frases.
 
 ## Estructura
-1. **Gancho (escena 1):** máximo 2,5 s de voz y ya completo en pantalla desde el segundo 0 (la fábrica lo muestra entero, grande, con acercamiento). Justo después, en el segundo 2-3, una **contradicción o giro** que obligue a quedarse ("No son tus hijos."); la escena 2 cambia de imagen enseguida.  una pregunta o afirmación que incomode ("¿Quién te va a cuidar cuando seas viejo?").
+1. **Gancho (escena 1) — lo más importante del guion:** 4 a 9 palabras, máximo 2 s de voz, y ya completo en pantalla desde el segundo 0 (la fábrica lo muestra entero, grande, con acercamiento). Justo después, en el segundo 2-3, una **contradicción o giro** que obligue a quedarse ("No son tus hijos."); la escena 2 cambia de imagen enseguida.  una pregunta o afirmación que incomode ("¿Quién te va a cuidar cuando seas viejo?").
 2. **Desarmar la respuesta fácil (2-4 escenas):** "¿Tus hijos? Tendrán sus propios problemas."
 3. **La verdad (3-6 escenas):** frases cortas y rotundas, una idea por escena.
 4. **Qué hacer (3-6 escenas):** órdenes simples ("Protege tu energía. Aléjate de lo que te drena.").

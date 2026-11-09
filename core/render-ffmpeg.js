@@ -30,7 +30,11 @@ export function camara(mov, p) {
 }
 // lo mismo como expresión de ffmpeg (on = fotograma, N = total)
 // (off/total: si la escena sigue con la misma imagen que la anterior, el movimiento continúa donde se quedó, sin brincar)
-function exprCamara(mov, N, off = 0, total = N) {
+// gancho: la primera toma arranca con un acercamiento rápido (casi todo en 1,6 s) y luego sigue lento; así los primeros 2 s siempre se mueven
+const GANCHO_Z = 0.24, GANCHO_S = 1.6;
+const exprGancho = (fps, total) => `1+${GANCHO_Z * 0.8}*(1-pow(1-min(1,on/${(GANCHO_S * fps).toFixed(1)}),3))+${GANCHO_Z * 0.2}*(on/${Math.max(1, total - 1)})`;
+function exprCamara(mov, N, off = 0, total = N, fps = 24, gancho = false) {
+  if (gancho) return { z: exprGancho(fps, total), x: "(iw-iw/zoom)*0.5", y: "(ih-ih/zoom)*0.45" };
   const p = `((on+${off})/${Math.max(1, total - 1)})`, z1 = (1 + ZOOM).toFixed(4);
   const zz = { acercar: `1+${ZOOM}*${p}`, alejar: `${z1}-${ZOOM}*${p}`, quieto: "1.04" }[mov] || z1;
   const fx = { derecha: p, izquierda: `(1-${p})` }[mov] || "0.5";
@@ -136,7 +140,7 @@ export async function renderImagenes({ id, guion, tiempos, estilo, fmt, tmp, avi
     const subs = !conSubs ? "null" : `setpts=PTS+${(f0 / fps).toFixed(4)}/TB,ass='${rutaFiltro(ass)}':fontsdir='${rutaFiltro(fuentes)}',setpts=PTS-STARTPTS`;
     const sal = ["-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p", "-r", String(fps), "-threads", "2", seg];
     if (src && fs.existsSync(src) && c.tipo === "imagen") {
-      const G = grupo[k], m = exprCamara(movimiento(guion.escenas[G.cabeza] || e, G.cabeza + 1), N, G.off, G.total);
+      const G = grupo[k], m = exprCamara(movimiento(guion.escenas[G.cabeza] || e, G.cabeza + 1), N, G.off, G.total, fps, G.cabeza === 0 && G.off === 0 && k === 0);
       await ffmpeg(["-loop", "1", "-framerate", String(fps), "-t", (N / fps).toFixed(4), "-i", src, "-vf",
         `scale=${W2}:${H2}:force_original_aspect_ratio=increase,crop=${W2}:${H2},zoompan=z='${m.z}':x='${m.x}':y='${m.y}':d=1:s=${fmt.w}x${fmt.h}:fps=${fps},` +
         `trim=end_frame=${N},${subs}`, ...sal]);
@@ -146,7 +150,7 @@ export async function renderImagenes({ id, guion, tiempos, estilo, fmt, tmp, avi
       const G = grupo[k], dv = await duracion(src).catch(() => 0), objetivo = N / fps, f = dv > 0 ? Math.min(1.4, Math.max(1, G.total / fps / dv)) : 1;
       const desde = dv > 0 ? Math.min(G.off / fps / f, Math.max(0, dv - 0.15)) : 0;
       await ffmpeg([...(desde > 0 ? ["-ss", desde.toFixed(3)] : []), "-i", src, "-vf",
-        `fps=${fps},setpts=${f.toFixed(4)}*PTS,fps=${fps},tpad=stop_mode=clone:stop_duration=${Math.max(0, objetivo).toFixed(2)},scale=${fmt.w}:${fmt.h}:force_original_aspect_ratio=increase,crop=${fmt.w}:${fmt.h},trim=end_frame=${N},${subs}`, ...sal]);
+        `fps=${fps},setpts=${f.toFixed(4)}*PTS,fps=${fps},tpad=stop_mode=clone:stop_duration=${Math.max(0, objetivo).toFixed(2)},${k === 0 ? `scale=${W2}:${H2}:force_original_aspect_ratio=increase,crop=${W2}:${H2},zoompan=z='${exprGancho(fps, G.total)}':x='(iw-iw/zoom)*0.5':y='(ih-ih/zoom)*0.45':d=1:s=${fmt.w}x${fmt.h}:fps=${fps}` : `scale=${fmt.w}:${fmt.h}:force_original_aspect_ratio=increase,crop=${fmt.w}:${fmt.h}`},trim=end_frame=${N},${subs}`, ...sal]);
     } else {
       await ffmpeg(["-f", "lavfi", "-i", `color=c=${fondo}:s=${fmt.w}x${fmt.h}:r=${fps}`, "-vf", `trim=end_frame=${N},vignette=PI/5,${subs}`, ...sal]);
     }

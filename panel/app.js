@@ -479,7 +479,7 @@ async function pintarGHL(p, leerForm, guardarAntes) {
   if (!S.info.ghl) { caja.innerHTML = `<b>Programar en GoHighLevel</b><div class="estado">Para programarlo desde aquí, pon <code>GHL_TOKEN</code> y <code>GHL_LOCATION_ID</code> en el .env (cómo sacarlos: .env.example) y reinicia la fábrica. Mientras, copia y pega cada texto en el Social Planner.</div>${hechos}`; return; }
   caja.innerHTML = `<b>Programar en GoHighLevel</b> <span class="estado" id="ghlEst">cargando tus cuentas…</span>${hechos}`;
   let cs; try { cs = await api("/api/ghl/cuentas"); } catch (e) { $("#ghlEst").textContent = e.message; return; }
-  const guardadas = JSON.parse(localStorage.getItem("ghlCuentas") || "[]");
+  const llaveCuentas = "ghlCuentas:" + (p.canal || "general"), guardadas = JSON.parse(localStorage.getItem(llaveCuentas) || localStorage.getItem("ghlCuentas") || "[]"); // cada canal (Monarca, Levania…) recuerda sus propias cuentas
   const manana = new Date(Date.now() + 864e5); manana.setHours(19, 0, 0, 0);
   const local = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 16);
   caja.innerHTML = `<b>Programar en GoHighLevel</b> <span class="estado">un post por red, cada uno con su texto de arriba</span>${hechos}
@@ -491,7 +491,7 @@ async function pintarGHL(p, leerForm, guardarAntes) {
     const f = new Date($("#ghlFecha").value);
     const redes = cs.filter((a) => ids.includes(a.id)).map((a) => a.plataforma).join(", ");
     if (!confirm(`Se programará este video en: ${redes}\nEl ${f.toLocaleString("es-MX", { dateStyle: "full", timeStyle: "short" })}\ncon el texto de cada red tal como está arriba. ¿Seguir?`)) return;
-    localStorage.setItem("ghlCuentas", JSON.stringify(ids));
+    localStorage.setItem(llaveCuentas, JSON.stringify(ids));
     $("#ghlIr").disabled = true; $("#ghlIr").textContent = "Subiendo y programando…";
     try { await guardarAntes(); const r = await api(`/api/proyectos/${p.id}/ghl`, "POST", { cuentas: ids, fecha: f.toISOString() }); avisar(`Listo: programado en ${r.programados.map((x) => x.plataforma).join(", ")}. Revísalo en el Social Planner de GHL.`); abrir(p.id, { mantener: true }); }
     catch (e) { avisar(e.message, true); $("#ghlIr").disabled = false; $("#ghlIr").textContent = "Programar en GHL"; }

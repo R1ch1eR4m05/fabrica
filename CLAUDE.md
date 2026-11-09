@@ -13,7 +13,7 @@ Habla con Richie en español de México, directo y sin rodeos.
 ## Cuando Richie pida un guion ("escribe el guion de <id>")
 1. Lee `proyectos/<id>/proyecto.json` (idea, formato, duración) y `estilos/<estilo>/GUION.md`.
 2. Verifica cada dato en internet con 2 fuentes fiables. Nunca inventes cifras.
-3. Escribe `proyectos/<id>/guion.json` con el formato de ESTILOS.md, en español de México.
+3. Lo primero y más cuidado es el gancho: la primera frase de 4-9 palabras (≤ 2 s de voz) que se entiende sola, sin saludos; su imagen, la más potente. Luego escribe `proyectos/<id>/guion.json` con el formato de ESTILOS.md, en español de México.
 4. `node fabrica.js listo <id>`. El panel lo muestra al recargar.
 
 ## "Haz los pendientes" (la orden de siempre)
