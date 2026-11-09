@@ -104,7 +104,7 @@ function subtitulos(c, M, t, te) {
   const u = M.u, fr = M.frases(te.palabras, frase ? 7 : 3); let cur = null;
   for (const f of fr) if (t >= f[0].t0 - 0.02) cur = f;
   if (!cur || t > te.finVoz + 0.25) return;
-  const y = M.vertical ? M.H * 0.76 : M.H * 0.84, tam = (frase ? 52 : 74) * u;
+  const y = M.vertical ? M.H * 0.62 : M.H * 0.84, tam = (frase ? 52 : 74) * u; // vertical: sube del 76 % al 62 % para quedar fuera de donde Instagram/TikTok ponen usuario, descripción y música (~35 % de abajo)
   c.font = `800 ${tam}px Montserrat`; c.textBaseline = "middle"; c.textAlign = "left";
   const esp = c.measureText(" ").width, ws = cur.map((p) => ({ ...p, s: p.w.toUpperCase(), pw: c.measureText(p.w.toUpperCase()).width }));
   let x = (M.W - ws.reduce((a, p) => a + p.pw, 0) - esp * (ws.length - 1)) / 2;
