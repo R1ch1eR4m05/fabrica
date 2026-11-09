@@ -53,6 +53,21 @@ const textoPara = (c, plataforma) => {
   return c.instagram || c.facebook;
 };
 
+// GHL exige quién crea la publicación (userId). Si no está GHL_USER_ID en el .env, se busca solo: el dueño/admin de la subcuenta
+let cacheUsuario = null;
+async function usuarioGHL() {
+  if (CFG.ghlUsuario) return CFG.ghlUsuario;
+  if (cacheUsuario) return cacheUsuario;
+  let us = [];
+  try { const j = await pedir("GET", `/users/?locationId=${CFG.ghlLocation}`); us = j.users || []; }
+  catch (e) { throw new Error(`GHL pide el usuario que publica y no pude buscarlo (${e.message.slice(0, 120)}). Pon GHL_USER_ID en el .env: en GHL ve a Settings → My Staff, edita tu usuario y copia el id que sale en la dirección. O dale a la integración privada el permiso users.readonly.`); }
+  const ok = us.filter((u) => !u.deleted);
+  const elegido = ok.find((u) => /admin/i.test(u.roles?.role || "") && /agency/i.test(u.roles?.type || "")) || ok.find((u) => /admin/i.test(u.roles?.role || "")) || ok[0];
+  if (!elegido) throw new Error("GHL no regresó usuarios de esta subcuenta. Pon GHL_USER_ID en el .env (Settings → My Staff → tu usuario → id en la dirección).");
+  cacheUsuario = elegido.id;
+  return cacheUsuario;
+}
+
 // programa una publicación por red (mismo video, copy de esa red). fecha: ISO; si falta, en 10 minutos
 export async function programar(id, { cuentasIds = [], fecha } = {}, avisar = () => {}) {
   if (!cuentasIds.length) throw new Error("Elige al menos una cuenta.");
@@ -60,6 +75,7 @@ export async function programar(id, { cuentasIds = [], fecha } = {}, avisar = ()
   if (!elegidas.length) throw new Error("Esas cuentas ya no están conectadas en GHL.");
   avisar({ progreso: 0.1, msg: "Subiendo el video a GoHighLevel…" });
   const url = await subirVideo(id);
+  const usuario = await usuarioGHL();
   const c = leerCopys(id), cuando = fecha ? new Date(fecha) : new Date(Date.now() + 10 * 60000);
   if (isNaN(cuando) || cuando < Date.now() - 60000) throw new Error("La fecha ya pasó.");
   const porRed = {};
@@ -68,7 +84,7 @@ export async function programar(id, { cuentasIds = [], fecha } = {}, avisar = ()
   for (const [plataforma, ids] of Object.entries(porRed)) {
     avisar({ progreso: 0.5, msg: `Programando en ${plataforma}…` });
     const cuerpo = { accountIds: ids, summary: textoPara(c, plataforma) || "", media: [{ url, type: "video/mp4" }], status: "scheduled", scheduleDate: cuando.toISOString(),
-      type: /instagram|facebook/.test(plataforma) ? "reel" : "post", ...(CFG.ghlUsuario ? { userId: CFG.ghlUsuario, createdBy: CFG.ghlUsuario } : {}) };
+      type: /instagram|facebook/.test(plataforma) ? "reel" : "post", userId: usuario };
     const j = await pedir("POST", `/social-media-posting/${CFG.ghlLocation}/posts`, cuerpo);
     hechos.push({ plataforma, cuentas: ids, fecha: cuando.toISOString(), postId: j.results?.post?._id || j.results?.post?.id || j.post?._id || j.id || null });
   }
