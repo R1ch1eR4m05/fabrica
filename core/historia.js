@@ -111,6 +111,13 @@ async function clipsConSkill(id, avisar, { soloFaltantes = true, conCuadros = tr
   // palabras neutras); si fue saturación o tiempo, se repite igual tras una pausa. Lo que siga sin salir se avisa con su motivo.
   fs.mkdirSync(dirClips(id), { recursive: true });
   const todos = {}, errores = {};
+  // el primer cuadro de cada escena se guarda en clips/cuadro-N.png en cuanto sale: si el video falla, la próxima vez
+  // se anima ese mismo cuadro en lugar de pedir otra imagen igual (al rehacer una escena a propósito sí se pide uno nuevo)
+  const CUADRO = (n) => path.join(dirClips(id), `cuadro-${n}.png`);
+  for (const { n } of pend) {
+    if (escenas) { try { fs.rmSync(CUADRO(n)); } catch {} }
+    else if (conCuadros && fs.existsSync(CUADRO(n))) todos[`cuadro-${n}`] = CUADRO(n);
+  }
   let porHacer = pend.map((x) => ({ ...x, suaves: 0 }));
   for (let ronda = 1; ronda <= 3 && porHacer.length; ronda++) {
     if (ronda > 1) {
@@ -125,14 +132,19 @@ async function clipsConSkill(id, avisar, { soloFaltantes = true, conCuadros = tr
     try { r = await lote(id, `historia-${Date.now()}`, jobs, (a) => avisar({ ...a, paso: "fondo" }), { ratio, minutos: Math.max(60, jobs.length * 4), proyecto: rep?.flowProyecto }); }
     catch (err) { if (Object.keys(todos).some((k) => k.startsWith("escena-"))) break; throw err; }
     Object.assign(todos, r.archivos);
+    for (const { n } of porHacer) { const c = r.archivos[`cuadro-${n}`]; if (c && fs.existsSync(c)) { fs.copyFileSync(c, CUADRO(n)); todos[`cuadro-${n}`] = CUADRO(n); } }
+    // si en toda la vuelta no salió ningún video y no fue por políticas, repetir igual solo gasta créditos: se para y se avisa
+    const salieron = porHacer.filter((x) => r.archivos[`escena-${x.n}`]).length;
+    const hayPolitica = r.fallos.some((f) => esPolitica(f));
     for (const f of r.fallos) { const m = f.match(/^([\w-]+): ([\s\S]*)/); if (m) errores[m[1]] = m[2]; }
     if (todos.personajes && !refGuardada) ref = todos.personajes;
     porHacer = porHacer.filter((x) => !todos[`escena-${x.n}`]);
+    if (!salieron && !hayPolitica) break;
     for (const x of porHacer) {
       if (esPolitica(errores[`cuadro-${x.n}`]) || esPolitica(errores[`escena-${x.n}`])) {
         avisar({ paso: "fondo", progreso: 0.9, msg: `Escena ${x.n}: Flow la bloqueó por políticas; la reescribo más suave y reintento…` });
         x.suaves++; x.e = { ...x.e, flowPrompt: await suavizarPrompt(x.e.flowPrompt, x.suaves) };
-        delete todos[`cuadro-${x.n}`]; // el cuadro nuevo sale del prompt suave
+        delete todos[`cuadro-${x.n}`]; try { fs.rmSync(CUADRO(x.n)); } catch {} // el cuadro nuevo sale del prompt suave
       }
     }
   }

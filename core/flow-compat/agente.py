@@ -50,9 +50,9 @@ JS_RESPUESTA = """(antes) => {
   const b = [...document.querySelectorAll('flow-agent-panel flow-chat-bubble')];
   if (b.length < antes + 2) return '';
   const u = b[b.length - 1];
-  if (u.querySelector('img, video') && !u.querySelector('flow-a2ui-multiple-choice')) return '';
+  if (u.querySelector('img, video')) return '';
   const t = (u.innerText || '').replace(/\\s+/g, ' ').trim();
-  return (u.querySelector('flow-a2ui-multiple-choice') || /(cannot|can't|unable|would you like|do you want|which (one|option)|no puedo|¿quieres|¿te gustar|¿prefieres|elige)/i.test(t)) ? t.slice(0, 300) : '';
+  return (/(cannot|can't|unable|would you like|do you want|which (one|option)|no puedo|¿quieres|¿te gustar|¿prefieres|elige)/i.test(t)) ? t.slice(0, 300) : '';
 }"""
 
 _estado = {"modo": None, "configurado": set(), "imagen": False}

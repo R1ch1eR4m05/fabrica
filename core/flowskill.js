@@ -144,15 +144,28 @@ const PARCHES = [
 
 
 async def error_card_count(page) -> int:`],
-  ["flow_provider/wait.py", [`    guard = "true" if pre_cards is None else f"cards.length > {pre_cards}"`],
+  ["flow_provider/wait.py", [`    guard = "true" if pre_cards is None else f"cards.length > {pre_cards}"
+    if pre_cards is not None and _ANTES.get("clave") is not None:
+        import json as _json
+        guard = (f"(cards.length > {pre_cards} || (((c) => {{ const m = c && (c.querySelector('img') || c.querySelector('video')); "
+                 f"return m ? (m.getAttribute('src') || '') : (c ? 'sin-media' : ''); }})(cards[0])) !== {_json.dumps(_ANTES['clave'])}))")`, `    guard = "true" if pre_cards is None else f"cards.length > {pre_cards}"`],
     `    guard = "true" if pre_cards is None else f"cards.length > {pre_cards}"
     if pre_cards is not None and _ANTES.get("clave") is not None:
         import json as _json
         guard = (f"(cards.length > {pre_cards} || (((c) => {{ const m = c && (c.querySelector('img') || c.querySelector('video')); "
-                 f"return m ? (m.getAttribute('src') || '') : (c ? 'sin-media' : ''); }})(cards[0])) !== {_json.dumps(_ANTES['clave'])}))")`],
-  ["flow_provider/wait.py", [`        if await error_card_count(page) > pre_errors:
+                 f"return m ? (m.getAttribute('src') || '') : (c ? 'sin-media' : ''); }})(cards[0]) !== {_json.dumps(_ANTES['clave'])}))")`],
+  ["flow_provider/wait.py", [`        if elapsed >= 8:
+            try:
+                from .agente import JS_RESPUESTA
+                _r = await page.evaluate(JS_RESPUESTA, _ANTES.get("burbujas", 0))
+            except Exception:
+                _r = ""
+            if _r:
+                raise Exception(f"AGENTE: el agente de Flow no generó y respondió: {_r}")
+        if await error_card_count(page) > pre_errors:
+            print(f"    [wait] Detectada card de error de generación en Flow.")`, `        if await error_card_count(page) > pre_errors:
             print(f"    [wait] Detectada card de error de generación en Flow.")`],
-    `        if elapsed >= 8:
+    `        if elapsed >= 15:
             try:
                 from .agente import JS_RESPUESTA
                 _r = await page.evaluate(JS_RESPUESTA, _ANTES.get("burbujas", 0))
