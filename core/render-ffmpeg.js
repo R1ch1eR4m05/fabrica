@@ -29,8 +29,9 @@ export function camara(mov, p) {
   }
 }
 // lo mismo como expresión de ffmpeg (on = fotograma, N = total)
-function exprCamara(mov, N) {
-  const p = `(on/${Math.max(1, N - 1)})`, z1 = (1 + ZOOM).toFixed(4);
+// (off/total: si la escena sigue con la misma imagen que la anterior, el movimiento continúa donde se quedó, sin brincar)
+function exprCamara(mov, N, off = 0, total = N) {
+  const p = `((on+${off})/${Math.max(1, total - 1)})`, z1 = (1 + ZOOM).toFixed(4);
   const zz = { acercar: `1+${ZOOM}*${p}`, alejar: `${z1}-${ZOOM}*${p}`, quieto: "1.04" }[mov] || z1;
   const fx = { derecha: p, izquierda: `(1-${p})` }[mov] || "0.5";
   const fy = { subir: `(1-${p})`, acercar: "0.45" }[mov] || "0.5";
@@ -116,6 +117,14 @@ export async function renderImagenes({ id, guion, tiempos, estilo, fmt, tmp, avi
   // escala de trabajo para que el movimiento lento no tiemble (zoompan redondea a píxeles enteros)
   const W2 = fmt.w * 2, H2 = fmt.h * 2;
   const n = tiempos.escenas.length, segs = [];
+  // grupos: una escena "misma" con el mismo archivo que la anterior es la continuación de la misma toma
+  const fr = tiempos.escenas.map((te, k) => { const ini = k === 0 ? 0 : te.ini, fin = k < n - 1 ? tiempos.escenas[k + 1].ini : tiempos.duracion; return Math.max(0, Math.round(fin * fps) - Math.round(ini * fps)); });
+  const grupo = []; // [k] → { cabeza, off (cuadros antes en la toma), total (cuadros de toda la toma) }
+  for (let k = 0; k < n; k++) {
+    const sigue = k > 0 && guion.escenas[k]?.misma && info[k]?.archivo && info[k].archivo === info[k - 1]?.archivo;
+    grupo[k] = sigue ? { cabeza: grupo[k - 1].cabeza, off: grupo[k - 1].off + fr[k - 1] } : { cabeza: k, off: 0 };
+  }
+  for (let k = n - 1; k >= 0; k--) grupo[k].total = (k + 1 < n && grupo[k + 1].cabeza === grupo[k].cabeza) ? grupo[k + 1].total : grupo[k].off + fr[k];
   const tareas = tiempos.escenas.map((te, k) => async () => {
     const ini = k === 0 ? 0 : te.ini, fin = k < n - 1 ? tiempos.escenas[k + 1].ini : tiempos.duracion;
     const f0 = Math.round(ini * fps), f1 = Math.round(fin * fps), N = f1 - f0;
@@ -127,14 +136,16 @@ export async function renderImagenes({ id, guion, tiempos, estilo, fmt, tmp, avi
     const subs = !conSubs ? "null" : `setpts=PTS+${(f0 / fps).toFixed(4)}/TB,ass='${rutaFiltro(ass)}':fontsdir='${rutaFiltro(fuentes)}',setpts=PTS-STARTPTS`;
     const sal = ["-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p", "-r", String(fps), "-threads", "2", seg];
     if (src && fs.existsSync(src) && c.tipo === "imagen") {
-      const m = exprCamara(movimiento(e, k + 1), N);
+      const G = grupo[k], m = exprCamara(movimiento(guion.escenas[G.cabeza] || e, G.cabeza + 1), N, G.off, G.total);
       await ffmpeg(["-loop", "1", "-framerate", String(fps), "-t", (N / fps).toFixed(4), "-i", src, "-vf",
         `scale=${W2}:${H2}:force_original_aspect_ratio=increase,crop=${W2}:${H2},zoompan=z='${m.z}':x='${m.x}':y='${m.y}':d=1:s=${fmt.w}x${fmt.h}:fps=${fps},` +
         `trim=end_frame=${N},${subs}`, ...sal]);
     } else if (src && fs.existsSync(src) && c.tipo === "video") {
       // el clip (8 s) casi nunca dura lo mismo que la escena: se estira hasta 1.4x (movimiento más lento y suave) y, si aún falta, se sostiene el último cuadro
-      const dv = await duracion(src).catch(() => 0), objetivo = N / fps, f = dv > 0 ? Math.min(1.4, Math.max(1, objetivo / dv)) : 1;
-      await ffmpeg(["-i", src, "-vf",
+      // si la escena sigue la misma toma, el clip continúa donde se quedó (no vuelve al inicio); si ya se acabó, se sostiene su último cuadro
+      const G = grupo[k], dv = await duracion(src).catch(() => 0), objetivo = N / fps, f = dv > 0 ? Math.min(1.4, Math.max(1, G.total / fps / dv)) : 1;
+      const desde = dv > 0 ? Math.min(G.off / fps / f, Math.max(0, dv - 0.15)) : 0;
+      await ffmpeg([...(desde > 0 ? ["-ss", desde.toFixed(3)] : []), "-i", src, "-vf",
         `fps=${fps},setpts=${f.toFixed(4)}*PTS,fps=${fps},tpad=stop_mode=clone:stop_duration=${Math.max(0, objetivo).toFixed(2)},scale=${fmt.w}:${fmt.h}:force_original_aspect_ratio=increase,crop=${fmt.w}:${fmt.h},trim=end_frame=${N},${subs}`, ...sal]);
     } else {
       await ffmpeg(["-f", "lavfi", "-i", `color=c=${fondo}:s=${fmt.w}x${fmt.h}:r=${fps}`, "-vf", `trim=end_frame=${N},vignette=PI/5,${subs}`, ...sal]);
