@@ -2,6 +2,7 @@
 // Orden por escena: tu clip (clips/escena-N.*) → clip de Google Flow (si lo generaste) → búsqueda en Pexels/Pixabay → dibujo animado.
 // Los clips se convierten una vez a fotogramas (clips/N/00001.jpg…) del largo exacto de la escena, para que el render sea exacto.
 import fs from "node:fs";
+import { hayIA, pedir } from "./llm.js";
 import path from "node:path";
 import { CFG, FORMATOS } from "./config.js";
 import { dirProyecto, leer, guardar } from "./proyectos.js";
@@ -82,27 +83,73 @@ async function clipsConSkill(id, avisar, { soloFaltantes = true, conCuadros = tr
   const conRef = conCuadros && g.personajes;
   // la imagen de personajes se guarda la primera vez y se reutiliza al rehacer escenas (así salen iguales que las demás)
   const refGuardada = conRef && fs.existsSync(dirClips(id)) && fs.readdirSync(dirClips(id)).find((x) => /^personajes\.(png|jpe?g|webp)$/i.test(x));
-  const ref = refGuardada ? path.join(dirClips(id), refGuardada) : "personajes";
-  if (conRef && !refGuardada) jobs.push({ type: "image", name: "personajes", prompt: `${estilo}. Character reference, full body, front view, neutral pose, plain soft background, no text: ${g.personajes}` });
+  let ref = refGuardada ? path.join(dirClips(id), refGuardada) : "personajes";
   const fin = (x) => String(x || "").trim().replace(/([^.!?])$/, "$1.");
-  for (const { e, n } of pend) {
-    if (conCuadros) {
-      jobs.push({ type: "image", name: `cuadro-${n}`, ...(conRef ? { image: ref } : {}), prompt: `${estilo}. ${g.personajes ? "Same characters as the reference, identical faces, hair and clothes. " : ""}First frame of the shot: ${fin(e.flowPrompt)} No text, no logos.` });
-      jobs.push({ type: "video", name: `escena-${n}`, start: `cuadro-${n}`, prompt: `${fin(e.flowPrompt)} Keep the characters exactly as in the first frame. Smooth cinematic camera, no text.` });
-    } else jobs.push({ type: "video", name: `escena-${n}`, prompt: promptFlow(g, e) });
-  }
-  avisar({ paso: "fondo", progreso: 0.02, msg: `Flow: ${jobs.length} trabajos (${pend.length} escenas)…` });
-  const { archivos, fallos } = await lote(id, `historia-${Date.now()}`, jobs, (a) => avisar({ ...a, paso: "fondo" }), { ratio });
+  const dialogos = pr.opciones?.modo === "dialogos";
+  // modo diálogos: los personajes hablan en el clip (Veo genera la voz); se piden las líneas tal cual y se describe cada voz
+  const hablan = (e) => {
+    if (!dialogos) return "";
+    const ls = (e.dialogo || []).filter((l) => l?.texto).map((l) => `${l.quien || "Character"} says in Mexican Spanish${l.tono ? ` (${l.tono})` : ""}: "${String(l.texto).trim()}"`);
+    const vs = Object.entries(g.voces || {}).map(([q, d]) => `${q}: ${d}`).join("; ");
+    return ls.length ? ` Spoken dialogue, lip-synced to the mouths, one line after another: ${ls.join(" ")}${vs ? ` Voices (keep them identical in every clip): ${vs}.` : ""} No background music, no subtitles.` : "";
+  };
+  const trabajos = ({ e, n }, cuadro) => {
+    if (!conCuadros) return [{ type: "video", name: `escena-${n}`, prompt: promptFlow(g, e) + hablan(e) }];
+    const out = [];
+    if (!cuadro) out.push({ type: "image", name: `cuadro-${n}`, ...(conRef ? { image: ref } : {}), prompt: `${estilo}. ${g.personajes ? "Same characters as the reference, identical faces, hair and clothes. " : ""}First frame of the shot: ${fin(e.flowPrompt)} No text, no logos.` });
+    out.push({ type: "video", name: `escena-${n}`, start: cuadro || `cuadro-${n}`, prompt: `${fin(e.flowPrompt)} Keep the characters exactly as in the first frame. Smooth cinematic camera, no text.${hablan(e)}` });
+    return out;
+  };
+  // Flow a veces bloquea una toma por sus políticas de contenido ("No se pudo completar la acción"; no cobra) o se satura.
+  // Hasta 3 vueltas, solo con lo que falta: si fue política, el prompt de esa escena se reescribe más suave (misma escena,
+  // palabras neutras); si fue saturación o tiempo, se repite igual tras una pausa. Lo que siga sin salir se avisa con su motivo.
   fs.mkdirSync(dirClips(id), { recursive: true });
-  if (archivos.personajes && fs.existsSync(archivos.personajes)) fs.copyFileSync(archivos.personajes, path.join(dirClips(id), `personajes${path.extname(archivos.personajes).toLowerCase()}`));
+  const todos = {}, errores = {};
+  let porHacer = pend.map((x) => ({ ...x, suaves: 0 }));
+  for (let ronda = 1; ronda <= 3 && porHacer.length; ronda++) {
+    if (ronda > 1) {
+      avisar({ paso: "fondo", progreso: 0.9, msg: `Flow dejó ${porHacer.length} escena(s) sin salir; espero 45 s y reintento (vuelta ${ronda} de 3)…` });
+      await new Promise((r) => setTimeout(r, 45000));
+    }
+    const jobs = [];
+    if (conRef && !refGuardada && !todos.personajes) jobs.push({ type: "image", name: "personajes", prompt: `${estilo}. Character reference, full body, front view, neutral pose, plain soft background, no text: ${g.personajes}` });
+    for (const x of porHacer) jobs.push(...trabajos(x, todos[`cuadro-${x.n}`]));
+    avisar({ paso: "fondo", progreso: 0.02, msg: `Flow: ${jobs.length} trabajos (${porHacer.length} escenas${ronda > 1 ? `, vuelta ${ronda}` : ""})…` });
+    let r;
+    try { r = await lote(id, `historia-${Date.now()}`, jobs, (a) => avisar({ ...a, paso: "fondo" }), { ratio, minutos: Math.max(60, jobs.length * 4) }); }
+    catch (err) { if (Object.keys(todos).some((k) => k.startsWith("escena-"))) break; throw err; }
+    Object.assign(todos, r.archivos);
+    for (const f of r.fallos) { const m = f.match(/^([\w-]+): ([\s\S]*)/); if (m) errores[m[1]] = m[2]; }
+    if (todos.personajes && !refGuardada) ref = todos.personajes;
+    porHacer = porHacer.filter((x) => !todos[`escena-${x.n}`]);
+    for (const x of porHacer) {
+      if (esPolitica(errores[`cuadro-${x.n}`]) || esPolitica(errores[`escena-${x.n}`])) {
+        avisar({ paso: "fondo", progreso: 0.9, msg: `Escena ${x.n}: Flow la bloqueó por políticas; la reescribo más suave y reintento…` });
+        x.suaves++; x.e = { ...x.e, flowPrompt: await suavizarPrompt(x.e.flowPrompt, x.suaves) };
+        delete todos[`cuadro-${x.n}`]; // el cuadro nuevo sale del prompt suave
+      }
+    }
+  }
+  if (todos.personajes && fs.existsSync(todos.personajes)) fs.copyFileSync(todos.personajes, path.join(dirClips(id), `personajes${path.extname(todos.personajes).toLowerCase()}`));
   let generados = 0;
   for (const { n } of pend) {
-    const f = archivos[`escena-${n}`]; if (!f) continue;
+    const f = todos[`escena-${n}`]; if (!f) continue;
     for (const x of fs.readdirSync(dirClips(id))) if (x.startsWith(`escena-${n}.`)) fs.rmSync(path.join(dirClips(id), x));
     fs.copyFileSync(f, path.join(dirClips(id), `escena-${n}${path.extname(f).toLowerCase()}`)); generados++;
   }
+  const fallos = porHacer.map((x) => `escena-${x.n}: ${esPolitica(errores[`cuadro-${x.n}`]) || esPolitica(errores[`escena-${x.n}`]) ? "Flow la bloqueó por políticas de contenido (aun suavizada)" : String(errores[`escena-${x.n}`] || errores[`cuadro-${x.n}`] || "no salió").split("\n")[0].slice(0, 140)}`);
   if (!generados) throw new Error("Flow no entregó clips: " + fallos.join(" | "));
   return { generados, fallos };
+}
+
+const esPolitica = (m) => /POLITICA/.test(m || "");
+// reescribe una toma bloqueada por políticas: misma escena y emoción, en palabras neutras. Sin IA, limpia las palabras que más disparan el filtro.
+async function suavizarPrompt(prompt, intento) {
+  const SIS = "You rewrite one shot description for an AI image/video generator so it passes a strict content-safety filter. Keep the same story beat, characters, setting and camera move, but describe it in gentle, wholesome, neutral terms. Remove or replace anything about danger, injury, crying, screaming, panic, fear, blood, fighting, a child alone or in distress, bathing, nightwear or beds in close-up, real names and brands. Show emotion through calm facial expressions and body language. Max 60 words. Return ONLY the rewritten prompt, in English.";
+  if (hayIA()) {
+    try { const r = await pedir(SIS, `Attempt ${intento}${intento > 1 ? " (be even more neutral)" : ""}. Shot: ${prompt}`); const t = String(r.texto || "").trim().replace(/^["']|["']$/g, ""); if (t.length > 20) return t; } catch {}
+  }
+  return String(prompt).replace(/\b(crying|cries|tears?|screaming|screams?|panic(ked)?|terrified|scared|afraid|danger(ous)?|injur\w*|blood\w*|fight\w*|alone|lost|trapped|pajamas|sleepwear)\b/gi, (w) => ({ crying: "looking sad", cries: "looks sad", scared: "uneasy", afraid: "uneasy", alone: "quiet", lost: "thoughtful", pajamas: "cozy clothes", sleepwear: "cozy clothes" }[w.toLowerCase()] || "calm"));
 }
 
 // lo que sale de Flow entra al banco de imágenes en ese momento (y, con espejo, se manda solo al VPS)

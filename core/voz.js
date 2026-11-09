@@ -100,7 +100,10 @@ export async function hacerVoz(id, avisar = () => {}) {
   const vozId = proyecto.vozId || leerAjustes().vozPorEstilo?.[estilo.id] || vozDeEstilo(estilo.id);
   const sinVoz = proyecto.conVoz === false;          // el usuario eligió video sin voz (solo música)
   const modelo = modeloDe(estilo.id);
-  const prueba = sinVoz || !hayVozReal(modelo, vozId);
+  // modo diálogos (Historia con Flow): hablan los personajes en cada clip de Flow; no se usa ElevenLabs, la pista de voz sale del audio de los clips
+  const dialogos = (proyecto.opciones || {}).modo === "dialogos" && !sinVoz;
+  const HIS = dialogos ? await import("./historia.js") : null;
+  const prueba = !dialogos && (sinVoz || !hayVozReal(modelo, vozId));
   // ritmo del texto cuando va sin voz: Normal / Rápido / Pausado (opción del proyecto)
   const vel = { rapido: 1.35, pausado: 0.78 }[(proyecto.opciones || {}).ritmo] || 1;
   const base = estilo.lectura || { porSegundo: 2.2, extra: 1.4 };
@@ -111,7 +114,7 @@ export async function hacerVoz(id, avisar = () => {}) {
 
   const piezas = [];   // wavs en orden
   const tiempos = [];  // por escena
-  let t = estilo.inicioVoz ?? 0.4; // un respiro al principio (Levania: 0, la voz entra en el primer cuadro)
+  let t = dialogos ? 0 : (estilo.inicioVoz ?? 0.4); // un respiro al principio (Levania: 0, la voz entra en el primer cuadro)
   if (t > 0) piezas.push(await silencio(tmp, "ini", t));
 
   for (let k = 0; k < escenas.length; k++) {
@@ -120,7 +123,17 @@ export async function hacerVoz(id, avisar = () => {}) {
     const pal = palabrasCon(texto);
     avisar({ paso: "voz", progreso: k / escenas.length, msg: `Voz: escena ${k + 1} de ${escenas.length}` });
     let dur, palabras;
-    if (!texto) {
+    if (dialogos) {
+      const clip = HIS.clipDeEscena(id, k + 1);
+      if (!clip || !/\.(mp4|mov|webm|m4v)$/i.test(clip)) throw new Error(`Modo diálogos: falta el clip de video de la escena ${k + 1}. La voz sale de los clips: primero genéralos en Flow.`);
+      const wav = path.join(tmp, `e${k}.wav`);
+      try { await ffmpeg(["-i", clip, "-vn", "-ar", String(SR), "-ac", "1", wav]); }
+      catch { throw new Error(`El clip de la escena ${k + 1} no trae audio (Flow lo generó sin sonido). Vuélvelo a generar con un modelo Veo que incluya audio.`); }
+      dur = await duracion(wav);
+      piezas.push(wav);
+      const util = Math.max(0.5, dur - 0.7), paso = util / Math.max(1, pal.length);
+      palabras = pal.map((p, j) => ({ w: p.w, t0: t + 0.35 + j * paso, t1: t + 0.35 + (j + 1) * paso }));
+    } else if (!texto) {
       dur = e.duracion ?? 2.5;
       piezas.push(await silencio(tmp, `e${k}`, dur));
       palabras = [];
@@ -139,7 +152,7 @@ export async function hacerVoz(id, avisar = () => {}) {
       const ini = al.character_start_times_seconds, fin = al.character_end_times_seconds;
       palabras = pal.map((p) => ({ w: p.w, t0: t + (ini[p.i] ?? 0), t1: t + (fin[Math.min(p.f, fin.length - 1)] ?? dur) }));
     }
-    const pausa = e.pausa ?? pausaBase;
+    const pausa = dialogos ? 0 : (e.pausa ?? pausaBase);
     tiempos.push({ ini: t, finVoz: t + dur, fin: t + dur + pausa, palabras });
     t += dur;
     if (pausa > 0) { piezas.push(await silencio(tmp, `p${k}`, pausa)); t += pausa; }

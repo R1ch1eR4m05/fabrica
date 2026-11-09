@@ -68,6 +68,22 @@ const PARCHES = [
     page = await get_page()
     from .agente import envolver
     prompt = await envolver(page, prompt)`],
+  // el Flow nuevo avisa con "No se pudo completar la acción" (política de contenido) y no con "No se pudo generar": se reconoce al instante
+  ["flow_provider/wait.py", [`SEL_ERROR_TEXT = ':text("No se pudo generar")'`], `SEL_ERROR_TEXT = ':text("No se pudo generar"), :text("No se pudo completar")'`],
+  ["flow_provider/wait.py", [`_ERROR_CARD_RE = re.compile(r"No se pudo generar|Se produjo un error", re.IGNORECASE)`], `_ERROR_CARD_RE = re.compile(r"No se pudo generar|No se pudo completar|Se produjo un error", re.IGNORECASE)`],
+  // si la tarjeta de error habla de políticas, no se reenvía lo mismo (volvería a fallar): se corta con "POLITICA:" y la fábrica reintenta con el prompt suavizado
+  ["flow_provider/wait.py", [`        if intento >= max_retries:
+            raise Exception(
+                f"Generación de {kind} falló {max_retries + 1} veces seguidas. "`],
+    `        try:
+            _txt = await page.locator(SEL_RESULT_CARD).first.inner_text(timeout=3000)
+        except Exception:
+            _txt = ""
+        if re.search(r"pol[ií]tica", _txt, re.IGNORECASE):
+            raise Exception("POLITICA: Flow bloqueó la generación por sus políticas de contenido")
+        if intento >= max_retries:
+            raise Exception(
+                f"Generación de {kind} falló {max_retries + 1} veces seguidas. "`],
 ];
 export function parcharSkill() {
   let n = 0;

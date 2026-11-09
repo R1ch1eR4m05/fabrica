@@ -66,6 +66,10 @@ async def _clic_toggle(vista, grupo, texto):
 async def configurar(page, modo, aspect_ratio="9:16", count=1, model=None) -> None:
     """Abre 'Configuración de agentes', pone generar sin confirmar, proporción, cantidad y modelo, y guarda."""
     _estado["modo"] = modo
+    if await page.locator(".cdk-overlay-backdrop-showing").count() > 0:  # una ventana abierta de un trabajo anterior tapa todo
+        for _ in range(3):
+            await page.keyboard.press("Escape")
+            await page.wait_for_timeout(300)
     clave = (page.url, modo, aspect_ratio, count, model)
     if clave in _estado["configurado"]:
         return
@@ -103,9 +107,23 @@ async def configurar(page, modo, aspect_ratio="9:16", count=1, model=None) -> No
 
 async def adjuntar_imagen(page, ruta: str) -> None:
     """Video desde imagen en el Flow nuevo: sube la imagen con '+' (Agregar ingredientes) y la deja adjunta al cuadro del agente."""
-    import re
+    import re, os
     ruta = str(ruta)
     print(f"    [agente] Adjuntando imagen: {ruta}")
+    if not os.path.isfile(ruta):
+        raise RuntimeError(f"No encuentro la imagen a adjuntar: {ruta} (la imagen anterior no salió).")
+    try:
+        await _adjuntar(page, ruta)
+    except Exception:
+        # que un fallo no deje la ventana de selección abierta: tapaba los botones de todos los trabajos siguientes
+        for _ in range(3):
+            await page.keyboard.press("Escape")
+            await page.wait_for_timeout(300)
+        raise
+
+
+async def _adjuntar(page, ruta: str) -> None:
+    import re
     antes = await page.locator(SEL_CHIP).count()
     await page.locator(SEL_AGREGAR).first.click(timeout=10_000)
     pop = page.locator(SEL_POPOVER).first

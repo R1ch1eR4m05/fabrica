@@ -2,24 +2,76 @@
   "nombre": "Historia con Flow",
   "descripcion": "Micro-historia de 25 a 40 s con escenas animadas en Google Flow (o tus clips), narración, subtítulos grandes y música. Para adaptar a una historia lo que ya fue viral.",
   "orden": 4,
-  "formatos": ["9:16", "16:9"],
-  "duraciones": { "corto": "25 a 40 segundos (5 a 7 escenas, 70 a 100 palabras de narración)", "largo": "60 a 90 segundos" },
-  "tipos": ["escena", "cierre"],
+  "formatos": [
+    "9:16",
+    "16:9"
+  ],
+  "duraciones": {
+    "corto": "25 a 40 segundos (5 a 7 escenas, 70 a 100 palabras de narración)",
+    "largo": "60 a 90 segundos"
+  },
+  "tipos": [
+    "escena",
+    "cierre"
+  ],
   "visuales": [],
-  "camposAvanzados": ["flowPrompt", "buscar", "dibujo"],
+  "camposAvanzados": [
+    "flowPrompt",
+    "buscar",
+    "dibujo"
+  ],
   "preparar": "historia",
   "inicioVoz": 0.15,
   "pausaEntreEscenas": 0.2,
   "colaFinal": 1.5,
   "opciones": [
-    { "clave": "marca", "nombre": "Marca", "valores": { "levania": "Levania", "ninguna": "Sin marca" } },
-    { "clave": "subtitulos", "nombre": "Subtítulos", "valores": { "grandes": "Grandes palabra por palabra", "frase": "Frase completa" } }
+    {
+      "clave": "modo",
+      "nombre": "Cómo se cuenta",
+      "valores": {
+        "narrada": "Narrada (voz en off)",
+        "dialogos": "Con diálogos (hablan los personajes)"
+      }
+    },
+    {
+      "clave": "marca",
+      "nombre": "Marca",
+      "valores": {
+        "levania": "Levania",
+        "ninguna": "Sin marca"
+      }
+    },
+    {
+      "clave": "subtitulos",
+      "nombre": "Subtítulos",
+      "valores": {
+        "grandes": "Grandes palabra por palabra",
+        "frase": "Frase completa"
+      }
+    }
   ],
-  "sonido": { "ambiente": "suave", "volumenAmbiente": 0.14, "golpesEn": [], "efectosPorTipo": { "escena": "whoosh", "cierre": "pop" } },
+  "sonido": {
+    "ambiente": "suave",
+    "volumenAmbiente": 0.14,
+    "golpesEn": [],
+    "efectosPorTipo": {
+      "escena": "whoosh",
+      "cierre": "pop"
+    }
+  },
   "musicaIA": {
     "prompt": "Emotional cinematic underscore for a short family story: warm felt piano, soft strings, gentle swells, intimate and hopeful, sits under a narrating voice.",
     "reusar": false,
-    "parametros": { "animo": "esperanzador", "ritmo": "lento", "energia": "media", "instrumentos": ["piano", "cuerdas", "pads"] }
+    "parametros": {
+      "animo": "esperanzador",
+      "ritmo": "lento",
+      "energia": "media",
+      "instrumentos": [
+        "piano",
+        "cuerdas",
+        "pads"
+      ]
+    }
   },
   "portadaEn": 1.0,
   "vozSugerida": "Narradora cálida (para Levania, la misma voz de mamá mexicana: VOZ_HISTORIA_FLOW en el .env).",

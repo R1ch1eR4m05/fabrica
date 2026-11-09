@@ -25,3 +25,10 @@ Micro-historia vertical (9:16) de 25 a 40 s que adapta a una historia algo que *
 - Algo cambia cada 2-3 s: cada escena es una toma distinta (plano, ángulo o momento).
 - Nada de niños generados con IA presentados como reales: es una historia ilustrativa.
 - Nada de promesas médicas ni de culpa hacia las mamás.
+
+## Modo con diálogos (opción "Cómo se cuenta" al crear el proyecto)
+Si el proyecto está en "Con diálogos", no hay narrador: hablan los personajes dentro de cada clip de Flow (Veo genera voz y labios).
+- Cada escena trae `dialogo: [{ quien, texto, tono }]` (8 a 22 palabras en total, 8 s máximo) y `voz` con esas mismas líneas sin nombres, para los subtítulos.
+- El guion trae `voces` (inglés): una descripción fija de la voz de cada personaje, que la fábrica repite en cada clip para que no cambie.
+- La voz del video sale del audio de los clips (no se usa ElevenLabs): hay que generar primero los clips en Flow y luego "Voz + video".
+- Evita lo que el filtro de Flow bloquea (peligro, heridas, gritos, pánico, un niño solo o en apuros). Si aun así bloquea una toma, la fábrica la reescribe más suave y reintenta sola.

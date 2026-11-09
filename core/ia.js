@@ -32,6 +32,15 @@ const REGLA_GANCHO = `PRIORIDAD 1 — EL GANCHO. Antes que todo lo demás, escri
 - Su imagen (flowPrompt) debe ser la más potente y con movimiento del video: un rostro cercano, una acción, un contraste fuerte; nunca un paisaje vacío ni oscuro.
 Escribe 3 ganchos posibles en tu cabeza y usa el más fuerte.`;
 
+// Historia con Flow en modo diálogos: los personajes hablan dentro de cada clip (Veo genera la voz y el movimiento de labios)
+const REGLA_DIALOGOS = `MODO DIÁLOGOS (manda sobre la narración en off de las instrucciones del estilo): NO hay narrador; la historia se cuenta con lo que dicen los personajes en cada toma.
+- Cada escena dura máximo 8 segundos: 1 a 3 líneas de diálogo cortas en total (unas 8 a 22 palabras entre todas), en español de México, naturales, números en palabras.
+- Cada escena lleva "dialogo": [ { "quien": "Mamá", "texto": "...", "tono": "agotada pero cariñosa" } ] con los nombres de personaje iguales en todo el guion, y "voz" con las mismas líneas unidas, sin nombres (se usa para los subtítulos).
+- El guion lleva "voces" (inglés): una descripción fija de la voz de cada personaje, que se repite en cada clip para que no cambie. Ej.: { "Mamá": "warm Mexican woman's voice in her 30s, soft and a little tired", "Niño": "bright 6-year-old Mexican boy's voice" }.
+- El gancho (escena 1) ya es una línea hablada fuerte de 4 a 9 palabras.
+- Evita en los diálogos y en las tomas lo que el filtro de Flow suele bloquear: peligro, heridas, gritos, pánico, llanto fuerte, un niño solo o en apuros. La emoción se muestra con calma (mirada, silencio, un abrazo).
+- "flowPrompt" describe la acción y el plano, sin repetir las líneas habladas.`;
+
 function armar(proyecto, { cambios = "", guionActual = null } = {}) {
   const estilo = leerEstilo(proyecto.estilo);
   const sistema = [
@@ -39,6 +48,7 @@ function armar(proyecto, { cambios = "", guionActual = null } = {}) {
     `Estilo del video: ${estilo.nombre}.`,
     instruccionesGuion(proyecto.estilo),
     REGLA_GANCHO,
+    proyecto.opciones?.modo === "dialogos" ? REGLA_DIALOGOS : "",
     proyecto.segundos > 0
       ? `Formato: ${proyecto.formato}. Duración EXACTA pedida: unos ${proyecto.segundos} segundos de voz (± 10%), es decir, alrededor de ${Math.max(3, Math.round(proyecto.segundos / 5))} escenas. Esta indicación manda sobre cualquier otra duración que aparezca arriba.`
       : `Formato: ${proyecto.formato}. Duración: ${proyecto.duracion === "largo" ? estilo.duraciones?.largo || "6 a 10 minutos" : estilo.duraciones?.corto || "45 a 90 segundos"}.`,
