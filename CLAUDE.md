@@ -163,3 +163,8 @@ Al terminar cada video (y con "Revisar" en el panel o `node fabrica.js revisar <
 
 ## Ver los videos desde el celular (espejo laptop → VPS)
 Con `ESPEJO_URL`/`ESPEJO_CLAVE` en la laptop, al terminar cada paso de un video la laptop manda al VPS el proyecto completo (guion, voz, imágenes, copy, portada, video final y `listos/`). Botón "Enviar al VPS" en cada video para forzarlo. Si el mismo id está en las dos máquinas, gana la laptop. La carpeta `flow/` (logs) no se manda.
+
+## Reparto fijo de Flow
+- `reparto/<marca>.json`: proyecto de Flow de la marca (`flowProyecto`) y sus personajes. En los guiones de Historia con Flow los personajes se llaman `@Nombre` en `flowPrompt`; la fábrica trabaja en ese proyecto y los convierte en menciones de Flow.
+- Flow no deja crear Personajes de niños: los niños van como imagen de referencia renombrada con su nombre (clic derecho → Cambiar nombre) en ese mismo proyecto.
+- Para agregar un personaje: créalo en el proyecto de Flow con ese nombre exacto y súmalo al JSON.

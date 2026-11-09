@@ -11,6 +11,7 @@ import { pexels, pixabay } from "./fondos.js";
 import { llamar, flowDisponible } from "./flow.js";
 import { flowSkillListo, lote } from "./flowskill.js";
 import { leerEstilo } from "./estilos.js";
+import { repartoDe, usaReparto, conMenciones, sinMenciones } from "./reparto.js";
 
 const FPS = 24;
 const VIDEO = /\.(mp4|mov|webm|m4v)$/i, IMAGEN = /\.(jpe?g|png|webp)$/i;
@@ -66,7 +67,7 @@ async function clipsConSkill(id, avisar, { soloFaltantes = true, conCuadros = tr
         avisar({ paso: "fondo", progreso: 0.9, msg: `Flow dejó ${faltan.length} sin salir; espero 90 s y reintento (vuelta ${vuelta} de 3)…` });
         await new Promise((r) => setTimeout(r, 90000));
       }
-      const jobs = faltan.map(({ e, n }) => ({ type: "image", name: `escena-${n}`, prompt: `${estilo}. ${String(e.flowPrompt).trim()} No text, no letters, no logos, no watermark.` }));
+      const jobs = faltan.map(({ e, n }) => ({ type: "image", name: `escena-${n}`, prompt: `${estilo}. ${sinMenciones(String(e.flowPrompt).trim())} One single continuous image, no collage, no split panels, no inset frames, no text, no letters, no logos, no watermark.` }));
       avisar({ paso: "fondo", progreso: 0.02, msg: `Flow: ${jobs.length} imágenes${vuelta > 1 ? ` (vuelta ${vuelta})` : ""}…` });
       let r;
       try { r = await lote(id, `imagenes-${Date.now()}`, jobs, (a) => avisar({ ...a, paso: "fondo" }), { ratio, minutos: Math.max(60, jobs.length * 3) }); }
@@ -80,7 +81,9 @@ async function clipsConSkill(id, avisar, { soloFaltantes = true, conCuadros = tr
     if (!generados) throw new Error("Flow no entregó imágenes: " + fallos.join(" | "));
     return { generados, fallos: faltan.map(({ n }) => `escena-${n}`), motivo: fallos[0] || "" };
   }
-  const conRef = conCuadros && g.personajes;
+  // reparto fijo de la marca (reparto/<marca>.json): se trabaja en su proyecto de Flow y cada personaje se llama con @
+  const rep = usaReparto(g, repartoDe(pr)) ? repartoDe(pr) : null;
+  const conRef = conCuadros && g.personajes && !rep;
   // la imagen de personajes se guarda la primera vez y se reutiliza al rehacer escenas (así salen iguales que las demás)
   const refGuardada = conRef && fs.existsSync(dirClips(id)) && fs.readdirSync(dirClips(id)).find((x) => /^personajes\.(png|jpe?g|webp)$/i.test(x));
   let ref = refGuardada ? path.join(dirClips(id), refGuardada) : "personajes";
@@ -89,15 +92,17 @@ async function clipsConSkill(id, avisar, { soloFaltantes = true, conCuadros = tr
   // modo diálogos: los personajes hablan en el clip (Veo genera la voz); se piden las líneas tal cual y se describe cada voz
   const hablan = (e) => {
     if (!dialogos) return "";
-    const ls = (e.dialogo || []).filter((l) => l?.texto).map((l) => `${l.quien || "Character"} says in Mexican Spanish${l.tono ? ` (${l.tono})` : ""}: "${String(l.texto).trim()}"`);
-    const vs = Object.entries(g.voces || {}).map(([q, d]) => `${q}: ${d}`).join("; ");
+    const ls = (e.dialogo || []).filter((l) => l?.texto).map((l) => `${rep && rep.personajes.some((p) => p.nombre === l.quien) ? `@{${l.quien}}` : l.quien || "Character"} says in Mexican Spanish${l.tono ? ` (${l.tono})` : ""}: "${String(l.texto).trim()}"`);
+    const vs = rep ? "" : Object.entries(g.voces || {}).map(([q, d]) => `${q}: ${d}`).join("; "); // con reparto, la voz va guardada en cada personaje de Flow
     return ls.length ? ` Spoken dialogue, lip-synced to the mouths, one line after another: ${ls.join(" ")}${vs ? ` Voices (keep them identical in every clip): ${vs}.` : ""} No background music, no subtitles.` : "";
   };
   const trabajos = ({ e, n }, cuadro) => {
-    if (!conCuadros) return [{ type: "video", name: `escena-${n}`, prompt: promptFlow(g, e) + hablan(e) }];
+    if (!conCuadros) return [{ type: "video", name: `escena-${n}`, prompt: (rep ? conMenciones(promptFlow(g, e), rep) : sinMenciones(promptFlow(g, e))) + hablan(e) }];
     const out = [];
-    if (!cuadro) out.push({ type: "image", name: `cuadro-${n}`, ...(conRef ? { image: ref } : {}), prompt: `${estilo}. ${g.personajes ? "Same characters as the reference, identical faces, hair and clothes. " : ""}First frame of the shot: ${fin(e.flowPrompt)} No text, no logos.` });
-    out.push({ type: "video", name: `escena-${n}`, start: cuadro || `cuadro-${n}`, prompt: `${fin(e.flowPrompt)} Keep the characters exactly as in the first frame. Smooth cinematic camera, no text.${hablan(e)}` });
+    if (!cuadro) out.push({ type: "image", name: `cuadro-${n}`, ...(conRef ? { image: ref } : {}), prompt: rep
+      ? `${estilo}. First frame of the shot, keep every mentioned character exactly as saved (same face, hair and clothes): ${fin(conMenciones(e.flowPrompt, rep))} One single continuous image, no collage, no split panels, no inset frames, no text, no letters, no logos, no watermark.`
+      : `${estilo}. ${g.personajes ? "Same characters as the reference, identical faces, hair and clothes. " : ""}First frame of the shot: ${fin(e.flowPrompt)} One single continuous image, no collage, no split panels, no inset frames, no text, no letters, no logos, no watermark.` });
+    out.push({ type: "video", name: `escena-${n}`, start: cuadro || `cuadro-${n}`, prompt: `${fin(rep && dialogos ? conMenciones(e.flowPrompt, rep) : sinMenciones(e.flowPrompt))} Keep the characters exactly as in the first frame. Smooth cinematic camera, no text.${hablan(e)}` });
     return out;
   };
   // Flow a veces bloquea una toma por sus políticas de contenido ("No se pudo completar la acción"; no cobra) o se satura.
@@ -116,7 +121,7 @@ async function clipsConSkill(id, avisar, { soloFaltantes = true, conCuadros = tr
     for (const x of porHacer) jobs.push(...trabajos(x, todos[`cuadro-${x.n}`]));
     avisar({ paso: "fondo", progreso: 0.02, msg: `Flow: ${jobs.length} trabajos (${porHacer.length} escenas${ronda > 1 ? `, vuelta ${ronda}` : ""})…` });
     let r;
-    try { r = await lote(id, `historia-${Date.now()}`, jobs, (a) => avisar({ ...a, paso: "fondo" }), { ratio, minutos: Math.max(60, jobs.length * 4) }); }
+    try { r = await lote(id, `historia-${Date.now()}`, jobs, (a) => avisar({ ...a, paso: "fondo" }), { ratio, minutos: Math.max(60, jobs.length * 4), proyecto: rep?.flowProyecto }); }
     catch (err) { if (Object.keys(todos).some((k) => k.startsWith("escena-"))) break; throw err; }
     Object.assign(todos, r.archivos);
     for (const f of r.fallos) { const m = f.match(/^([\w-]+): ([\s\S]*)/); if (m) errores[m[1]] = m[2]; }
@@ -145,7 +150,7 @@ async function clipsConSkill(id, avisar, { soloFaltantes = true, conCuadros = tr
 const esPolitica = (m) => /POLITICA/.test(m || "");
 // reescribe una toma bloqueada por políticas: misma escena y emoción, en palabras neutras. Sin IA, limpia las palabras que más disparan el filtro.
 async function suavizarPrompt(prompt, intento) {
-  const SIS = "You rewrite one shot description for an AI image/video generator so it passes a strict content-safety filter. Keep the same story beat, characters, setting and camera move, but describe it in gentle, wholesome, neutral terms. Remove or replace anything about danger, injury, crying, screaming, panic, fear, blood, fighting, a child alone or in distress, bathing, nightwear or beds in close-up, real names and brands. Show emotion through calm facial expressions and body language. Max 60 words. Return ONLY the rewritten prompt, in English.";
+  const SIS = "You rewrite one shot description for an AI image/video generator so it passes a strict content-safety filter. Keep the same story beat, characters, setting and camera move, but describe it in gentle, wholesome, neutral terms. Remove or replace anything about danger, injury, crying, screaming, panic, fear, blood, fighting, a child alone or in distress, bathing, nightwear or beds in close-up, real names and brands. Show emotion through calm facial expressions and body language. Max 60 words. Keep every @Name or @{Name} token exactly as written (they are saved characters). Return ONLY the rewritten prompt, in English.";
   if (hayIA()) {
     try { const r = await pedir(SIS, `Attempt ${intento}${intento > 1 ? " (be even more neutral)" : ""}. Shot: ${prompt}`); const t = String(r.texto || "").trim().replace(/^["']|["']$/g, ""); if (t.length > 20) return t; } catch {}
   }

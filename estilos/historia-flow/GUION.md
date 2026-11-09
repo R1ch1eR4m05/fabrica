@@ -32,3 +32,9 @@ Si el proyecto está en "Con diálogos", no hay narrador: hablan los personajes 
 - El guion trae `voces` (inglés): una descripción fija de la voz de cada personaje, que la fábrica repite en cada clip para que no cambie.
 - La voz del video sale del audio de los clips (no se usa ElevenLabs): hay que generar primero los clips en Flow y luego "Voz + video".
 - Evita lo que el filtro de Flow bloquea (peligro, heridas, gritos, pánico, un niño solo o en apuros). Si aun así bloquea una toma, la fábrica la reescribe más suave y reintenta sola.
+
+## Reparto fijo (Levania y las marcas que tengan `reparto/<marca>.json`)
+Los personajes viven guardados en el proyecto de Flow de la marca («Levania – Historias»): Mamá y Papá como Personajes (cara, cuerpo y voz), Hijo, Hija y Maestra como imágenes de referencia con ese nombre.
+- En `flowPrompt` llama a cada personaje con `@Nombre` exacto ("@Mamá hugs @Hijo at the school gate, close-up, slow push-in") y no describas su cara ni su ropa.
+- No hace falta `personajes`. Gente extra solo de fondo y sin nombre.
+- La fábrica genera todo dentro de ese proyecto y convierte cada `@Nombre` en la mención real de Flow.

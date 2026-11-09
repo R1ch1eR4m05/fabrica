@@ -84,6 +84,40 @@ const PARCHES = [
         if intento >= max_retries:
             raise Exception(
                 f"Generación de {kind} falló {max_retries + 1} veces seguidas. "`],
+  // reparto fijo: el lote entra al proyecto de Flow de la marca (donde viven los personajes) en vez de crear uno nuevo
+  ["flow.py", [`    await flow.startup()
+    try:
+        await flow.create_project()
+        for i, job in enumerate(jobs, 1):`], `    await flow.startup()
+    try:
+        if data.get("project_uuid"):
+            print(f"  Abriendo el proyecto de Flow {data['project_uuid']} (reparto fijo)")
+            await flow.navigate_to_project(data["project_uuid"])
+        else:
+            await flow.create_project()
+        for i, job in enumerate(jobs, 1):`],
+  // @{Nombre} en el prompt → mención real (chip @) del personaje o imagen guardada en el proyecto
+  ["flow_provider/prompt.py", [`    from .agente import envolver
+    prompt = await envolver(page, prompt)
+`], `    from .agente import envolver
+    prompt = await envolver(page, prompt)
+    if "@{" in prompt:
+        segs = []
+        for i, trozo in enumerate(re.split(r"@\{([^}]+)\}", prompt)):
+            if i % 2:
+                segs.append({"type": "mention", "name": trozo})
+            elif trozo:
+                segs.append({"type": "text", "value": trozo})
+        print(f"    [prompt] Prompt con {sum(1 for x in segs if x['type'] == 'mention')} mención(es) de personajes...")
+        return await submit_prompt_with_mentions(segs)
+`],
+  // tras elegir la mención, volver al final del texto sin hacer clic (un clic al centro podía caer sobre un chip y abrirlo)
+  ["flow_provider/prompt.py", [`    if await dialog.is_visible():
+        await page.keyboard.press("Escape")
+    await box.click()
+    await page.keyboard.press("Control+End")`], `    if await dialog.is_visible():
+        await page.keyboard.press("Escape")
+    await box.evaluate("el => { el.focus(); const r = document.createRange(); r.selectNodeContents(el); r.collapse(false); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }")`],
 ];
 export function parcharSkill() {
   let n = 0;
@@ -124,14 +158,14 @@ function rescatar(dir, nombres) {
 let flowActivo = null;
 export function matarFlow() { try { flowActivo?.kill(); } catch {} flowActivo = null; }
 
-export function lote(id, nombre, jobs, avisar = () => {}, { minutos = 60, ratio = "9:16" } = {}) {
+export function lote(id, nombre, jobs, avisar = () => {}, { minutos = 60, ratio = "9:16", proyecto = null } = {}) {
   return new Promise((ok, mal) => {
     if (!flowSkillListo()) return mal(new Error("No encuentro Google Flow Skill. Pon FLOW_SKILL_DIR en el .env (la carpeta donde está flow.py) y haz 'python flow.py login' una vez."));
     try { parcharSkill(); } catch {}
     const m = modelos(), dir = path.join(dirProyecto(id), "flow");
     fs.mkdirSync(dir, { recursive: true });
     const archivo = path.join(dir, `${nombre}.json`);
-    fs.writeFileSync(archivo, JSON.stringify({ project: nombre, defaults: { ratio, image_model: m.imagen, video_model: m.video, video_duration: "8s" }, jobs }, null, 2));
+    fs.writeFileSync(archivo, JSON.stringify({ project: nombre, ...(proyecto ? { project_uuid: proyecto } : {}), defaults: { ratio, image_model: m.imagen, video_model: m.video, video_duration: "8s" }, jobs }, null, 2));
     const p = spawn(CFG.python || (process.platform === "win32" ? "python" : "python3"), ["flow.py", "batch", archivo, "--out", dir], { cwd: CFG.flowSkillDir, env: { ...process.env, PYTHONIOENCODING: "utf-8" } });
     flowActivo = p;
     let salida = "", hechos = 0;

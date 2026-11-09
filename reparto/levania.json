@@ -1,0 +1,13 @@
+{
+  "marca": "levania",
+  "nota": "Reparto fijo de las historias de Levania. Viven en el proyecto de Flow «Levania – Historias». Los adultos son Personajes de Flow (cara, cuerpo y voz guardados); los niños y la maestra son imágenes de referencia con ese nombre (Flow no deja crear personajes de niños). Para agregar uno: créalo en ese proyecto de Flow con el mismo nombre y súmalo aquí.",
+  "flowProyecto": "8099e274-1432-494f-8c7c-536ad69392a8",
+  "estiloVisual": "Warm 3D animated film look (Pixar-like), soft cinematic lighting, cozy Mexican home and neighborhood, shallow depth of field",
+  "personajes": [
+    { "nombre": "Mamá", "tipo": "personaje", "voz": "Sulafat (cálida)", "descripcion": "mamá mexicana de 30 y pocos, chongo bajo ondulado castaño oscuro, suéter tejido amarillo mostaza, jeans, arracadas doradas pequeñas; cálida, paciente, un poco cansada" },
+    { "nombre": "Papá", "tipo": "personaje", "voz": "Achird (amigable)", "descripcion": "papá mexicano de 35, pelo negro corto, barba corta, camisa de mezclilla clara sobre playera blanca, jeans oscuros; tranquilo, juguetón" },
+    { "nombre": "Hijo", "tipo": "imagen", "descripcion": "niño de 6 años, pelo negro corto con remolino, polo escolar azul claro, short azul marino, tenis blancos, mochila roja; curioso y travieso" },
+    { "nombre": "Hija", "tipo": "imagen", "descripcion": "niña de 9 años, dos trenzas castaño oscuro con ligas amarillas, pecas, playera lila, jumper de mezclilla; dulce y observadora" },
+    { "nombre": "Maestra", "tipo": "imagen", "descripcion": "maestra de primaria de 40 y tantos, pelo corto rizado, lentes redondos, cárdigan verde, falda gris; cálida" }
+  ]
+}
