@@ -479,20 +479,39 @@ async function pintarGHL(p, leerForm, guardarAntes, forzar = false) {
   if (!S.info.ghl) { caja.innerHTML = `<b>Programar en GoHighLevel</b><div class="estado">Para programarlo desde aquí, pon <code>GHL_TOKEN</code> y <code>GHL_LOCATION_ID</code> en el .env (cómo sacarlos: .env.example) y reinicia la fábrica. Mientras, copia y pega cada texto en el Social Planner.</div>${hechos}`; return; }
   caja.innerHTML = `<b>Programar en GoHighLevel</b> <span class="estado" id="ghlEst">cargando tus cuentas…</span>${hechos}`;
   let cs; try { cs = await api("/api/ghl/cuentas" + (forzar ? "?forzar=1" : "")); } catch (e) { $("#ghlEst").textContent = e.message; return; }
-  const llaveCuentas = "ghlCuentas:" + (p.canal || "general"), guardadas = JSON.parse(localStorage.getItem(llaveCuentas) || localStorage.getItem("ghlCuentas") || "[]"); // cada canal (Monarca, Levania…) recuerda sus propias cuentas
+  // marcas: cada cuenta pertenece a una marca. Por nombre: la que diga "monarca" es de Monarca; las demás, de Levania.
+  // Se puede cambiar con "Asignar marcas" (queda guardado en este navegador).
+  const MARCAS = { levania: "Levania", monarca: "Monarca" };
+  const asignadas = JSON.parse(localStorage.getItem("ghlMarcaDe") || "{}");
+  const marcaDe = (a) => asignadas[a.id] || (/monarca/i.test(a.nombre) ? "monarca" : "levania");
+  const porDefecto = p.estilo === "reflexion-estatuas" || /monarca/i.test(`${p.canal || ""} ${p.nicho || ""}`) ? "monarca" : "levania";
   const manana = new Date(Date.now() + 864e5); manana.setHours(19, 0, 0, 0);
   const local = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 16);
   caja.innerHTML = `<b>Programar en GoHighLevel</b> <span class="estado">un post por red, cada uno con su texto de arriba</span> <button class="mini" id="ghlRecargar" title="Vuelve a pedir a GHL las cuentas conectadas (si acabas de conectar una)">Actualizar cuentas</button>${hechos}
-    <div class="fila" style="margin:8px 0;flex-wrap:wrap">${cs.length ? cs.map((a) => `<label class="estado" style="display:flex;gap:6px;align-items:center;${a.caducada ? "opacity:.5" : ""}"><input type="checkbox" value="${h(a.id)}" data-ghlc style="width:auto" ${guardadas.includes(a.id) && !a.caducada ? "checked" : ""} ${a.caducada ? "disabled title='Reconéctala en GHL'" : ""}>${h(a.plataforma)} · ${h(a.nombre)}</label>`).join("") : `<span class="estado">No hay redes conectadas en el Social Planner de esa subcuenta.</span>`}</div>
+    <div class="fila" style="margin:8px 0;align-items:center"><label class="estado">Marca</label><select id="ghlMarca" style="width:auto">${Object.entries(MARCAS).map(([k, n]) => `<option value="${k}" ${k === porDefecto ? "selected" : ""}>${n}</option>`).join("")}</select>
+      <button class="mini" id="ghlAsignar" title="Cambia a qué marca pertenece cada cuenta">Asignar marcas</button></div>
+    <div class="fila" id="ghlLista" style="margin:8px 0;flex-wrap:wrap"></div>
     <div class="fila"><label class="estado">Cuándo</label><input type="datetime-local" id="ghlFecha" value="${local(manana)}" style="width:auto"><button class="btn primario peq" id="ghlIr" ${cs.length ? "" : "disabled"}>Programar en GHL</button></div>`;
+  let asignando = false;
+  const pintarLista = () => {
+    const m = $("#ghlMarca").value, xs = asignando ? cs : cs.filter((a) => marcaDe(a) === m);
+    $("#ghlLista").innerHTML = !cs.length ? `<span class="estado">No hay redes conectadas en el Social Planner de esa subcuenta.</span>`
+      : asignando ? xs.map((a) => `<label class="estado" style="display:flex;gap:6px;align-items:center">${h(a.plataforma)} · ${h(a.nombre)} <select data-ghlm="${h(a.id)}" style="width:auto">${Object.entries(MARCAS).map(([k, n]) => `<option value="${k}" ${marcaDe(a) === k ? "selected" : ""}>${n}</option>`).join("")}</select></label>`).join("") + `<button class="mini" id="ghlAsignarOk">Listo</button>`
+      : xs.length ? xs.map((a) => `<label class="estado" style="display:flex;gap:6px;align-items:center;${a.caducada ? "opacity:.5" : ""}"><input type="checkbox" value="${h(a.id)}" data-ghlc style="width:auto" ${a.caducada ? "disabled title='Reconéctala en GHL'" : "checked"}>${h(a.plataforma)} · ${h(a.nombre)}</label>`).join("")
+      : `<span class="estado">${MARCAS[m]} todavía no tiene redes conectadas en GHL (o asígnalas con «Asignar marcas»).</span>`;
+    for (const sel of document.querySelectorAll("[data-ghlm]")) sel.onchange = () => { asignadas[sel.dataset.ghlm] = sel.value; localStorage.setItem("ghlMarcaDe", JSON.stringify(asignadas)); };
+    if ($("#ghlAsignarOk")) $("#ghlAsignarOk").onclick = () => { asignando = false; pintarLista(); };
+  };
+  $("#ghlMarca").onchange = pintarLista;
+  $("#ghlAsignar").onclick = () => { asignando = true; pintarLista(); };
+  pintarLista();
   $("#ghlRecargar").onclick = () => pintarGHL(p, leerForm, guardarAntes, true);
   $("#ghlIr").onclick = async () => {
     const ids = [...document.querySelectorAll("[data-ghlc]:checked")].map((x) => x.value);
     if (!ids.length) return avisar("Elige al menos una red.", true);
     const f = new Date($("#ghlFecha").value);
-    const redes = cs.filter((a) => ids.includes(a.id)).map((a) => a.plataforma).join(", ");
-    if (!confirm(`Se programará este video en: ${redes}\nEl ${f.toLocaleString("es-MX", { dateStyle: "full", timeStyle: "short" })}\ncon el texto de cada red tal como está arriba. ¿Seguir?`)) return;
-    localStorage.setItem(llaveCuentas, JSON.stringify(ids));
+    const redes = cs.filter((a) => ids.includes(a.id)).map((a) => `${a.plataforma} (${a.nombre})`).join(", ");
+    if (!confirm(`Se programará este video de ${$("#ghlMarca").selectedOptions[0].text.toUpperCase()} en: ${redes}\nEl ${f.toLocaleString("es-MX", { dateStyle: "full", timeStyle: "short" })}\ncon el texto de cada red tal como está arriba. ¿Seguir?`)) return;
     $("#ghlIr").disabled = true; $("#ghlIr").textContent = "Subiendo y programando…";
     try { await guardarAntes(); const r = await api(`/api/proyectos/${p.id}/ghl`, "POST", { cuentas: ids, fecha: f.toISOString() }); avisar(`Listo: programado en ${r.programados.map((x) => x.plataforma).join(", ")}. Revísalo en el Social Planner de GHL.`); abrir(p.id, { mantener: true }); }
     catch (e) { avisar(e.message, true); $("#ghlIr").disabled = false; $("#ghlIr").textContent = "Programar en GHL"; }
