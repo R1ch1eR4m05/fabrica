@@ -118,6 +118,18 @@ const PARCHES = [
     await page.keyboard.press("Control+End")`], `    if await dialog.is_visible():
         await page.keyboard.press("Escape")
     await box.evaluate("el => { el.focus(); const r = document.createRange(); r.selectNodeContents(el); r.collapse(false); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }")`],
+  // con la lista filtrada por el buscador, el clic en la fila solo la marca (vista previa): hay que confirmar con "Agregar a la instrucción"
+  ["flow_provider/prompt.py", [`    await row.click()
+    await chips.nth(before).wait_for(state="visible", timeout=8_000)`], `    await row.click()
+    try:
+        await chips.nth(before).wait_for(state="visible", timeout=2_500)
+    except Exception:
+        try:
+            await dialog.locator("button").filter(has_text=_ADD_TO_PROMPT_RE).first.click(timeout=5_000)
+            await chips.nth(before).wait_for(state="visible", timeout=8_000)
+        except Exception:
+            await page.keyboard.press("Escape")  # que no quede el menú abierto tapando los trabajos siguientes
+            raise`],
 ];
 export function parcharSkill() {
   let n = 0;
