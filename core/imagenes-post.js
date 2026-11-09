@@ -70,12 +70,32 @@ async function elegirFrase(guion) {
   } catch { return primera; }
 }
 
-function textoParaPublicar(guion, frase, carrusel) {
-  const s = guion.subir || {};
-  const tags = (s.hashtags || []).join(" ");
+// copy para publicar: el de la imagen suelta (qué significa la frase) y el del carrusel (la idea completa), más una línea por diapositiva
+const SIS_COPY = `Escribes el texto para publicar en Instagram/Facebook de imágenes de un video de reflexión (filosofía para la vida diaria) en español de México, tono sereno y cercano, sin clichés de gurú ni promesas.
+Recibes la frase de la imagen suelta, las frases del carrusel en orden y el tema del video.
+Devuelve SOLO JSON:
+{"suelta":"copy de la imagen suelta: 1 línea gancho + 2 a 4 líneas cortas que explican qué significa la frase y cómo se aplica en la vida diaria + 1 pregunta o invitación a guardarla/compartirla",
+ "carrusel":"copy del carrusel: 1 línea gancho que invite a deslizar + 3 a 5 líneas cortas con la idea completa que recorre las diapositivas + cierre que invite a guardar",
+ "diapositivas":["por cada diapositiva, en el mismo orden, 1 frase corta (máx 20 palabras) con lo que significa"],
+ "hashtags":["5 a 8 hashtags en español, sin repetir"]}
+No copies frases de otras cuentas. Separa las líneas con \\n. Sin emojis de más (máximo 2 por copy).`;
+
+async function copysConIA(guion, frase, carrusel) {
+  const base = { suelta: "", carrusel: "", diapositivas: carrusel.map(() => ""), hashtags: guion.subir?.hashtags || [] };
+  if (!(CFG.anthropicKey || CFG.geminiKey)) return base;
+  try {
+    const j = jsonDe((await pedir(SIS_COPY, `Tema: ${guion.titulo || guion.subir?.titulo || ""}\nImagen suelta: ${frase.o}\nCarrusel:\n${carrusel.map((x, i) => `${i + 1}. ${x.t}`).join("\n")}`, { maxTokens: 2500 })).texto);
+    return { suelta: String(j.suelta || ""), carrusel: String(j.carrusel || ""), diapositivas: carrusel.map((_, i) => String(j.diapositivas?.[i] || "")), hashtags: (j.hashtags?.length ? j.hashtags : base.hashtags).map((t) => (String(t).startsWith("#") ? t : "#" + t)) };
+  } catch (e) { console.warn("Copy de imágenes:", e.message); return base; }
+}
+
+function textoParaPublicar(guion, frase, carrusel, c) {
+  const tags = (c.hashtags || []).join(" ");
   return [
-    "— Imagen suelta —", frase.o, "", tags, "",
-    "— Carrusel —", `${carrusel[0]?.t || ""}`, "", "Desliza y guárdalo para cuando lo necesites.", "", tags,
+    "— Imagen suelta —", c.suelta || frase.o, "", tags, "",
+    "— Carrusel —", c.carrusel || `${carrusel[0]?.t || ""}\n\nDesliza y guárdalo para cuando lo necesites.`, "", tags, "",
+    c.diapositivas?.some(Boolean) ? "— Qué dice cada diapositiva —" : "",
+    ...(c.diapositivas?.some(Boolean) ? carrusel.map((x, i) => `${i + 1}. ${x.t}\n   → ${c.diapositivas[i]}`) : []),
   ].join("\n").replace(/\n{3,}/g, "\n\n").trim() + "\n";
 }
 
@@ -110,8 +130,10 @@ export async function sacarImagenes(id, { avisar = () => {} } = {}) {
     }
   } finally { await nav.close(); fs.rmSync(tmp, { recursive: true, force: true }); }
 
-  fs.writeFileSync(path.join(dir, "texto.txt"), textoParaPublicar(guion, frase, carrusel));
-  const info = { fecha: new Date().toISOString(), frase: frase.o, archivos: hechas };
+  avisar({ paso: "render", progreso: 0.97, msg: "Escribiendo el copy de cada imagen…" });
+  const c = await copysConIA(guion, frase, carrusel);
+  fs.writeFileSync(path.join(dir, "texto.txt"), textoParaPublicar(guion, frase, carrusel, c));
+  const info = { fecha: new Date().toISOString(), frase: frase.o, archivos: hechas, copy: { suelta: c.suelta, carrusel: c.carrusel, hashtags: c.hashtags, diapositivas: carrusel.map((x, i) => ({ texto: x.t, significado: c.diapositivas[i] })) } };
   fs.writeFileSync(path.join(dir, "imagenes.json"), JSON.stringify(info, null, 2));
   const dl = path.join(DIR_LISTOS, `${id}-imagenes`); fs.rmSync(dl, { recursive: true, force: true }); fs.mkdirSync(dl, { recursive: true });
   for (const f of [...hechas, "texto.txt"]) fs.copyFileSync(path.join(dir, f), path.join(dl, f));
