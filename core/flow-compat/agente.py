@@ -35,7 +35,25 @@ TOGGLES = {
 
 SEL_AGREGAR = 'flow-agent-panel button[aria-label="Agregar ingredientes al cuadro de instrucción"]'
 SEL_POPOVER = "flow-add-menu-popover-content"
-SEL_CHIP = 'flow-agent-panel span.mention-chip, flow-agent-panel flow-rich-text-editor img, flow-agent-panel [class*="ingredient"] img, flow-agent-panel [class*="attachment"] img'
+# solo lo adjunto en la caja de abajo (antes contaba también los chips del historial del chat y fallaba al azar)
+SEL_CHIP = 'flow-agent-panel flow-creative-agent-prompt-box img, flow-agent-panel flow-creative-agent-prompt-box flow-image-ingredient-chip'
+
+# estado de la cuadrícula y del chat antes de enviar (lo usa wait.py: la cuadrícula se virtualiza y ya no crece en proyectos grandes)
+JS_ESTADO = """() => {
+  const c = document.querySelector('flow-grid-tile-container, flow-tile-container, [aria-roledescription="draggable"]');
+  const m = c && (c.querySelector('img') || c.querySelector('video'));
+  return { clave: m ? (m.getAttribute('src') || '') : (c ? 'sin-media' : ''),
+           burbujas: document.querySelectorAll('flow-agent-panel flow-chat-bubble').length };
+}"""
+# el agente contestó con texto en vez de generar (pregunta, se niega, pide elegir): se corta en segundos, no a los 3 minutos
+JS_RESPUESTA = """(antes) => {
+  const b = [...document.querySelectorAll('flow-agent-panel flow-chat-bubble')];
+  if (b.length < antes + 2) return '';
+  const u = b[b.length - 1];
+  if (u.querySelector('img, video') && !u.querySelector('flow-a2ui-multiple-choice')) return '';
+  const t = (u.innerText || '').replace(/\\s+/g, ' ').trim();
+  return (u.querySelector('flow-a2ui-multiple-choice') || /(cannot|can't|unable|would you like|do you want|which (one|option)|no puedo|¿quieres|¿te gustar|¿prefieres|elige)/i.test(t)) ? t.slice(0, 300) : '';
+}"""
 
 _estado = {"modo": None, "configurado": set(), "imagen": False}
 

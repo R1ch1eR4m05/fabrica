@@ -4,10 +4,37 @@
   "flowProyecto": "8099e274-1432-494f-8c7c-536ad69392a8",
   "estiloVisual": "Warm 3D animated film look (Pixar-like), soft cinematic lighting, cozy Mexican home and neighborhood, shallow depth of field",
   "personajes": [
-    { "nombre": "Mamá", "tipo": "personaje", "voz": "Sulafat (cálida)", "descripcion": "mamá mexicana de 30 y pocos, chongo bajo ondulado castaño oscuro, suéter tejido amarillo mostaza, jeans, arracadas doradas pequeñas; cálida, paciente, un poco cansada" },
-    { "nombre": "Papá", "tipo": "personaje", "voz": "Achird (amigable)", "descripcion": "papá mexicano de 35, pelo negro corto, barba corta, camisa de mezclilla clara sobre playera blanca, jeans oscuros; tranquilo, juguetón" },
-    { "nombre": "Hijo", "tipo": "imagen", "descripcion": "niño de 6 años, pelo negro corto con remolino, polo escolar azul claro, short azul marino, tenis blancos, mochila roja; curioso y travieso" },
-    { "nombre": "Hija", "tipo": "imagen", "descripcion": "niña de 9 años, dos trenzas castaño oscuro con ligas amarillas, pecas, playera lila, jumper de mezclilla; dulce y observadora" },
-    { "nombre": "Maestra", "tipo": "imagen", "descripcion": "maestra de primaria de 40 y tantos, pelo corto rizado, lentes redondos, cárdigan verde, falda gris; cálida" }
+    {
+      "nombre": "Mamá",
+      "tipo": "personaje",
+      "voz": "Sulafat (cálida)",
+      "descripcion": "mamá mexicana de 30 y pocos, chongo bajo ondulado castaño oscuro, suéter tejido amarillo mostaza, jeans, arracadas doradas pequeñas; cálida, paciente, un poco cansada",
+      "vozVideo": "warm, soft Mexican woman's voice in her early 30s, gentle and a little tired, central Mexico accent"
+    },
+    {
+      "nombre": "Papá",
+      "tipo": "personaje",
+      "voz": "Achird (amigable)",
+      "descripcion": "papá mexicano de 35, pelo negro corto, barba corta, camisa de mezclilla clara sobre playera blanca, jeans oscuros; tranquilo, juguetón",
+      "vozVideo": "calm, friendly Mexican man's voice in his mid 30s, warm baritone, central Mexico accent"
+    },
+    {
+      "nombre": "Hijo",
+      "tipo": "imagen",
+      "descripcion": "niño de 6 años, pelo negro corto con remolino, polo escolar azul claro, short azul marino, tenis blancos, mochila roja; curioso y travieso",
+      "vozVideo": "bright, playful voice of a 6-year-old Mexican boy"
+    },
+    {
+      "nombre": "Hija",
+      "tipo": "imagen",
+      "descripcion": "niña de 9 años, dos trenzas castaño oscuro con ligas amarillas, pecas, playera lila, jumper de mezclilla; dulce y observadora",
+      "vozVideo": "sweet, clear voice of a 9-year-old Mexican girl"
+    },
+    {
+      "nombre": "Maestra",
+      "tipo": "imagen",
+      "descripcion": "maestra de primaria de 40 y tantos, pelo corto rizado, lentes redondos, cárdigan verde, falda gris; cálida",
+      "vozVideo": "warm, patient voice of a Mexican woman teacher in her 40s"
+    }
   ]
 }

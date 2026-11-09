@@ -92,17 +92,18 @@ async function clipsConSkill(id, avisar, { soloFaltantes = true, conCuadros = tr
   // modo diálogos: los personajes hablan en el clip (Veo genera la voz); se piden las líneas tal cual y se describe cada voz
   const hablan = (e) => {
     if (!dialogos) return "";
-    const ls = (e.dialogo || []).filter((l) => l?.texto).map((l) => `${rep && rep.personajes.some((p) => p.nombre === l.quien) ? `@{${l.quien}}` : l.quien || "Character"} says in Mexican Spanish${l.tono ? ` (${l.tono})` : ""}: "${String(l.texto).trim()}"`);
-    const vs = rep ? "" : Object.entries(g.voces || {}).map(([q, d]) => `${q}: ${d}`).join("; "); // con reparto, la voz va guardada en cada personaje de Flow
+    const ls = (e.dialogo || []).filter((l) => l?.texto).map((l) => `${l.quien || "Character"} says in Mexican Spanish${l.tono ? ` (${l.tono})` : ""}: "${String(l.texto).trim()}"`);
+    // la voz de cada quien, siempre la misma descripción (con reparto, la del archivo de la marca)
+    const vs = rep ? rep.personajes.filter((p) => p.vozVideo).map((p) => `${p.nombre}: ${p.vozVideo}`).join("; ") : Object.entries(g.voces || {}).map(([q, d]) => `${q}: ${d}`).join("; ");
     return ls.length ? ` Spoken dialogue, lip-synced to the mouths, one line after another: ${ls.join(" ")}${vs ? ` Voices (keep them identical in every clip): ${vs}.` : ""} No background music, no subtitles.` : "";
   };
   const trabajos = ({ e, n }, cuadro) => {
-    if (!conCuadros) return [{ type: "video", name: `escena-${n}`, prompt: (rep ? conMenciones(promptFlow(g, e), rep) : sinMenciones(promptFlow(g, e))) + hablan(e) }];
+    if (!conCuadros) return [{ type: "video", name: `escena-${n}`, prompt: sinMenciones(promptFlow(g, e)) + hablan(e) }];
     const out = [];
     if (!cuadro) out.push({ type: "image", name: `cuadro-${n}`, ...(conRef ? { image: ref } : {}), prompt: rep
       ? `${estilo}. First frame of the shot, keep every mentioned character exactly as saved (same face, hair and clothes): ${fin(conMenciones(e.flowPrompt, rep))} One single continuous image, no collage, no split panels, no inset frames, no text, no letters, no logos, no watermark.`
       : `${estilo}. ${g.personajes ? "Same characters as the reference, identical faces, hair and clothes. " : ""}First frame of the shot: ${fin(e.flowPrompt)} One single continuous image, no collage, no split panels, no inset frames, no text, no letters, no logos, no watermark.` });
-    out.push({ type: "video", name: `escena-${n}`, start: cuadro || `cuadro-${n}`, prompt: `${fin(rep && dialogos ? conMenciones(e.flowPrompt, rep) : sinMenciones(e.flowPrompt))} Keep the characters exactly as in the first frame. Smooth cinematic camera, no text.${hablan(e)}` });
+    out.push({ type: "video", name: `escena-${n}`, start: cuadro || `cuadro-${n}`, prompt: `${fin(sinMenciones(e.flowPrompt))} Keep the characters exactly as in the first frame. Smooth cinematic camera, no text.${hablan(e)}` });
     return out;
   };
   // Flow a veces bloquea una toma por sus políticas de contenido ("No se pudo completar la acción"; no cobra) o se satura.
