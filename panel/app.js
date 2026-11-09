@@ -529,7 +529,7 @@ function galeriaAnuncios(p) {
 function panelAvatar(p) {
   const a = p.avatar || {};
   return `<div class="card" style="margin:8px 0;padding:12px">
-    <b>Cambiar avatar</b> <span class="estado">— tu video conserva movimiento, cámara y audio; cambia la persona.</span>
+    <b>Cambiar avatar</b> <span class="estado">— tu video conserva movimiento, cámara y audio; cambia la persona (y el fondo, si quieres).</span>
     <div class="estado" style="margin:6px 0">Usa solo videos tuyos, con licencia o hechos con IA, y un personaje ficticio o de alguien que te dio permiso.</div>
     <div class="fila" style="gap:8px;align-items:center">
       ${a.fuente ? `<video src="/proyectos/${h(p.id)}/avatar/${h(a.fuente)}" muted playsinline preload="metadata" style="height:110px;border-radius:6px;background:#000" onmouseenter="this.play()" onmouseleave="this.pause()"></video>` : ""}
@@ -538,6 +538,7 @@ function panelAvatar(p) {
       <button class="mini" id="avImagen">${a.imagen ? "Cambiar personaje" : "Subir foto del personaje"}</button>
     </div>
     ${a.imagen ? "" : `<label>O descríbelo y APIMart crea la foto</label><input id="avDesc" value="${h(a.descripcion)}" placeholder="Mamá mexicana de 35 años, cabello castaño en cola, blusa blanca, jeans">`}
+    <label>Fondo nuevo (opcional; vacío = el mismo de tu video)</label><input id="avFondo" value="${h(a.fondo || "")}" placeholder="Cocina mexicana luminosa por la mañana, plantas y azulejos">
     <div class="fila" style="margin-top:8px;align-items:center">
       <select id="avMotor" style="width:auto"><option value="kling" ${p.opciones?.motorAvatar !== "seedance" ? "selected" : ""}>Kling Motion Control</option><option value="seedance" ${p.opciones?.motorAvatar === "seedance" ? "selected" : ""}>Seedance 2.5</option></select>
       <select id="avCalidad" style="width:auto"><option value="std">Estándar</option><option value="pro">Pro (mejor, más caro)</option></select>
@@ -680,7 +681,7 @@ function eventosClips(p) {
   if ($("#avFuente")) $("#avFuente").onclick = () => subir(p.id, "avatar-fuente", "video/*");
   if ($("#avImagen")) $("#avImagen").onclick = () => subir(p.id, "avatar-imagen", "image/*");
   if ($("#avQuitar")) $("#avQuitar").onclick = async () => { await api(`/api/proyectos/${p.id}/archivo?tipo=avatar-imagen`, "DELETE"); abrir(p.id, { mantener: true }); };
-  if ($("#avHacer")) $("#avHacer").onclick = () => { if (confirm("Esto manda tu video y el personaje a APIMart y gasta créditos de video. ¿Seguir?")) api(`/api/proyectos/${p.id}/avatar`, "POST", { motor: $("#avMotor").value, calidad: $("#avCalidad").value, descripcion: $("#avDesc")?.value }).catch((e) => avisar(e.message, true)); };
+  if ($("#avHacer")) $("#avHacer").onclick = () => { if (confirm("Esto manda tu video y el personaje a APIMart y gasta créditos de video. ¿Seguir?")) api(`/api/proyectos/${p.id}/avatar`, "POST", { motor: $("#avMotor").value, calidad: $("#avCalidad").value, descripcion: $("#avDesc")?.value, fondo: $("#avFondo")?.value }).catch((e) => avisar(e.message, true)); };
   for (const b of document.querySelectorAll("[data-pdel]")) b.onclick = async () => { await api(`/api/proyectos/${p.id}/archivo?tipo=producto&nombre=${encodeURIComponent(b.dataset.pdel)}`, "DELETE"); abrir(p.id, { mantener: true }); };
   if ($("#cEspejo")) $("#cEspejo").onclick = async () => { $("#cEspejo").disabled = true; avisar("Enviando al VPS…"); try { const r = await api("/api/banco/sincronizar", "POST"); avisar(r.enviados ? `Listo: ${r.enviados} archivos enviados al VPS.` : "El VPS ya tenía todo."); } catch (e) { avisar(e.message, true); } $("#cEspejo").disabled = false; };
   for (const b of document.querySelectorAll("[data-cbanco]")) b.onclick = () => abrirBanco(p, Number(b.dataset.cbanco));

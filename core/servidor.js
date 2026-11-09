@@ -103,7 +103,7 @@ function hacerAnuncio(id, { maxImagenes = 8, musica = false } = {}) {
   const esVideo = op.tipo === "video" || op.plantilla === "avatar";
   const errorDe = (q) => (e) => emitir({ id, paso: "fondo", estado: "error", msg: `${q}: ${e.message}. Sigo con lo que haya (Pexels o degradado).` });
   if (op.plantilla === "avatar" && !AM.archivosAvatar(id).resultado && AM.archivosAvatar(id).fuente && AM.hayAPIMart())
-    encolar(id, "fondo", (av) => AM.cambiarAvatar(id, av, { motor: op.motorAvatar || "kling", descripcion: p.avatarDescripcion }).catch(errorDe("Cambiar avatar")));
+    encolar(id, "fondo", (av) => AM.cambiarAvatar(id, av, { motor: op.motorAvatar || "kling", descripcion: p.avatarDescripcion, fondo: p.avatarFondo }).catch(errorDe("Cambiar avatar")));
   else if (faltan && op.generador === "flow" && flowSkillListo())
     encolar(id, "fondo", (av) => HIS.clipsDeFlow(id, (a) => av({ ...a, paso: "fondo" }), { conCuadros: false }).catch(errorDe("Flow")));
   else if (faltan && AM.hayAPIMart())
@@ -272,7 +272,7 @@ async function api(req, res, partes) {
     const d = P.detalle(id); if (leerEstilo(p.estilo)?.tipo === "motion") d.motionEstado = MOT.estadoMotion(id);
     if (leerEstilo(p.estilo)?.preparar === "historia") { d.clips = HIS.estadoClips(id); d.auditoria = HIS.leerAuditoria(id); }
     if (leerEstilo(p.estilo)?.anuncios) { d.exportadas = ANU.listarExportadas(id); d.fotosProducto = AM.fotosProducto(id).map((f) => path.basename(f)); d.apimart = AM.hayAPIMart();
-      const av = AM.archivosAvatar(id); d.avatar = { fuente: av.fuente && path.basename(av.fuente), imagen: av.avatar && path.basename(av.avatar), resultado: !!av.resultado, descripcion: p.avatarDescripcion || "" }; }
+      const av = AM.archivosAvatar(id); d.avatar = { fuente: av.fuente && path.basename(av.fuente), imagen: av.avatar && path.basename(av.avatar), resultado: !!av.resultado, descripcion: p.avatarDescripcion || "", fondo: p.avatarFondo || "" }; }
     // de dónde salió la idea (si vino del investigador): enlaces, por qué y la adaptación
     if (p.desdeInvestigacion) try {
       const inv = INV.leerInvestigacion(p.desdeInvestigacion.archivo), pr = inv.propuestas.find((x) => x.n === p.desdeInvestigacion.n);
@@ -432,8 +432,10 @@ async function api(req, res, partes) {
   if (accion === "avatar" && m === "POST") { // cambia la persona de tu video por el personaje (Kling o Seedance en APIMart)
     const b = await cuerpo(req);
     if (!AM.hayAPIMart()) return json(res, 400, { error: "Falta APIMART_API_KEY en el .env." });
-    if (b.descripcion !== undefined) { p.avatarDescripcion = String(b.descripcion); P.guardar(id, "proyecto.json", p); }
-    encolar(id, "fondo", (av) => AM.cambiarAvatar(id, av, { motor: b.motor || p.opciones?.motorAvatar || "kling", calidad: b.calidad, descripcion: p.avatarDescripcion }));
+    if (b.descripcion !== undefined) p.avatarDescripcion = String(b.descripcion);
+    if (b.fondo !== undefined) p.avatarFondo = String(b.fondo).trim();
+    P.guardar(id, "proyecto.json", p);
+    encolar(id, "fondo", (av) => AM.cambiarAvatar(id, av, { motor: b.motor || p.opciones?.motorAvatar || "kling", calidad: b.calidad, descripcion: p.avatarDescripcion, fondo: p.avatarFondo }));
     return json(res, 200, { ok: true });
   }
   if (accion === "apimart" && m === "POST") { // anuncios: imágenes con APIMart (las que faltan, o todas)

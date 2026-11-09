@@ -178,7 +178,7 @@ export function archivosAvatar(id) {
   const f = (re) => { const x = ls.find((n) => re.test(n)); return x ? path.join(d, x) : null; };
   return { fuente: f(/^fuente\.(mp4|mov|webm)$/i), avatar: f(/^avatar\.(jpe?g|png|webp)$/i), resultado: f(/^resultado\.mp4$/i) };
 }
-export async function cambiarAvatar(id, avisar = () => {}, { motor = "kling", calidad = "std", descripcion = "" } = {}) {
+export async function cambiarAvatar(id, avisar = () => {}, { motor = "kling", calidad = "std", descripcion = "", fondo = "" } = {}) {
   const { ffmpeg, duracion } = await import("./ff.js");
   const p = leer(id, "proyecto.json"), d = dirAvatar(id);
   let { fuente, avatar } = archivosAvatar(id);
@@ -194,17 +194,30 @@ export async function cambiarAvatar(id, avisar = () => {}, { motor = "kling", ca
     const r = await generarImagen(`Full body photo of a fictional person: ${desc}. Standing, front view, neutral pose, natural light, plain light background, photorealistic, no text.`, { size: "9:16", resolucion: "2K" });
     fs.mkdirSync(d, { recursive: true }); avatar = path.join(d, `avatar${r.ext}`); fs.writeFileSync(avatar, r.bytes);
   }
+  // fondo nuevo (opcional). Kling toma el escenario de la foto del personaje: se arma una foto del personaje ya en ese lugar,
+  // con el encuadre del primer cuadro de tu video. Seedance lo cambia directo en el video (va en su instrucción).
+  fondo = String(fondo || "").trim();
+  if (fondo && motor !== "seedance") {
+    avisar({ paso: "fondo", progreso: 0.04, msg: "Poniendo al personaje en el fondo nuevo…" });
+    const cuadro = path.join(d, "cuadro-referencia.jpg");
+    await ffmpeg(["-y", "-ss", "0.3", "-i", fuente, "-frames:v", "1", "-q:v", "2", cuadro]).catch(() => {});
+    const refs = [avatar, ...(fs.existsSync(cuadro) ? [cuadro] : [])];
+    const r = await generarImagen(`Photo of the person from the first reference image (exactly the same face, hair, body and clothes)${fs.existsSync(cuadro) ? ", in the same pose, framing and camera distance as the second reference image" : ""}, now in this place: ${fondo}. Natural light that matches the place, photorealistic, no text.`, { size: ratioVideo(p.formato) === "16:9" ? "16:9" : "9:16", refs, resolucion: "2K" });
+    avatar = path.join(d, `escena-fondo${r.ext}`); fs.writeFileSync(avatar, r.bytes);
+  }
   avisar({ paso: "fondo", progreso: 0.05, msg: "Subiendo video y personaje a APIMart…" });
   const [urlV, urlA] = [await subir(fuente), await subir(avatar)];
   const av = (a) => avisar({ ...a, paso: "fondo" });
   let buf;
   if (motor === "seedance") {
     buf = await pedirVideo({ model: "seedance-2.5", omni_reference_task_type: "edit", video_urls: [urlV], image_urls: [urlA], generate_audio: false,
-      prompt: "Replace the main person in @视频1 with the person from @图片1 (same face, hair, body and clothes). Keep exactly the same motion, gestures, camera, framing, background, lighting and timing. No text.",
+      prompt: fondo
+        ? `Replace the main person in @视频1 with the person from @图片1 (same face, hair, body and clothes) and replace the background with: ${fondo}. Keep exactly the same motion, gestures, camera, framing and timing; light that matches the new place. No text.`
+        : "Replace the main person in @视频1 with the person from @图片1 (same face, hair, body and clothes). Keep exactly the same motion, gestures, camera, framing, background, lighting and timing. No text.",
       size: ratioVideo(p.formato), resolution: "720p", duration: Math.max(4, Math.min(30, Math.round(dur || 8))) }, av, "Cambiando el avatar (Seedance)");
   } else {
     buf = await pedirVideo({ model: process.env.APIMART_MODELO_AVATAR || "kling-v2-6-motion-control", image_url: urlA, video_url: urlV, character_orientation: "video", mode: calidad === "pro" ? "pro" : "std",
-      keep_original_sound: "yes", prompt: "Same motion, gestures, camera and background as the reference video; natural, photorealistic." }, av, "Cambiando el avatar (Kling)");
+      keep_original_sound: "yes", prompt: fondo ? `Same motion, gestures and camera as the reference video; the scene and background are the ones in the image (${fondo}); natural, photorealistic.` : "Same motion, gestures, camera and background as the reference video; natural, photorealistic." }, av, "Cambiando el avatar (Kling)");
   }
   const crudo = path.join(d, "crudo.mp4"), res = path.join(d, "resultado.mp4");
   fs.writeFileSync(crudo, buf);
