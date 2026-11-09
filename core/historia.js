@@ -130,7 +130,7 @@ async function clipsConSkill(id, avisar, { soloFaltantes = true, conCuadros = tr
     avisar({ paso: "fondo", progreso: 0.02, msg: `Flow: ${jobs.length} trabajos (${porHacer.length} escenas${ronda > 1 ? `, vuelta ${ronda}` : ""})…` });
     let r;
     try { r = await lote(id, `historia-${Date.now()}`, jobs, (a) => avisar({ ...a, paso: "fondo" }), { ratio, minutos: Math.max(60, jobs.length * 4), proyecto: rep?.flowProyecto }); }
-    catch (err) { if (Object.keys(todos).some((k) => k.startsWith("escena-"))) break; throw err; }
+    catch (err) { if (/actividad inusual/.test(err.message) || !Object.keys(todos).some((k) => k.startsWith("escena-"))) throw err; break; }
     Object.assign(todos, r.archivos);
     for (const { n } of porHacer) { const c = r.archivos[`cuadro-${n}`]; if (c && fs.existsSync(c)) { fs.copyFileSync(c, CUADRO(n)); todos[`cuadro-${n}`] = CUADRO(n); } }
     // si en toda la vuelta no salió ningún video y no fue por políticas, repetir igual solo gasta créditos: se para y se avisa

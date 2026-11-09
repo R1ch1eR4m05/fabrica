@@ -225,7 +225,7 @@ export function lote(id, nombre, jobs, avisar = () => {}, { minutos = 60, ratio 
     fs.writeFileSync(archivo, JSON.stringify({ project: nombre, ...(proyecto ? { project_uuid: proyecto } : {}), defaults: { ratio, image_model: m.imagen, video_model: m.video, video_duration: "8s" }, jobs }, null, 2));
     const p = spawn(CFG.python || (process.platform === "win32" ? "python" : "python3"), ["flow.py", "batch", archivo, "--out", dir], { cwd: CFG.flowSkillDir, env: { ...process.env, PYTHONIOENCODING: "utf-8" } });
     flowActivo = p;
-    let salida = "", hechos = 0;
+    let salida = "", hechos = 0, bloqueo = false;
     const t0 = Date.now();
     let sePaso = false;
     const reloj = setTimeout(() => { sePaso = true; p.kill(); }, minutos * 60000);
@@ -235,6 +235,8 @@ export function lote(id, nombre, jobs, avisar = () => {}, { minutos = 60, ratio 
         const mm = l.match(/--- \[(\d+)\/(\d+)\] (\w+) :: (.+?) ---/);
         if (mm) avisar({ progreso: Math.min(0.95, (Number(mm[1]) - 1) / Number(mm[2])), msg: `Flow ${mm[1]}/${mm[2]}: ${mm[3] === "video" ? "animando" : "imagen"} ${mm[4]} (${Math.round((Date.now() - t0) / 60000)} min)` });
         if (/^\s*OK ->/.test(l)) hechos++;
+        // Google detectó "actividad inusual": se corta TODO el lote al instante; seguir pidiendo empeora el bloqueo
+        if (/BLOQUEO_GOOGLE/.test(l) && !bloqueo) { bloqueo = true; try { p.kill(); } catch {} mal(new Error("Google Flow detectó «actividad inusual» y pausó las generaciones. Paré el lote para no empeorarlo. Espera al menos 1 hora, abre Flow tú y dale «Reintentar»; si vuelve a salir, deja descansar la cuenta hasta mañana.")); }
         if (/SIN SESION/.test(l)) mal(new Error("Flow no tiene sesión: en la carpeta de la skill corre 'python flow.py login' e inicia sesión en Google."));
       }
     };

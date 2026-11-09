@@ -47,6 +47,8 @@ JS_ESTADO = """() => {
 }"""
 # el agente contestó con texto en vez de generar (pregunta, se niega, pide elegir): se corta en segundos, no a los 3 minutos
 JS_RESPUESTA = """(antes) => {
+  const panel = document.querySelector('flow-agent-panel');
+  if (panel && /actividad inusual|unusual activity/i.test(panel.innerText || '')) return 'BLOQUEO_GOOGLE';
   const b = [...document.querySelectorAll('flow-agent-panel flow-chat-bubble')];
   if (b.length < antes + 2) return '';
   const u = b[b.length - 1];
