@@ -24,7 +24,7 @@ async function pedir(metodo, ruta, cuerpo, { form = false, ms = 60000 } = {}) {
 
 let cacheCuentas = { t: 0, l: null };
 export async function cuentas({ forzar = false } = {}) {
-  if (!forzar && cacheCuentas.l && Date.now() - cacheCuentas.t < 10 * 60000) return cacheCuentas.l;
+  if (!forzar && cacheCuentas.l && Date.now() - cacheCuentas.t < 2 * 60000) return cacheCuentas.l;
   const j = await pedir("GET", `/social-media-posting/${CFG.ghlLocation}/accounts`);
   const lista = (j.results?.accounts || j.accounts || []).map((a) => ({ id: a.id || a._id, plataforma: String(a.platform || "").toLowerCase(), nombre: a.name || a.displayName || a.platform, tipo: a.type || "", caducada: !!a.isExpired }));
   cacheCuentas = { t: Date.now(), l: lista };

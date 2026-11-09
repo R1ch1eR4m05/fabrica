@@ -472,19 +472,20 @@ async function cargarCopys(p) {
   $("#cpIA").onclick = async () => { $("#cpIA").disabled = true; $("#cpIA").textContent = "Escribiendo…"; try { poner(await api(`/api/proyectos/${p.id}/copys`, "POST")); } catch (e) { avisar(e.message, true); } $("#cpIA").disabled = false; $("#cpIA").textContent = "Mejorar con IA"; };
 }
 
-async function pintarGHL(p, leerForm, guardarAntes) {
+async function pintarGHL(p, leerForm, guardarAntes, forzar = false) {
   const caja = $("#ghlCaja"); if (!caja) return;
   const prog = (p.ghl?.programados || []).slice(-6).reverse();
   const hechos = prog.length ? `<div class="estado" style="margin-top:6px">Ya programado: ${prog.map((x) => `${h(x.plataforma)} · ${new Date(x.fecha).toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" })}`).join(" | ")}</div>` : "";
   if (!S.info.ghl) { caja.innerHTML = `<b>Programar en GoHighLevel</b><div class="estado">Para programarlo desde aquí, pon <code>GHL_TOKEN</code> y <code>GHL_LOCATION_ID</code> en el .env (cómo sacarlos: .env.example) y reinicia la fábrica. Mientras, copia y pega cada texto en el Social Planner.</div>${hechos}`; return; }
   caja.innerHTML = `<b>Programar en GoHighLevel</b> <span class="estado" id="ghlEst">cargando tus cuentas…</span>${hechos}`;
-  let cs; try { cs = await api("/api/ghl/cuentas"); } catch (e) { $("#ghlEst").textContent = e.message; return; }
+  let cs; try { cs = await api("/api/ghl/cuentas" + (forzar ? "?forzar=1" : "")); } catch (e) { $("#ghlEst").textContent = e.message; return; }
   const llaveCuentas = "ghlCuentas:" + (p.canal || "general"), guardadas = JSON.parse(localStorage.getItem(llaveCuentas) || localStorage.getItem("ghlCuentas") || "[]"); // cada canal (Monarca, Levania…) recuerda sus propias cuentas
   const manana = new Date(Date.now() + 864e5); manana.setHours(19, 0, 0, 0);
   const local = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 16);
-  caja.innerHTML = `<b>Programar en GoHighLevel</b> <span class="estado">un post por red, cada uno con su texto de arriba</span>${hechos}
+  caja.innerHTML = `<b>Programar en GoHighLevel</b> <span class="estado">un post por red, cada uno con su texto de arriba</span> <button class="mini" id="ghlRecargar" title="Vuelve a pedir a GHL las cuentas conectadas (si acabas de conectar una)">Actualizar cuentas</button>${hechos}
     <div class="fila" style="margin:8px 0;flex-wrap:wrap">${cs.length ? cs.map((a) => `<label class="estado" style="display:flex;gap:6px;align-items:center;${a.caducada ? "opacity:.5" : ""}"><input type="checkbox" value="${h(a.id)}" data-ghlc style="width:auto" ${guardadas.includes(a.id) && !a.caducada ? "checked" : ""} ${a.caducada ? "disabled title='Reconéctala en GHL'" : ""}>${h(a.plataforma)} · ${h(a.nombre)}</label>`).join("") : `<span class="estado">No hay redes conectadas en el Social Planner de esa subcuenta.</span>`}</div>
     <div class="fila"><label class="estado">Cuándo</label><input type="datetime-local" id="ghlFecha" value="${local(manana)}" style="width:auto"><button class="btn primario peq" id="ghlIr" ${cs.length ? "" : "disabled"}>Programar en GHL</button></div>`;
+  $("#ghlRecargar").onclick = () => pintarGHL(p, leerForm, guardarAntes, true);
   $("#ghlIr").onclick = async () => {
     const ids = [...document.querySelectorAll("[data-ghlc]:checked")].map((x) => x.value);
     if (!ids.length) return avisar("Elige al menos una red.", true);
