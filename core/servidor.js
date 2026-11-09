@@ -270,7 +270,7 @@ async function api(req, res, partes) {
 
   if (!accion && m === "GET") {
     const d = P.detalle(id); if (leerEstilo(p.estilo)?.tipo === "motion") d.motionEstado = MOT.estadoMotion(id);
-    if (leerEstilo(p.estilo)?.preparar === "historia") d.clips = HIS.estadoClips(id);
+    if (leerEstilo(p.estilo)?.preparar === "historia") { d.clips = HIS.estadoClips(id); d.auditoria = HIS.leerAuditoria(id); }
     if (leerEstilo(p.estilo)?.anuncios) { d.exportadas = ANU.listarExportadas(id); d.fotosProducto = AM.fotosProducto(id).map((f) => path.basename(f)); d.apimart = AM.hayAPIMart();
       const av = AM.archivosAvatar(id); d.avatar = { fuente: av.fuente && path.basename(av.fuente), imagen: av.avatar && path.basename(av.avatar), resultado: !!av.resultado, descripcion: p.avatarDescripcion || "" }; }
     // de dónde salió la idea (si vino del investigador): enlaces, por qué y la adaptación
@@ -349,6 +349,7 @@ async function api(req, res, partes) {
       for (const x of fs.readdirSync(HIS.dirClips(id))) if (x.startsWith(`escena-${n}.`)) fs.rmSync(path.join(HIS.dirClips(id), x));
       destino = path.join(HIS.dirClips(id), `escena-${n}${ext}`);
       BANCO.marcarOrigen(id, n, null); // subido por ti: entra al banco
+      HIS.quitarDeAuditoria(id, [n]);
     }
     else if (tipo === "avatar-fuente" || tipo === "avatar-imagen") {
       const d = AM.dirAvatar(id), pre = tipo === "avatar-fuente" ? "fuente" : "avatar"; fs.mkdirSync(d, { recursive: true });
@@ -401,7 +402,14 @@ async function api(req, res, partes) {
   }
   if (accion === "clips" && m === "POST") { // historia: genera en Flow los clips que faltan
     const b = await cuerpo(req);
-    encolar(id, "fondo", (av) => HIS.clipsDeFlow(id, (a) => av({ ...a, paso: "fondo" }), { maxCreditos: Number(b.maxCreditos) || 25, soloFaltantes: b.todos !== true, conCuadros: b.conCuadros !== false }));
+    // escenas: [n…] para rehacer solo esas (aunque ya tengan clip); notas: {n: "corrección en inglés"} se suma a su prompt
+    const escenas = Array.isArray(b.escenas) && b.escenas.length ? b.escenas.map(Number).filter(Boolean) : null;
+    encolar(id, "fondo", (av) => HIS.clipsDeFlow(id, (a) => av({ ...a, paso: "fondo" }), { maxCreditos: Number(b.maxCreditos) || 25, soloFaltantes: b.todos !== true, conCuadros: b.conCuadros !== false, escenas, notas: b.notas || {} }));
+    return json(res, 200, { ok: true });
+  }
+  if (accion === "auditar" && m === "POST") { // revisa con IA (Gemini/Claude) qué clips salieron mal; no gasta Flow
+    const AU = await import("./auditor.js");
+    encolar(id, "fondo", (av) => AU.auditarEscenas(id, (a) => av({ ...a, paso: "fondo" })));
     return json(res, 200, { ok: true });
   }
   if (accion === "animar-flow" && m === "POST") { // anima en Flow las escenas marcadas (primero hay que tener las imágenes)

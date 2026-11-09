@@ -22,6 +22,10 @@ export function clipDeEscena(id, n) {
   return f ? path.join(d, f) : null;
 }
 
+const AUD = (id) => path.join(dirClips(id), "auditoria.json");
+export const leerAuditoria = (id) => { try { return JSON.parse(fs.readFileSync(AUD(id), "utf8")); } catch { return null; } };
+export function quitarDeAuditoria(id, escenas) { const a = leerAuditoria(id); if (!a) return; for (const n of escenas) delete a.escenas?.[n]; fs.writeFileSync(AUD(id), JSON.stringify(a, null, 2)); }
+
 export function estadoClips(id) {
   const g = leer(id, "guion.json") || { escenas: [] };
   let org = {}; try { org = JSON.parse(fs.readFileSync(path.join(dirClips(id), "origen.json"), "utf8")); } catch {}
@@ -36,14 +40,16 @@ export function promptFlow(guion, e) {
 
 // con Google Flow Skill: 1) una imagen de los personajes, 2) el primer cuadro de cada escena usando esa imagen de
 // referencia, 3) cada escena animada desde su cuadro. Así la familia se ve igual en todas las tomas.
-async function clipsConSkill(id, avisar, { soloFaltantes = true, conCuadros = true } = {}) {
+async function clipsConSkill(id, avisar, { soloFaltantes = true, conCuadros = true, escenas = null, notas = {} } = {}) {
   const g = leer(id, "guion.json");
   const pr = leer(id, "proyecto.json"), est = leerEstilo(pr.estilo);
   // anuncios: la foto de la escena va en "imagen"; se anima solo si el anuncio es video y pidieron clips
   if (est?.anuncios) for (const e of g.escenas) if (!e.flowPrompt && e.imagen) e.flowPrompt = e.imagen;
   const soloImagen = est?.clipsFlow === "imagen" || (est?.anuncios && !(pr.opciones?.tipo === "video" && pr.opciones?.animar === "si"));
-  const pend = g.escenas.map((e, k) => ({ e, n: k + 1 })).filter(({ e, n }) => (est?.anuncios || e.tipo !== "cierre" || soloImagen) && !e.misma && e.flowPrompt && (!soloFaltantes || !clipDeEscena(id, n)));
+  const pend = g.escenas.map((e, k) => ({ e, n: k + 1 })).filter(({ e, n }) => (est?.anuncios || e.tipo !== "cierre" || soloImagen) && !e.misma && e.flowPrompt && (escenas ? escenas.includes(n) : !soloFaltantes || !clipDeEscena(id, n)));
   if (!pend.length) return { generados: 0 };
+  // rehacer con corrección: la nota (del auditor o tuya) se suma al prompt de esa escena
+  for (const x of pend) if (notas[x.n]) x.e = { ...x.e, flowPrompt: `${String(x.e.flowPrompt).trim().replace(/([^.!?])$/, "$1.")} ${String(notas[x.n]).trim()}` };
   // proporción de Flow: la del proyecto (16:9 para YouTube largo); 4:5 y 1:1 se piden en 9:16 y se recortan
   const ratio = pr.formato === "16:9" ? "16:9" : "9:16";
   const estilo = [g.estiloVisual || est?.estiloVisual, ratio === "16:9" ? "horizontal 16:9 widescreen" : "vertical 9:16"].filter(Boolean).join(", ");
@@ -74,17 +80,21 @@ async function clipsConSkill(id, avisar, { soloFaltantes = true, conCuadros = tr
     return { generados, fallos: faltan.map(({ n }) => `escena-${n}`), motivo: fallos[0] || "" };
   }
   const conRef = conCuadros && g.personajes;
-  if (conRef) jobs.push({ type: "image", name: "personajes", prompt: `${estilo}. Character reference, full body, front view, neutral pose, plain soft background, no text: ${g.personajes}` });
+  // la imagen de personajes se guarda la primera vez y se reutiliza al rehacer escenas (así salen iguales que las demás)
+  const refGuardada = conRef && fs.existsSync(dirClips(id)) && fs.readdirSync(dirClips(id)).find((x) => /^personajes\.(png|jpe?g|webp)$/i.test(x));
+  const ref = refGuardada ? path.join(dirClips(id), refGuardada) : "personajes";
+  if (conRef && !refGuardada) jobs.push({ type: "image", name: "personajes", prompt: `${estilo}. Character reference, full body, front view, neutral pose, plain soft background, no text: ${g.personajes}` });
   const fin = (x) => String(x || "").trim().replace(/([^.!?])$/, "$1.");
   for (const { e, n } of pend) {
     if (conCuadros) {
-      jobs.push({ type: "image", name: `cuadro-${n}`, ...(conRef ? { image: "personajes" } : {}), prompt: `${estilo}. ${g.personajes ? "Same characters as the reference, identical faces, hair and clothes. " : ""}First frame of the shot: ${fin(e.flowPrompt)} No text, no logos.` });
+      jobs.push({ type: "image", name: `cuadro-${n}`, ...(conRef ? { image: ref } : {}), prompt: `${estilo}. ${g.personajes ? "Same characters as the reference, identical faces, hair and clothes. " : ""}First frame of the shot: ${fin(e.flowPrompt)} No text, no logos.` });
       jobs.push({ type: "video", name: `escena-${n}`, start: `cuadro-${n}`, prompt: `${fin(e.flowPrompt)} Keep the characters exactly as in the first frame. Smooth cinematic camera, no text.` });
     } else jobs.push({ type: "video", name: `escena-${n}`, prompt: promptFlow(g, e) });
   }
   avisar({ paso: "fondo", progreso: 0.02, msg: `Flow: ${jobs.length} trabajos (${pend.length} escenas)…` });
   const { archivos, fallos } = await lote(id, `historia-${Date.now()}`, jobs, (a) => avisar({ ...a, paso: "fondo" }), { ratio });
   fs.mkdirSync(dirClips(id), { recursive: true });
+  if (archivos.personajes && fs.existsSync(archivos.personajes)) fs.copyFileSync(archivos.personajes, path.join(dirClips(id), `personajes${path.extname(archivos.personajes).toLowerCase()}`));
   let generados = 0;
   for (const { n } of pend) {
     const f = archivos[`escena-${n}`]; if (!f) continue;
@@ -99,15 +109,16 @@ async function clipsConSkill(id, avisar, { soloFaltantes = true, conCuadros = tr
 async function alBanco(id, r) { try { const B = await import("./banco.js"); await B.guardarDeProyecto(id); } catch (e) { console.warn("Banco:", e.message); } return r; }
 
 // genera en Flow los clips que faltan (todas las escenas de una vez); cada uno queda como clips/escena-N.mp4
-export async function clipsDeFlow(id, avisar = () => {}, { maxCreditos = 25, soloFaltantes = true, conCuadros = true } = {}) {
-  if (flowSkillListo()) return alBanco(id, await clipsConSkill(id, avisar, { soloFaltantes, conCuadros }));
+export async function clipsDeFlow(id, avisar = () => {}, { maxCreditos = 25, soloFaltantes = true, conCuadros = true, escenas = null, notas = {} } = {}) {
+  if (flowSkillListo()) { const r = await alBanco(id, await clipsConSkill(id, avisar, { soloFaltantes, conCuadros, escenas, notas })); if (escenas) quitarDeAuditoria(id, escenas); return r; }
+  if (escenas) throw new Error("Rehacer escenas sueltas necesita la skill de Flow (laptop).");
   if (!(await flowDisponible())) throw new Error("No encuentro flow-mcp abierto. Abre 'Flow Studio' y vuelve a intentar.");
   const p = leer(id, "proyecto.json"), g = leer(id, "guion.json");
   const pendientes = g.escenas.map((e, k) => ({ e, n: k + 1 })).filter(({ e, n }) => e.tipo !== "cierre" && e.flowPrompt && (!soloFaltantes || !clipDeEscena(id, n)));
   if (!pendientes.length) return { generados: 0 };
   avisar({ paso: "fondo", progreso: 0.05, msg: `Pidiendo ${pendientes.length} clips a Flow…` });
-  const escenas = pendientes.map(({ e }) => ({ prompt: promptFlow(g, e), type: "video", aspect_ratio: p.formato === "16:9" ? "16:9" : "9:16", max_credits: maxCreditos, retries: 1 }));
-  const { jobs } = await llamar("generate", { project: `fabrica-${id}`, scenes: escenas });
+  const pedidas = pendientes.map(({ e }) => ({ prompt: promptFlow(g, e), type: "video", aspect_ratio: p.formato === "16:9" ? "16:9" : "9:16", max_credits: maxCreditos, retries: 1 }));
+  const { jobs } = await llamar("generate", { project: `fabrica-${id}`, scenes: pedidas });
   const ids = jobs.map((j) => j.id), t0 = Date.now();
   fs.mkdirSync(dirClips(id), { recursive: true });
   for (;;) {

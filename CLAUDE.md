@@ -54,6 +54,7 @@ Estado: noviembre 2026, Flow genera desde el panel del agente ("Configuración d
 ## Historia con Flow (`historia-flow`)
 - Guion según `estilos/historia-flow/GUION.md`: `estiloVisual` y `personajes` (inglés, iguales para todas las escenas) y en cada escena `voz`, `texto` opcional, `flowPrompt` (inglés) y `buscar`.
 - Clips: `proyectos/<id>/clips/escena-N.mp4` (el panel los sube o los genera en Flow con "Generar en Flow los que faltan"). Si flow-mcp está conectado como MCP y Richie lo autoriza, puedes generarlos tú y guardarlos ahí con ese nombre. Sin clip, la escena usa Pexels (`buscar`) o un dibujo animado.
+- Auditor: "Auditar escenas" (panel) mira 3 cuadros de cada clip con Gemini/Claude contra el guion y la imagen de personajes y deja `clips/auditoria.json` (problema + corrección en inglés). "Rehacer las marcadas" o "Rehacer en Flow" por escena las vuelve a pedir a Flow con esa corrección sumada al prompt, reusando `clips/personajes.*`. Gasta Flow solo al rehacer.
 - Siempre nace de una publicación viral: la historia adapta su gancho y su emoción a una familia hispana.
 
 ## Reflexión · Estatuas (`reflexion-estatuas`)

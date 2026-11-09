@@ -15,7 +15,7 @@ export async function gemini(sistema, texto, { json = true, buscar = false } = {
       try {
         const cuerpo = {
           systemInstruction: { parts: [{ text: sistema }] },
-          contents: [{ role: "user", parts: [{ text: texto }] }],
+          contents: [{ role: "user", parts: typeof texto === "string" ? [{ text: texto }] : texto.map((b) => (b.type === "image" ? { inline_data: { mime_type: b.source.media_type, data: b.source.data } } : { text: b.text })) }],
           generationConfig: { temperature: 0.8, ...(json && !buscar ? { responseMimeType: "application/json" } : {}) },
           ...(buscar ? { tools: [{ google_search: {} }] } : {}),
         };
@@ -62,7 +62,7 @@ export async function claude(sistema, contenido, { buscar = false, maxTokens = 1
 // usa el que haya (Claude primero si existe, porque es el que pagas; si no, Gemini gratis)
 export async function pedir(sistema, texto, op = {}) {
   if (CFG.anthropicKey) return claude(sistema, texto, op);
-  if (CFG.geminiKey) return gemini(sistema, typeof texto === "string" ? texto : texto.filter((b) => b.type === "text").map((b) => b.text).join("\n"), op);
+  if (CFG.geminiKey) return gemini(sistema, texto, op); // Gemini también ve imágenes
   throw new Error("SIN_IA");
 }
 
