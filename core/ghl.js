@@ -2,7 +2,7 @@
 // cada una con su copy (copys.json). GHL guarda el video en su propio almacenamiento, así que no hace falta Drive.
 import fs from "node:fs";
 import path from "node:path";
-import { CFG } from "./config.js";
+import { CFG, DIR_LISTOS } from "./config.js";
 import { dirProyecto, leer, guardar } from "./proyectos.js";
 import { leerCopys } from "./copy.js";
 
@@ -45,6 +45,20 @@ export async function subirVideo(id) {
   return j.url;
 }
 
+// sube la miniatura a la biblioteca de medios de GHL (para poder pasarle su URL a YouTube). jpg, por si acaso.
+async function subirMiniatura(id) {
+  const p = leer(id, "proyecto.json"), f = path.join(DIR_LISTOS, `${id}-miniatura.jpg`);
+  if (!fs.existsSync(f)) return null;
+  const mt = fs.statSync(f).mtimeMs;
+  if (p.ghl?.miniatura?.mtime === mt && p.ghl.miniatura.url) return p.ghl.miniatura.url;
+  const form = new FormData();
+  form.append("file", new Blob([fs.readFileSync(f)], { type: "image/jpeg" }), `${id}-miniatura.jpg`);
+  form.append("hosted", "false"); form.append("name", `${id}-miniatura.jpg`);
+  const j = await pedir("POST", "/medias/upload-file", form, { form: true, ms: 120000 });
+  p.ghl = { ...(p.ghl || {}), miniatura: { url: j.url, mtime: mt } }; guardar(id, "proyecto.json", p);
+  return j.url;
+}
+
 const textoPara = (c, plataforma) => {
   if (/instagram/.test(plataforma)) return c.instagram;
   if (/facebook/.test(plataforma)) return c.facebook;
@@ -76,6 +90,7 @@ export async function programar(id, { cuentasIds = [], fecha } = {}, avisar = ()
   avisar({ progreso: 0.1, msg: "Subiendo el video a GoHighLevel…" });
   const url = await subirVideo(id);
   const usuario = await usuarioGHL();
+  const miniatura = elegidas.some((a) => /youtube/.test(a.plataforma)) ? await subirMiniatura(id) : null;
   const c = leerCopys(id), cuando = fecha ? new Date(fecha) : new Date(Date.now() + 10 * 60000);
   if (isNaN(cuando) || cuando < Date.now() - 60000) throw new Error("La fecha ya pasó.");
   const porRed = {};
@@ -83,8 +98,10 @@ export async function programar(id, { cuentasIds = [], fecha } = {}, avisar = ()
   const hechos = [];
   for (const [plataforma, ids] of Object.entries(porRed)) {
     avisar({ progreso: 0.5, msg: `Programando en ${plataforma}…` });
-    const cuerpo = { accountIds: ids, summary: textoPara(c, plataforma) || "", media: [{ url, type: "video/mp4" }], status: "scheduled", scheduleDate: cuando.toISOString(),
-      type: /instagram|facebook/.test(plataforma) ? "reel" : "post", userId: usuario };
+    const esYoutube = /youtube/.test(plataforma);
+    const cuerpo = { accountIds: ids, summary: textoPara(c, plataforma) || "", media: [{ url, type: "video/mp4", ...(esYoutube && miniatura ? { thumbnail: miniatura } : {}) }], status: "scheduled", scheduleDate: cuando.toISOString(),
+      type: /instagram|facebook/.test(plataforma) ? "reel" : "post", userId: usuario,
+      ...(esYoutube ? { youtubePostDetails: { title: (c.youtube?.titulo || leer(id, "guion.json")?.titulo || id).slice(0, 100), privacyLevel: "public", type: "video" } } : {}) };
     const j = await pedir("POST", `/social-media-posting/${CFG.ghlLocation}/posts`, cuerpo);
     hechos.push({ plataforma, cuentas: ids, fecha: cuando.toISOString(), postId: j.results?.post?._id || j.results?.post?.id || j.post?._id || j.id || null });
   }
