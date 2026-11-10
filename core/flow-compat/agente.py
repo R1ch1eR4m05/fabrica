@@ -57,6 +57,8 @@ JS_RESPUESTA = """(antes) => {
   return (/(cannot|can't|unable|would you like|do you want|which (one|option)|no puedo|¿quieres|¿te gustar|¿prefieres|elige)/i.test(t)) ? t.slice(0, 300) : '';
 }"""
 
+_ADD_RE = __import__("re").compile(r"(Agregar a la instrucci|Añadir a petición|Add to prompt|Add to instruction)", __import__("re").I)
+
 _estado = {"modo": None, "configurado": set(), "imagen": False}
 
 
@@ -143,34 +145,88 @@ async def adjuntar_imagen(page, ruta: str) -> None:
 
 
 async def _adjuntar(page, ruta: str) -> None:
-    import re
-    antes = await page.locator(SEL_CHIP).count()
-    await page.locator(SEL_AGREGAR).first.click(timeout=10_000)
-    pop = page.locator(SEL_POPOVER).first
-    await pop.wait_for(state="visible", timeout=8_000)
-    subir = page.locator('flow-add-menu-popover-content button, flow-add-menu-popover-content [role="button"]').filter(
-        has_text=re.compile(r"(Cargar contenido multimedia|Cargar medios|Subir archivo multimedia|Upload media|Subir imagen)", re.I)).first
-    async with page.expect_file_chooser(timeout=8_000) as fc:
-        await subir.click(force=True)
-    await (await fc.value).set_files(ruta)
-    # aviso de derechos (primera vez) y vista previa que pide confirmar
-    for patron in (r"(Acepto|Aceptar|I agree|Entendido|Got it)", r"(Añadir a petición|Agregar a la instrucci|Add to prompt|Add to instruction)"):
-        b = page.locator('button, [role="button"]').filter(has_text=re.compile(patron, re.I)).first
+    import re, os
+    caja = "flow-agent-panel flow-creative-agent-prompt-box"
+    imgs = page.locator(f"{caja} flow-image-ingredient-chip")
+    # 1) la caja debe quedar sin adjuntos viejos: Flow conserva el del video anterior y el nuevo lo reemplazaba sin que se notara
+    if await page.locator(f"{caja} flow-ingredient-chip").count() > 0:
+        borrar = page.locator(f'{caja} button[aria-label="Borrar instrucción"], {caja} button[aria-label="Clear prompt"]').first
         try:
-            await b.wait_for(state="visible", timeout=8_000)
+            await borrar.click(timeout=3_000)
+            await page.wait_for_timeout(600)
+        except Exception:
+            for chip in await page.locator(f"{caja} flow-ingredient-chip button").all():
+                try:
+                    await chip.hover(); await chip.click(timeout=2_000); await page.wait_for_timeout(300)
+                except Exception:
+                    pass
+    antes = await imgs.count()
+    # nombre único por contenido (cuadro-4-1a2b3c4d.png): si esa misma imagen ya está en el proyecto se elige, no se vuelve a subir
+    import hashlib, shutil, tempfile
+    with open(ruta, "rb") as fh:
+        huella = hashlib.md5(fh.read()).hexdigest()[:8]
+    raiz, ext = os.path.splitext(os.path.basename(ruta))
+    base = f"{raiz}-{huella}{ext.lower() or '.png'}"
+    copia = os.path.join(tempfile.gettempdir(), "fabrica-flow", base)
+    os.makedirs(os.path.dirname(copia), exist_ok=True)
+    if not os.path.exists(copia):
+        shutil.copyfile(ruta, copia)
+    pop = page.locator(SEL_POPOVER).first
+
+    async def abrir():
+        if not await pop.is_visible():
+            await page.locator(SEL_AGREGAR).first.click(timeout=10_000)
+            await pop.wait_for(state="visible", timeout=8_000)
+
+    async def elegir(espera_ms):
+        await abrir()
+        buscar = pop.locator("input.search-input, input[type='text']").first
+        if await buscar.count() > 0:
+            await buscar.fill(base)
+        fila = pop.get_by_role("option").filter(has_text=re.compile(r"^\s*" + re.escape(base), re.I)).first
+        try:
+            await fila.wait_for(state="visible", timeout=espera_ms)
+        except Exception:
+            return False
+        await fila.click()  # en este menú el clic la adjunta directo
+        await page.wait_for_timeout(1000)
+        if await imgs.count() <= antes and await pop.is_visible():
+            try:
+                await pop.locator('button, [role="button"]').filter(has_text=_ADD_RE).first.click(timeout=4_000)
+                await page.wait_for_timeout(800)
+            except Exception:
+                pass
+        return await imgs.count() > antes
+
+    # 2) ¿ya está subida? se elige y listo
+    if not await elegir(2_500):
+        # 3) si no, se sube con su nombre único y se elige POR NOMBRE (nunca "la primera de la lista": podía ser el video anterior)
+        await abrir()
+        buscar = pop.locator("input.search-input, input[type='text']").first
+        if await buscar.count() > 0:
+            await buscar.fill("")
+        subir = pop.locator('button, [role="button"]').filter(
+            has_text=re.compile(r"(Cargar contenido multimedia|Cargar medios|Subir archivo multimedia|Upload media|Subir imagen)", re.I)).first
+        async with page.expect_file_chooser(timeout=8_000) as fc:
+            await subir.click(force=True)
+        await (await fc.value).set_files(copia)
+        try:  # aviso de derechos (solo la primera vez)
+            b = page.locator('button, [role="button"]').filter(has_text=re.compile(r"(Acepto|Aceptar|I agree|Entendido|Got it)", re.I)).first
+            await b.wait_for(state="visible", timeout=4_000)
             await b.click()
             await page.wait_for_timeout(500)
         except Exception:
             pass
-    if await pop.is_visible():  # si el popover sigue abierto, escoge la imagen recién subida (la primera de "Cargas")
-        fila = pop.get_by_role("option").first
-        if await fila.count() > 0:
-            await fila.click()
-        if await pop.is_visible():
-            await page.keyboard.press("Escape")
-    await page.wait_for_timeout(1500)
-    if await page.locator(SEL_CHIP).count() <= antes:
-        raise RuntimeError("No pude adjuntar la imagen en el panel del agente de Flow (cambió la página; hay que revisar adjuntar_imagen en agente.py).")
+        await page.wait_for_timeout(1500)
+        if await imgs.count() <= antes:
+            await elegir(30_000)  # la subida tarda unos segundos en aparecer en la lista
+    if await pop.is_visible():
+        await page.keyboard.press("Escape")
+    if await imgs.count() <= antes:
+        raise RuntimeError(f"No pude adjuntar {base} en el panel del agente de Flow.")
+    # quedó solo la imagen correcta: nada de videos ni otros adjuntos
+    if await page.locator(f"{caja} flow-ingredient-chip").count() != await imgs.count():
+        raise RuntimeError("Flow adjuntó algo distinto a la imagen inicial; lo dejo para no animar la escena equivocada.")
     _estado["imagen"] = True
 
 
