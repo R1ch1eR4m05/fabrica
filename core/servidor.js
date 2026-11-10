@@ -192,7 +192,11 @@ async function api(req, res, partes) {
       let datos; try { datos = JSON.parse(crudo); } catch { datos = { texto: crudo }; }
       const fuente = datos.fuente || "informe";
       let nombre;
-      try { nombre = INV.guardarInforme(datos.texto ?? datos.informe ?? crudo, fuente, datos.nicho || qn); } catch (e) { return json(res, 400, { error: e.message }); }
+      // ¿de qué marca es? explícito, o por el asunto/encabezado: "INFORME FABRICA MONARCA" → monarca (sin marca: la activa)
+      const txt0 = String(datos.texto ?? datos.informe ?? crudo);
+      const cab = `${datos.asunto || datos.subject || ""}\n${txt0.slice(0, 300)}`;
+      const marcaInf = datos.nicho || qn || INV.listarNichos().find((x) => new RegExp(`INFORME\\s+FABRICA\\W{0,3}(${[x.id, x.nombre].filter(Boolean).map((v) => String(v).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})\\b`, "i").test(cab))?.id;
+      try { nombre = INV.guardarInforme(txt0, fuente, marcaInf); } catch (e) { return json(res, 400, { error: e.message }); }
       const conIA = INV.hayIA();
       json(res, 200, { recibido: true, informe: nombre, convirtiendo: conIA, pendiente: !conIA });
       if (!conIA) { emitir({ id: "_investigador", paso: "investigar", estado: "listo", msg: "Informe guardado. Pídele a Claude Code que lo convierta." }); return; }

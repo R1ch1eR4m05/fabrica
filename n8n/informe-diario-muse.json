@@ -3,15 +3,26 @@
   "nodes": [
     {
       "parameters": {
-        "pollTimes": { "item": [{ "mode": "everyHour" }] },
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyHour"
+            }
+          ]
+        },
         "simple": false,
-        "filters": { "q": "subject:\"INFORME FABRICA\" newer_than:2d" },
+        "filters": {
+          "q": "subject:\"INFORME FABRICA\" newer_than:2d"
+        },
         "options": {}
       },
       "name": "Correo de Muse (Gmail)",
       "type": "n8n-nodes-base.gmailTrigger",
       "typeVersion": 1.2,
-      "position": [0, 0]
+      "position": [
+        0,
+        0
+      ]
     },
     {
       "parameters": {
@@ -21,20 +32,32 @@
         "genericAuthType": "httpBasicAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ texto: $json.textPlain || $json.text || $json.textHtml || '', fuente: 'muse' }) }}",
-        "options": { "timeout": 30000 }
+        "jsonBody": "={{ JSON.stringify({ texto: $json.textPlain || $json.text || $json.textHtml || '', asunto: $json.subject || '', fuente: 'muse' }) }}",
+        "options": {
+          "timeout": 30000
+        }
       },
       "name": "Mandar a la fábrica",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [260, 0]
+      "position": [
+        260,
+        0
+      ]
     },
     {
       "parameters": {
         "method": "POST",
         "url": "=https://TU-EVOLUTION-API/message/sendText/TU-INSTANCIA",
         "sendHeaders": true,
-        "headerParameters": { "parameters": [{ "name": "apikey", "value": "TU-APIKEY-DE-EVOLUTION" }] },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "TU-APIKEY-DE-EVOLUTION"
+            }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ number: '52TU-NUMERO', text: $json.pendiente ? '📥 Llegó el informe de Muse. Dile a Claude Code: convierte los informes pendientes.' : '🎬 Llegó el informe de Muse. En unos minutos estarán las propuestas en el Investigador de la fábrica.' }) }}",
@@ -43,13 +66,36 @@
       "name": "Avisarme por WhatsApp (opcional)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [520, 0],
+      "position": [
+        520,
+        0
+      ],
       "disabled": true
     }
   ],
   "connections": {
-    "Correo de Muse (Gmail)": { "main": [[{ "node": "Mandar a la fábrica", "type": "main", "index": 0 }]] },
-    "Mandar a la fábrica": { "main": [[{ "node": "Avisarme por WhatsApp (opcional)", "type": "main", "index": 0 }]] }
+    "Correo de Muse (Gmail)": {
+      "main": [
+        [
+          {
+            "node": "Mandar a la fábrica",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mandar a la fábrica": {
+      "main": [
+        [
+          {
+            "node": "Avisarme por WhatsApp (opcional)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
   "settings": {}
 }
