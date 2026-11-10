@@ -171,6 +171,8 @@ async function clipsConSkill(id, avisar, { soloFaltantes = true, conCuadros = tr
     for (const x of fs.readdirSync(dirClips(id))) if (x.startsWith(`escena-${n}.`)) fs.rmSync(path.join(dirClips(id), x));
     fs.copyFileSync(f, path.join(dirClips(id), `escena-${n}${path.extname(f).toLowerCase()}`)); generados++;
   }
+  // con diálogos la voz sale de los clips: la que había ya no corresponde
+  if (generados && pr.opciones?.modo === "dialogos") { const q = leer(id, "proyecto.json"); if (q?.estado?.voz === "listo") { q.estado.voz = "desactualizado"; guardar(id, "proyecto.json", q); } }
   const fallos = porHacer.map((x) => `escena-${x.n}: ${esPolitica(errores[`cuadro-${x.n}`]) || esPolitica(errores[`escena-${x.n}`]) ? "Flow la bloqueó por políticas de contenido (aun suavizada)" : String(errores[`escena-${x.n}`] || errores[`cuadro-${x.n}`] || "no salió").split("\n")[0].slice(0, 140)}`);
   if (!generados) throw new Error("Flow no entregó clips: " + fallos.join(" | "));
   return { generados, fallos };

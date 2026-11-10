@@ -70,6 +70,19 @@ export async function fotogramas(id, segundos, salidaDir) {
 }
 
 export async function render(id, avisar = () => {}) {
+  // modo diálogos: la voz sale del audio de los clips. Si un clip se rehízo después de armar la voz, la voz vieja ya no
+  // coincide con el video (se desfasa): se vuelve a armar sola antes de renderizar.
+  const pr0 = leer(id, "proyecto.json");
+  if (pr0?.opciones?.modo === "dialogos") {
+    const voz = path.join(dirProyecto(id), "voz.mp3"), clips = path.join(dirProyecto(id), "clips");
+    const tVoz = fs.existsSync(voz) ? fs.statSync(voz).mtimeMs : 0;
+    const nuevos = fs.existsSync(clips) && fs.readdirSync(clips).some((x) => /^escena-\d+\.(mp4|mov|webm)$/i.test(x) && fs.statSync(path.join(clips, x)).mtimeMs > tVoz);
+    if (tVoz && nuevos) {
+      avisar({ paso: "render", progreso: 0.01, msg: "Hay clips nuevos: vuelvo a sacar las voces de los clips para que queden en sincronía…" });
+      const { hacerVoz } = await import("./voz.js");
+      await hacerVoz(id, (a) => avisar({ ...a, paso: "render", progreso: 0.02 }));
+    }
+  }
   const proyecto = leer(id, "proyecto.json");
   const tiempos = leer(id, "tiempos.json");
   const guion = leer(id, "guion.json");
