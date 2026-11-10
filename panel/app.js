@@ -120,6 +120,8 @@ function nuevo(estiloId, motionId = "") {
   $("#main").innerHTML = `
     <h1>Nuevo video</h1><p class="sub">Cuéntame la idea; el guion se escribe en el siguiente paso.</p>
     <div class="card" style="max-width:720px">
+      <label>¿Para qué marca?</label>
+      <div class="seg" id="nMarca"><button data-v="">Cargando…</button></div>
       <label>Estilo</label>
       <select id="nEstilo">${listos.map((e) => `<option value="${h(e.id)}" ${e.id === est.id ? "selected" : ""}>${h(e.nombre)}</option>`).join("")}</select>
       <label>Idea o tema</label>
@@ -157,10 +159,41 @@ function nuevo(estiloId, motionId = "") {
     $("#nGaleria").innerHTML = `<label>Estilo de motion</label><select id="nMot">${cat.map((c) => `<option value="${h(c.id)}" ${c.id === motionElegido ? "selected" : ""}>${h(c.familia)} · ${h(c.nombre)}</option>`).join("")}</select>`;
     $("#nMot").onchange = () => (motionElegido = $("#nMot").value);
   };
-  const ideas = () => { extra(); formatos(); galeria(); const e = estiloDe($("#nEstilo").value); $("#nIdeas").innerHTML = (e.ideas || []).map((i) => `<span class="idea">${h(i)}</span>`).join(""); for (const el of document.querySelectorAll(".idea")) el.onclick = () => ($("#nIdea").value = el.textContent); };
+  // marca → sugerencias de las investigaciones de esa marca (lo viral primero); "Otra idea" → las ideas del estilo
+  let marca = null, sug = { sugerencias: [], config: null }, elegida = null;
+  const nomEstilo = (id) => (id.startsWith("motion:") ? "Motion" : estiloDe(id)?.nombre || id);
+  const ponerMarca = () => { // la marca elige sello/logo y canal si el estilo los tiene
+    for (const sel of document.querySelectorAll("[data-op]")) if (/^(marca|logo)$/.test(sel.dataset.op) && marca) {
+      const vs = [...sel.options].map((o) => o.value); // si el estilo no tiene sello de esta marca: el del canal o ninguno (nunca el de otra marca)
+      sel.value = vs.includes(marca) ? marca : vs.find((v) => v === "canal") || vs.find((v) => /^(ninguna|no)$/.test(v)) || sel.value;
+    }
+    if (marca && sug.config?.canal && !$("#nCanal").value.trim()) $("#nCanal").value = sug.config.canal;
+  };
+  const ideas = () => {
+    extra(); formatos(); galeria(); ponerMarca();
+    const e = estiloDe($("#nEstilo").value);
+    if (!marca) { $("#nIdeas").innerHTML = (e.ideas || []).map((i) => `<span class="idea">${h(i)}</span>`).join(""); for (const el of document.querySelectorAll(".idea")) el.onclick = () => { elegida = null; $("#nIdea").value = el.textContent; }; return; }
+    const ls = sug.sugerencias;
+    $("#nIdeas").innerHTML = ls.length
+      ? `<div class="estado" style="width:100%;margin:2px 0 4px">Ideas de lo que está funcionando para ${h(sug.config?.nombre || marca)} (● viral = nace de un video que ya pegó). Al elegir una se pone su estilo.</div>` + ls.map((x, k) => `<span class="idea" data-sug="${k}" title="${h(x.idea || x.frase)}">${x.viral ? `<b style="color:var(--ok)">●</b> ` : ""}${h(x.frase || x.idea || x.tema)} <span style="opacity:.6">· ${h(nomEstilo(x.estilo))}</span></span>`).join("")
+      : `<div class="estado">Todavía no hay investigaciones de ${h(sug.config?.nombre || marca)}. Cuando llegue el informe diario aparecen aquí; mientras, escribe tu idea.</div>`;
+    for (const el of document.querySelectorAll("[data-sug]")) el.onclick = () => {
+      const x = ls[+el.dataset.sug]; elegida = x;
+      $("#nIdea").value = [x.frase, x.idea].filter(Boolean).join("\n");
+      const id = x.estilo.startsWith("motion:") ? "motion" : x.estilo;
+      if (id && $("#nEstilo").querySelector(`option[value="${id}"]`) && $("#nEstilo").value !== id) { $("#nEstilo").value = id; if (id === "motion") motionElegido = x.estilo.slice(7); ideas(); $("#nIdea").value = [x.frase, x.idea].filter(Boolean).join("\n"); elegida = x; }
+    };
+  };
+  const marcas = async (n) => {
+    try { sug = await api(`/api/investigacion/sugerencias${n ? `?nicho=${encodeURIComponent(n)}` : ""}`); } catch { sug = { nichos: [], sugerencias: [] }; }
+    if (marca === null) marca = sug.nicho || "";
+    $("#nMarca").innerHTML = [...(sug.nichos || []).map((x) => `<button data-v="${h(x.id)}">${h(x.nombre || x.id)}</button>`), `<button data-v="">Otra idea</button>`].join("");
+    for (const b of document.querySelectorAll("#nMarca button")) { b.classList.toggle("on", b.dataset.v === marca); b.onclick = async () => { marca = b.dataset.v; elegida = null; if (marca) await marcas(marca); else { for (const x of document.querySelectorAll("#nMarca button")) x.classList.toggle("on", x === b); ideas(); } }; }
+    ideas();
+  };
   const seg = (sel, k) => { for (const b of document.querySelectorAll(`${sel} button`)) { b.classList.toggle("on", b.dataset.v === st[k]); b.onclick = () => { st[k] = b.dataset.v; seg(sel, k); }; } };
-  seg("#nDur", "duracion"); ideas();
-  $("#nEstilo").onchange = ideas;
+  seg("#nDur", "duracion"); ideas(); marcas();
+  $("#nEstilo").onchange = () => { elegida = null; ideas(); };
   $("#nCancelar").onclick = inicio;
   $("#nCrear").onclick = async () => {
     const idea = $("#nIdea").value.trim();
@@ -169,6 +202,16 @@ function nuevo(estiloId, motionId = "") {
     localStorage.setItem("canal", $("#nCanal").value.trim());
     const opciones = {}; for (const sel of document.querySelectorAll("[data-op]")) opciones[sel.dataset.op] = sel.value;
     const conVoz = !$("#nVoz") || $("#nVoz button.on").dataset.v === "si";
+    // idea elegida de la investigación y sin cambiar de estilo: se crea desde la propuesta (trae gancho, ángulo y la referencia viral)
+    const estSel = $("#nEstilo").value, mismaProp = elegida && (elegida.estilo === estSel || (estSel === "motion" && elegida.estilo === `motion:${motionElegido}`));
+    if (mismaProp && $("#nIdea").value.trim() === [elegida.frase, elegida.idea].filter(Boolean).join("\n")) {
+      try {
+        const q = await api(`/api/investigacion/${encodeURIComponent(elegida.archivo)}/crear`, "POST", { n: elegida.n, formato: st.formato, canal: $("#nCanal").value.trim(), opciones: esMotion ? undefined : opciones, conVoz });
+        if (q.guionPendiente) avisar(`Creado sin guion (${q.aviso}). En Claude Code di: escribe el guion de ${q.id}`, true);
+        S.proyectos = await api("/api/proyectos"); abrir(q.id); return;
+      } catch (e) { return avisar(e.message, true); }
+    }
+    if (marca) opciones.nicho = marca;
     const p = await api("/api/proyectos", "POST", { estilo: $("#nEstilo").value, idea, titulo: idea, conVoz, opciones, ...st, segundos: Number($("#nSeg")?.value) || null });
     if ($("#nCanal").value.trim()) await api(`/api/proyectos/${p.id}`, "PATCH", { canal: $("#nCanal").value.trim() });
     if (esMotion) { const c = (estiloDe("motion").catalogo || []).find((x) => x.id === motionElegido); await api(`/api/proyectos/${p.id}/brief`, "PUT", { estiloMotion: motionElegido, formato: st.formato, para: "Reels / TikTok", segundos: Math.round(c?.seg || 12), loop: false, textos: "", marca: "", medios: "ninguno, solo gráfico", notas: "" }); }

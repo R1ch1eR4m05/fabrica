@@ -180,6 +180,10 @@ async function api(req, res, partes) {
     if (id === "nichos" && m === "POST") { const b = await cuerpo(req); if (!String(b.nombre || "").trim()) return json(res, 400, { error: "Ponle nombre al nicho." }); return json(res, 200, INV.crearNicho(String(b.nombre).trim())); }
     if (id === "activo" && m === "PUT") { const b = await cuerpo(req); try { return json(res, 200, { activo: INV.activarNicho(b.id) }); } catch (e) { return json(res, 400, { error: e.message }); } }
     if (!id && m === "GET") { const cfg = INV.leerConfig(qn); return json(res, 200, { config: cfg, nichos: INV.listarNichos(), activo: INV.nichoActivo(), estilos: INV.estilosDisponibles(), lista: INV.listarInvestigaciones(cfg.id), trabajando: !!investigando, apify: !!CFG.apifyToken, ia: INV.hayIA(), motor: CFG.geminiKey ? "Gemini" : CFG.anthropicKey ? "Claude" : null, pendientes: INV.informesPendientes() }); }
+    if (id === "sugerencias" && m === "GET") {
+      const nichos = INV.listarNichos(), n = qn || INV.nichoActivo();
+      return json(res, 200, { nichos, activo: INV.nichoActivo(), nicho: n, config: nichos.some((x) => x.id === n) ? INV.leerConfig(n) : null, sugerencias: nichos.some((x) => x.id === n) ? INV.sugerencias(n) : [] });
+    }
     if (id === "prompt" && m === "GET") { res.writeHead(200, { "content-type": "text/plain; charset=utf-8" }); return res.end(INV.promptDeepResearch(qn)); }
     if (id === "importar" && m === "POST") {
       // también lo llama n8n: POST /api/investigacion/importar  { "texto": "...", "fuente": "muse" }   (o texto plano)

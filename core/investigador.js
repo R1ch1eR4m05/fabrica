@@ -117,6 +117,15 @@ export function listarInvestigaciones(nicho) {
     .map((f) => { const j = JSON.parse(fs.readFileSync(path.join(DIR_INV, f), "utf8")); return { archivo: f, fecha: j.fecha, modo: j.modo, nicho: nichoDe(j), propuestas: j.propuestas?.length || 0, analizadas: j.publicaciones?.length || 0 }; })
     .filter((x) => !nicho || x.nicho === nicho);
 }
+// sugerencias para "Nuevo video": propuestas recientes de la marca (las que nacen de un video viral real, primero)
+export function sugerencias(nicho, max = 30) {
+  const out = [];
+  for (const x of listarInvestigaciones(nicho).slice(0, 6)) {
+    let inv; try { inv = leerInvestigacion(x.archivo); } catch { continue; }
+    for (const p of inv.propuestas || []) out.push({ archivo: x.archivo, fecha: x.fecha, n: p.n, estilo: p.estilo || "", frase: String(p.frase || "").replace(/\*/g, ""), idea: p.idea || "", tema: p.tema || "", viral: (p.inspiradaEn || []).length > 0, llegada: p.llegada || "", inspiradaEn: (p.inspiradaEn || []).slice(0, 3) });
+  }
+  return out.sort((a, b) => (b.viral - a.viral) || String(b.fecha).localeCompare(String(a.fecha))).slice(0, max);
+}
 export const leerInvestigacion = (f) => JSON.parse(fs.readFileSync(path.join(DIR_INV, path.basename(f)), "utf8"));
 
 // ---------------- recolección (Apify) ----------------
