@@ -117,14 +117,30 @@ export function listarInvestigaciones(nicho) {
     .map((f) => { const j = JSON.parse(fs.readFileSync(path.join(DIR_INV, f), "utf8")); return { archivo: f, fecha: j.fecha, modo: j.modo, nicho: nichoDe(j), propuestas: j.propuestas?.length || 0, analizadas: j.publicaciones?.length || 0 }; })
     .filter((x) => !nicho || x.nicho === nicho);
 }
-// sugerencias para "Nuevo video": propuestas recientes de la marca (las que nacen de un video viral real, primero)
-export function sugerencias(nicho, max = 30) {
+// sugerencias para "Nuevo video", ordenadas por prioridad. Puntaje (0-100) y el porqué en palabras:
+//  · viral comprobada (nace de publicaciones reales) +40; y según cuánto pegaron esas publicaciones (puntaje de métricas) hasta +20
+//  · hueco en español: "aún no llega" +20, "poco en español" +10 (llegar primero vale más que copiar lo que ya está)
+//  · frescura: del día +15, cada día de antigüedad resta 5 (las tendencias se enfrían en 3-5 días)
+//  · ya hiciste un video con ella: -60 (va al final)
+export function sugerencias(nicho, max = 30, usadas = new Set()) {
   const out = [];
-  for (const x of listarInvestigaciones(nicho).slice(0, 6)) {
+  for (const x of listarInvestigaciones(nicho).slice(0, 8)) {
     let inv; try { inv = leerInvestigacion(x.archivo); } catch { continue; }
-    for (const p of inv.propuestas || []) out.push({ archivo: x.archivo, fecha: x.fecha, n: p.n, estilo: p.estilo || "", frase: String(p.frase || "").replace(/\*/g, ""), idea: p.idea || "", tema: p.tema || "", viral: (p.inspiradaEn || []).length > 0, llegada: p.llegada || "", inspiradaEn: (p.inspiradaEn || []).slice(0, 3) });
+    const pubs = new Map((inv.publicaciones || []).map((q) => [q.url, q.puntaje || 0]));
+    const dias = Math.max(0, (Date.now() - new Date(x.fecha || 0).getTime()) / 864e5);
+    for (const p of inv.propuestas || []) {
+      const refs = p.inspiradaEn || [], viral = refs.length > 0, mejor = Math.max(0, ...refs.map((u) => pubs.get(u) || 0));
+      const hecha = usadas.has(`${x.archivo}#${p.n}`);
+      let pts = (viral ? 40 : 0) + Math.min(20, mejor * 2) + (p.llegada === "aún no llega" ? 20 : p.llegada === "poco en español" ? 10 : 0) + (dias < 1 ? 15 : -5 * Math.floor(dias)) - (hecha ? 60 : 0);
+      const por = [viral ? (mejor ? `viral comprobada (${mejor.toFixed(1)} pts)` : "viral comprobada") : "hipótesis sin video de referencia",
+        p.llegada === "aún no llega" ? "aún no llega al español" : p.llegada === "poco en español" ? "poco en español" : "",
+        dias < 1 ? "de hoy" : `hace ${Math.floor(dias)} día${Math.floor(dias) === 1 ? "" : "s"}`, hecha ? "ya hiciste video con esta" : ""].filter(Boolean).join(" · ");
+      out.push({ archivo: x.archivo, fecha: x.fecha, n: p.n, estilo: p.estilo || "", frase: String(p.frase || "").replace(/\*/g, ""), idea: p.idea || "", tema: p.tema || "", viral, llegada: p.llegada || "", inspiradaEn: refs.slice(0, 3), prioridad: Math.max(0, Math.min(100, Math.round(pts))), porQue: por, hecha });
+    }
   }
-  return out.sort((a, b) => (b.viral - a.viral) || String(b.fecha).localeCompare(String(a.fecha))).slice(0, max);
+  // sin repetir la misma frase de dos informes
+  const vistas = new Set();
+  return out.sort((a, b) => b.prioridad - a.prioridad).filter((x) => { const k = x.frase.toLowerCase().slice(0, 60); if (vistas.has(k)) return false; vistas.add(k); return true; }).slice(0, max);
 }
 export const leerInvestigacion = (f) => JSON.parse(fs.readFileSync(path.join(DIR_INV, path.basename(f)), "utf8"));
 
@@ -486,4 +502,29 @@ export function guionDesdePropuesta(p, cfg) {
     inspiracion: p.inspiradaEn || [], // no va en el texto para publicar
     subir: { titulo: p.tituloPost || "", descripcion: p.descripcion || "", hashtags: p.hashtags || [] },
   };
+}
+
+
+// ---------------- laptop ⇄ VPS ----------------
+// la laptop le pregunta al VPS (ESPEJO_URL) y el VPS a la laptop (LAPTOP_URL): cada lado se trae lo que le falte o esté más nuevo
+export function archivosInvestigacion() {
+  return fs.readdirSync(DIR_INV).filter((f) => /^\d{4}-.*\.json$/.test(f) && !f.startsWith("datos-")).map((f) => ({ archivo: f, mtime: fs.statSync(path.join(DIR_INV, f)).mtimeMs }));
+}
+export async function traerDelOtro() {
+  const otro = CFG.espejoUrl && CFG.espejoClave ? [CFG.espejoUrl, CFG.espejoClave] : CFG.laptopUrl ? [CFG.laptopUrl, CFG.laptopClave] : null;
+  if (!otro) return 0;
+  const base = otro[0].replace(/\/+$/, ""), headers = { authorization: "Basic " + Buffer.from("fabrica:" + (otro[1] || "")).toString("base64") };
+  const r = await fetch(`${base}/api/investigacion/archivos`, { headers, signal: AbortSignal.timeout(15000) });
+  if (!r.ok) throw new Error(`respondió ${r.status}`);
+  const mios = new Map(archivosInvestigacion().map((x) => [x.archivo, x.mtime]));
+  let n = 0;
+  for (const x of (await r.json()).archivos || []) {
+    if (!/^\d{4}-[\w.-]+\.json$/.test(x.archivo) || (mios.has(x.archivo) && mios.get(x.archivo) >= x.mtime)) continue;
+    const q = await fetch(`${base}/api/investigacion/${encodeURIComponent(x.archivo)}`, { headers, signal: AbortSignal.timeout(30000) });
+    if (!q.ok) continue;
+    const j = await q.json(); if (!j?.propuestas) continue;
+    const f = path.join(DIR_INV, x.archivo);
+    fs.writeFileSync(f, JSON.stringify(j, null, 2)); fs.utimesSync(f, new Date(), new Date(x.mtime)); n++;
+  }
+  return n;
 }

@@ -182,7 +182,11 @@ async function api(req, res, partes) {
     if (!id && m === "GET") { const cfg = INV.leerConfig(qn); return json(res, 200, { config: cfg, nichos: INV.listarNichos(), activo: INV.nichoActivo(), estilos: INV.estilosDisponibles(), lista: INV.listarInvestigaciones(cfg.id), trabajando: !!investigando, apify: !!CFG.apifyToken, ia: INV.hayIA(), motor: CFG.geminiKey ? "Gemini" : CFG.anthropicKey ? "Claude" : null, pendientes: INV.informesPendientes() }); }
     if (id === "sugerencias" && m === "GET") {
       const nichos = INV.listarNichos(), n = qn || INV.nichoActivo();
-      return json(res, 200, { nichos, activo: INV.nichoActivo(), nicho: n, config: nichos.some((x) => x.id === n) ? INV.leerConfig(n) : null, sugerencias: nichos.some((x) => x.id === n) ? INV.sugerencias(n) : [] });
+      const usadas = new Set(P.listarProyectos().map((x) => { try { const d = (x.desdeInvestigacion || P.leer(x.id, "proyecto.json")?.desdeInvestigacion); return d ? `${d.archivo}#${d.n}` : ""; } catch { return ""; } }).filter(Boolean));
+      return json(res, 200, { nichos, activo: INV.nichoActivo(), nicho: n, config: nichos.some((x) => x.id === n) ? INV.leerConfig(n) : null, sugerencias: nichos.some((x) => x.id === n) ? INV.sugerencias(n, 30, usadas) : [] });
+    }
+    if (id === "archivos" && m === "GET") { // para que laptop y VPS se pasen las investigaciones
+      return json(res, 200, { archivos: INV.archivosInvestigacion() });
     }
     if (id === "prompt" && m === "GET") { res.writeHead(200, { "content-type": "text/plain; charset=utf-8" }); return res.end(INV.promptDeepResearch(qn)); }
     if (id === "importar" && m === "POST") {
@@ -555,6 +559,9 @@ export function arrancar() {
   });
   // banco de imágenes: mete lo que ya se generó antes (una vez al arrancar)
   BANCO.llenarBancoDeAntes().then((n) => n && console.log(`  · Banco de imágenes: ${n} nuevas de videos anteriores`)).catch(() => {});
+  // investigaciones: laptop ⇄ VPS (cada una trae las que le falten a la otra; así da igual desde dónde las veas)
+  const traer = () => INV.traerDelOtro().then((n) => n && emitir({ id: "_investigador", paso: "investigar", estado: "listo", msg: `Llegaron ${n} investigación(es) del otro equipo` })).catch((e) => console.warn("  · Investigaciones del otro equipo:", e.message));
+  setTimeout(traer, 15000); setInterval(traer, 10 * 60000);
   // carpeta de entrada: lo que caiga en investigacion/entrada/ se importa solo (cada minuto)
   setInterval(async () => {
     if (investigando) return;
