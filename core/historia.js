@@ -105,7 +105,8 @@ async function clipsConSkill(id, avisar, { soloFaltantes = true, conCuadros = tr
     if (!dialogos) return "";
     const ls = (e.dialogo || []).filter((l) => l?.texto).map((l) => `${l.quien || "Character"} says in Mexican Spanish${l.tono ? ` (${l.tono})` : ""}: "${String(l.texto).trim()}"`);
     // la voz de cada quien, siempre la misma descripción (con reparto, la del archivo de la marca)
-    const vs = rep ? rep.personajes.filter((p) => p.vozVideo).map((p) => `${p.nombre}: ${p.vozVideo}`).join("; ") : Object.entries(g.voces || {}).map(([q, d]) => `${q}: ${d}`).join("; ");
+    const hablan_ = new Set((e.dialogo || []).map((l) => l?.quien));
+    const vs = rep ? rep.personajes.filter((p) => p.vozVideo && hablan_.has(p.nombre)).map((p) => `${p.nombre}: ${p.vozVideo}`).join("; ") : Object.entries(g.voces || {}).map(([q, d]) => `${q}: ${d}`).join("; ");
     return ls.length ? ` Spoken dialogue, lip-synced to the mouths, one line after another: ${ls.join(" ")}${vs ? ` Voices (keep them identical in every clip): ${vs}.` : ""} No background music, no subtitles.` : "";
   };
   const trabajos = ({ e, n }, cuadro) => {
