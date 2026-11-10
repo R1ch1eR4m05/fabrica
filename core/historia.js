@@ -2,6 +2,7 @@
 // Orden por escena: tu clip (clips/escena-N.*) → clip de Google Flow (si lo generaste) → búsqueda en Pexels/Pixabay → dibujo animado.
 // Los clips se convierten una vez a fotogramas (clips/N/00001.jpg…) del largo exacto de la escena, para que el render sea exacto.
 import fs from "node:fs";
+import { spawnSync } from "node:child_process";
 import { hayIA, pedir } from "./llm.js";
 import path from "node:path";
 import { CFG, FORMATOS } from "./config.js";
@@ -31,7 +32,7 @@ export function quitarDeAuditoria(id, escenas) { const a = leerAuditoria(id); if
 export function estadoClips(id) {
   const g = leer(id, "guion.json") || { escenas: [] };
   let org = {}; try { org = JSON.parse(fs.readFileSync(path.join(dirClips(id), "origen.json"), "utf8")); } catch {}
-  return g.escenas.map((e, k) => { const f = clipDeEscena(id, k + 1); return { n: k + 1, tipo: e.tipo, archivo: f ? path.basename(f) : null, origen: f ? org[k + 1] || "" : "", flowPrompt: e.flowPrompt || "", buscar: e.buscar || "", misma: !!e.misma && !f }; });
+  return g.escenas.map((e, k) => { const f = clipDeEscena(id, k + 1); return { n: k + 1, tipo: e.tipo, cuadro: fs.existsSync(path.join(dirClips(id), `cuadro-${k + 1}.png`)), archivo: f ? path.basename(f) : null, origen: f ? org[k + 1] || "" : "", flowPrompt: e.flowPrompt || "", buscar: e.buscar || "", misma: !!e.misma && !f }; });
 }
 
 // prompt de Flow de una escena: estilo visual y personajes del guion + la acción de la escena (así los personajes salen iguales)
@@ -42,7 +43,17 @@ export function promptFlow(guion, e) {
 
 // con Google Flow Skill: 1) una imagen de los personajes, 2) el primer cuadro de cada escena usando esa imagen de
 // referencia, 3) cada escena animada desde su cuadro. Así la familia se ve igual en todas las tomas.
-async function clipsConSkill(id, avisar, { soloFaltantes = true, conCuadros = true, escenas = null, notas = {} } = {}) {
+// ¿el video arranca de verdad en su cuadro? (Flow a veces animaba la imagen o el video de otra escena). Diferencia media 0-255
+// entre el cuadro y el primer fotograma, en miniatura y gris: la misma imagen da < 6; otra escena, 15 o más.
+function difCuadro(img, vid) {
+  const px = (args) => spawnSync(CFG.ffmpeg, ["-v", "error", ...args, "-vf", "scale=36:64,format=gray", "-f", "rawvideo", "-"], { maxBuffer: 1 << 20 }).stdout || Buffer.alloc(0);
+  const a = px(["-i", img]), b = px(["-ss", "0.05", "-i", vid, "-frames:v", "1"]);
+  if (!a.length || a.length !== b.length) return 0; // si no se pudo medir, no se bloquea
+  let d = 0; for (let i = 0; i < a.length; i++) d += Math.abs(a[i] - b[i]);
+  return d / a.length;
+}
+
+async function clipsConSkill(id, avisar, { soloFaltantes = true, conCuadros = true, escenas = null, notas = {}, reanimar = false } = {}) {
   const g = leer(id, "guion.json");
   const pr = leer(id, "proyecto.json"), est = leerEstilo(pr.estilo);
   // anuncios: la foto de la escena va en "imagen"; se anima solo si el anuncio es video y pidieron clips
@@ -115,7 +126,8 @@ async function clipsConSkill(id, avisar, { soloFaltantes = true, conCuadros = tr
   // se anima ese mismo cuadro en lugar de pedir otra imagen igual (al rehacer una escena a propósito sí se pide uno nuevo)
   const CUADRO = (n) => path.join(dirClips(id), `cuadro-${n}.png`);
   for (const { n } of pend) {
-    if (escenas) { try { fs.rmSync(CUADRO(n)); } catch {} }
+    if (escenas && !reanimar) { try { fs.rmSync(CUADRO(n)); } catch {} }
+    else if (escenas && reanimar && fs.existsSync(CUADRO(n))) todos[`cuadro-${n}`] = CUADRO(n); // misma imagen, solo otra animación
     else if (conCuadros && fs.existsSync(CUADRO(n))) todos[`cuadro-${n}`] = CUADRO(n);
   }
   let porHacer = pend.map((x) => ({ ...x, suaves: 0 }));
@@ -133,6 +145,10 @@ async function clipsConSkill(id, avisar, { soloFaltantes = true, conCuadros = tr
     catch (err) { if (/actividad inusual/.test(err.message) || !Object.keys(todos).some((k) => k.startsWith("escena-"))) throw err; break; }
     Object.assign(todos, r.archivos);
     for (const { n } of porHacer) { const c = r.archivos[`cuadro-${n}`]; if (c && fs.existsSync(c)) { fs.copyFileSync(c, CUADRO(n)); todos[`cuadro-${n}`] = CUADRO(n); } }
+    for (const { n } of porHacer) { // un video que no arranca en su cuadro no sirve: se descarta y se reintenta
+      const v = r.archivos[`escena-${n}`], c = todos[`cuadro-${n}`];
+      if (v && c && fs.existsSync(c) && difCuadro(c, v) > 12) { delete r.archivos[`escena-${n}`]; delete todos[`escena-${n}`]; errores[`escena-${n}`] = "Flow animó otra imagen (no la de esta escena); se descartó"; }
+    }
     // si en toda la vuelta no salió ningún video y no fue por políticas, repetir igual solo gasta créditos: se para y se avisa
     const salieron = porHacer.filter((x) => r.archivos[`escena-${x.n}`]).length;
     const hayPolitica = r.fallos.some((f) => esPolitica(f));
@@ -174,8 +190,8 @@ async function suavizarPrompt(prompt, intento) {
 async function alBanco(id, r) { try { const B = await import("./banco.js"); await B.guardarDeProyecto(id); } catch (e) { console.warn("Banco:", e.message); } return r; }
 
 // genera en Flow los clips que faltan (todas las escenas de una vez); cada uno queda como clips/escena-N.mp4
-export async function clipsDeFlow(id, avisar = () => {}, { maxCreditos = 25, soloFaltantes = true, conCuadros = true, escenas = null, notas = {} } = {}) {
-  if (flowSkillListo()) { const r = await alBanco(id, await clipsConSkill(id, avisar, { soloFaltantes, conCuadros, escenas, notas })); if (escenas) quitarDeAuditoria(id, escenas); return r; }
+export async function clipsDeFlow(id, avisar = () => {}, { maxCreditos = 25, soloFaltantes = true, conCuadros = true, escenas = null, notas = {}, reanimar = false } = {}) {
+  if (flowSkillListo()) { const r = await alBanco(id, await clipsConSkill(id, avisar, { soloFaltantes, conCuadros, escenas, notas, reanimar })); if (escenas) quitarDeAuditoria(id, escenas); return r; }
   if (escenas) throw new Error("Rehacer escenas sueltas necesita la skill de Flow (laptop).");
   if (!(await flowDisponible())) throw new Error("No encuentro flow-mcp abierto. Abre 'Flow Studio' y vuelve a intentar.");
   const p = leer(id, "proyecto.json"), g = leer(id, "guion.json");

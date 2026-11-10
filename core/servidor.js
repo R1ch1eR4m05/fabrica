@@ -404,7 +404,7 @@ async function api(req, res, partes) {
     const b = await cuerpo(req);
     // escenas: [n…] para rehacer solo esas (aunque ya tengan clip); notas: {n: "corrección en inglés"} se suma a su prompt
     const escenas = Array.isArray(b.escenas) && b.escenas.length ? b.escenas.map(Number).filter(Boolean) : null;
-    encolar(id, "fondo", (av) => HIS.clipsDeFlow(id, (a) => av({ ...a, paso: "fondo" }), { maxCreditos: Number(b.maxCreditos) || 25, soloFaltantes: b.todos !== true, conCuadros: b.conCuadros !== false, escenas, notas: b.notas || {} }));
+    encolar(id, "fondo", (av) => HIS.clipsDeFlow(id, (a) => av({ ...a, paso: "fondo" }), { maxCreditos: Number(b.maxCreditos) || 25, soloFaltantes: b.todos !== true, conCuadros: b.conCuadros !== false, escenas, notas: b.notas || {}, reanimar: b.reanimar === true }));
     return json(res, 200, { ok: true });
   }
   if (accion === "auditar" && m === "POST") { // revisa con IA (Gemini/Claude) qué clips salieron mal; no gasta Flow
