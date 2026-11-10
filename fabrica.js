@@ -26,6 +26,8 @@
 //   node fabrica.js imagenes <id>  imágenes 4:5 para el feed: la frase más fuerte + carrusel (sin gastar créditos)
 //   node fabrica.js capitulos <id> [--sin-reels]  video largo → un video por capítulo (+ Reel vertical de cada uno)
 //   node fabrica.js comparar-voces ["texto"] [--estilo id]   mismo texto con cada modelo de voz → listos/comparar-voces/
+import fs from "node:fs";
+import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { exec } from "node:child_process";
 import { CFG } from "./core/config.js";
@@ -46,10 +48,22 @@ async function main() {
         let extra = [];
         const lanzar = () => {
           const h = spawn(process.execPath, [process.argv[1], ...process.argv.slice(2), ...extra], { stdio: "inherit", env: { ...process.env, FABRICA_HIJO: "1" } });
-          h.on("exit", (c) => { if (c === 3) { console.log("\n  Fábrica actualizada. Reiniciando…\n"); extra = ["--sin-abrir"]; lanzar(); } else process.exit(c ?? 0); });
+          h.on("exit", (c) => {
+            if (c === 3) { console.log("\n  Fábrica actualizada. Reiniciando…\n"); extra = ["--sin-abrir"]; lanzar(); }
+            else if (c && c !== 130) { console.log("\n  El panel se cayó (el error quedó en fabrica-errores.log). Lo vuelvo a levantar…\n"); extra = ["--sin-abrir"]; setTimeout(lanzar, 1500); }
+            else process.exit(c ?? 0);
+          });
         };
         lanzar(); return;
       }
+      // un error suelto de un trabajo en segundo plano no debe tumbar el panel ("Failed to fetch"): se anota y se sigue
+      const anotar = (tipo) => (e) => {
+        const txt = `[${new Date().toLocaleString("es-MX")}] ${tipo}: ${e?.stack || e}\n`;
+        console.error("  " + txt.trim());
+        try { fs.appendFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "fabrica-errores.log"), txt); } catch {}
+      };
+      process.on("unhandledRejection", anotar("Promesa sin atrapar"));
+      process.on("uncaughtException", anotar("Error sin atrapar"));
       const { arrancar } = await import("./core/servidor.js");
       arrancar();
       if (!args.includes("--sin-abrir") && String(CFG.host).split(",")[0].trim() === "127.0.0.1") {
