@@ -48,6 +48,14 @@
         "grandes": "Grandes palabra por palabra",
         "frase": "Frase completa"
       }
+    },
+    {
+      "clave": "textoArriba",
+      "nombre": "Texto grande arriba",
+      "valores": {
+        "no": "No (solo subtítulos)",
+        "si": "Sí (frase clave en cada escena)"
+      }
     }
   ],
   "sonido": {

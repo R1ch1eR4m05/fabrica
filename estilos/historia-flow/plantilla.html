@@ -53,7 +53,7 @@ Motor.iniciar({
     const v = c.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.75); v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,0.45)"); c.fillStyle = v; c.fillRect(0, 0, W, H);
 
     // ---- texto grande de la escena (gancho, giro, remate) ----
-    if (e.texto && e.tipo !== "cierre") {
+    if (e.texto && e.tipo !== "cierre" && M.proyecto?.opciones?.textoArriba === "si") { // apagado por defecto: tapaba la escena
       const a = i === 0 ? 1 : M.clamp((p - 0.05) / 0.2), s = 0.85 + 0.15 * M.salida(a) + 0.06 * Math.sin(Math.min(1, a) * Math.PI);
       c.save(); c.translate(W / 2, M.vertical ? H * 0.2 : H * 0.18); c.scale(s, s); c.globalAlpha = a;
       textoGrande(c, M, String(e.texto).replace(/\*/g, ""), 0, 0, 110 * u, W * 0.86); c.restore();
@@ -104,7 +104,13 @@ function subtitulos(c, M, t, te) {
   const u = M.u, fr = M.frases(te.palabras, frase ? 7 : 3); let cur = null;
   for (const f of fr) if (t >= f[0].t0 - 0.02) cur = f;
   if (!cur || t > te.finVoz + 0.25) return;
-  const y = M.vertical ? M.H * 0.62 : M.H * 0.84, tam = (frase ? 52 : 74) * u; // vertical: sube del 76 % al 62 % para quedar fuera de donde Instagram/TikTok ponen usuario, descripción y música (~35 % de abajo)
+  const y = M.vertical ? M.H * 0.62 : M.H * 0.84;
+  let tam = (frase ? 52 : 74) * u;
+  // que la línea quepa completa: si las palabras son largas, se achica la letra (deja margen para el brinco de la palabra activa)
+  c.font = `800 ${tam}px Montserrat`;
+  const ancho = (pal) => pal.reduce((a, p) => a + c.measureText(p.w.toUpperCase()).width, 0) + c.measureText(" ").width * (pal.length - 1);
+  const maxW = M.W * 0.86, w0 = ancho(cur);
+  if (w0 > maxW) tam = Math.max(30 * u, tam * maxW / w0); // vertical: sube del 76 % al 62 % para quedar fuera de donde Instagram/TikTok ponen usuario, descripción y música (~35 % de abajo)
   c.font = `800 ${tam}px Montserrat`; c.textBaseline = "middle"; c.textAlign = "left";
   const esp = c.measureText(" ").width, ws = cur.map((p) => ({ ...p, s: p.w.toUpperCase(), pw: c.measureText(p.w.toUpperCase()).width }));
   let x = (M.W - ws.reduce((a, p) => a + p.pw, 0) - esp * (ws.length - 1)) / 2;
