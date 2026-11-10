@@ -44,7 +44,7 @@ export function promptFlow(guion, e) {
 // con Google Flow Skill: 1) una imagen de los personajes, 2) el primer cuadro de cada escena usando esa imagen de
 // referencia, 3) cada escena animada desde su cuadro. Así la familia se ve igual en todas las tomas.
 // ¿el video arranca de verdad en su cuadro? (Flow a veces animaba la imagen o el video de otra escena). Diferencia media 0-255
-// entre el cuadro y el primer fotograma, en miniatura y gris: la misma imagen da < 6; otra escena, 15 o más.
+// entre el cuadro y el primer fotograma, en miniatura y gris: la misma imagen da 2-16 (Veo a veces reencuadra un poco); otra escena, 60 o más.
 function difCuadro(img, vid) {
   const px = (args) => spawnSync(CFG.ffmpeg, ["-v", "error", ...args, "-vf", "scale=36:64,format=gray", "-f", "rawvideo", "-"], { maxBuffer: 1 << 20 }).stdout || Buffer.alloc(0);
   const a = px(["-i", img]), b = px(["-ss", "0.05", "-i", vid, "-frames:v", "1"]);
@@ -147,7 +147,7 @@ async function clipsConSkill(id, avisar, { soloFaltantes = true, conCuadros = tr
     for (const { n } of porHacer) { const c = r.archivos[`cuadro-${n}`]; if (c && fs.existsSync(c)) { fs.copyFileSync(c, CUADRO(n)); todos[`cuadro-${n}`] = CUADRO(n); } }
     for (const { n } of porHacer) { // un video que no arranca en su cuadro no sirve: se descarta y se reintenta
       const v = r.archivos[`escena-${n}`], c = todos[`cuadro-${n}`];
-      if (v && c && fs.existsSync(c) && difCuadro(c, v) > 12) { delete r.archivos[`escena-${n}`]; delete todos[`escena-${n}`]; errores[`escena-${n}`] = "Flow animó otra imagen (no la de esta escena); se descartó"; }
+      if (v && c && fs.existsSync(c) && difCuadro(c, v) > 35) { delete r.archivos[`escena-${n}`]; delete todos[`escena-${n}`]; errores[`escena-${n}`] = "Flow animó otra imagen (no la de esta escena); se descartó"; }
     }
     // si en toda la vuelta no salió ningún video y no fue por políticas, repetir igual solo gasta créditos: se para y se avisa
     const salieron = porHacer.filter((x) => r.archivos[`escena-${x.n}`]).length;
