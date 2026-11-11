@@ -347,6 +347,7 @@ function pintarProyecto() {
   if ($("#rMejorar")) $("#rMejorar").onclick = () => { const k = $("#rMejorar").dataset.k.split(","); api(`/api/proyectos/${p.id}/mejorar`, "POST", { brillo: k.includes("brillo"), volumen: k.includes("volumen"), recordar: $("#rRecordar")?.checked }).then(() => avisar("Aplicando mejoras… sale en la barra de la fila.")).catch((e) => avisar(e.message, true)); };
   if ($("#rRevisar")) $("#rRevisar").onclick = () => api(`/api/proyectos/${p.id}/revisar`, "POST", {}).then(() => avisar("Revisando… sale en la barra de la fila.")).catch((e) => avisar(e.message, true));
   if ($("#ghlImgCaja")) pintarGHLImagenes(p);
+  if ($("#iReescribir")) $("#iReescribir").onclick = () => api(`/api/proyectos/${p.id}/imagenes`, "POST", { soloTexto: true }).then(() => avisar("Escribiendo descripciones… sale en la barra de la fila.")).catch((e) => avisar(e.message, true));
   if ($("#iSacar")) $("#iSacar").onclick = () => api(`/api/proyectos/${p.id}/imagenes`, "POST", {}).then(() => avisar("Sacando imágenes… sale en la barra de la fila.")).catch((e) => avisar(e.message, true));
   if ($("#iTexto")) $("#iTexto").onclick = async () => { const t = await (await fetch(`/proyectos/${p.id}/imagenes/texto.txt?v=${Date.now()}`)).text(); try { await navigator.clipboard.writeText(t); avisar("Texto copiado."); } catch { prompt("Copia el texto:", t); } };
   for (const b of document.querySelectorAll("[data-copiaimg]")) b.onclick = async () => { const c = p.imagenesPost?.copy || {}; const t = `${c[b.dataset.copiaimg] || ""}${c.hashtags?.length ? "\n\n" + c.hashtags.join(" ") : ""}`; try { await navigator.clipboard.writeText(t); avisar("Copy copiado."); } catch { prompt("Copia el texto:", t); } };
@@ -671,14 +672,15 @@ function panelImagenes(p) {
   const im = p.imagenesPost, fs_ = im?.archivos || [], base = `/proyectos/${h(p.id)}/imagenes/`;
   return `<div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--b)">
     <div class="fila" style="align-items:center"><button class="btn peq primario" id="iSacar">${fs_.length ? "Rehacer imágenes" : "Sacar imágenes para el feed"}</button>
-      ${fs_.length ? `<button class="mini" id="iTexto">Copiar todo el texto</button>` : ""}</div>
+      ${fs_.length ? `<button class="mini" id="iTexto">Copiar todo el texto</button>` : ""}
+      ${fs_.length ? `<button class="mini" id="iReescribir" title="Vuelve a escribir solo las descripciones con IA (no rehace las imágenes)">Reescribir descripciones</button>` : ""}</div>
     <div class="estado">Con las imágenes y frases de este video (sin gastar): la frase más fuerte como imagen suelta y un carrusel de una diapositiva por escena, en 4:5. También quedan en <b>listos/${h(p.id)}-imagenes</b>.</div>
     ${fs_.length ? `<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin-top:8px">${fs_.map((f) => {
       const i = f === "frase.jpg" ? -1 : parseInt(f.replace(/\D/g, ""), 10) - 1, d = i < 0 ? null : im.copy?.diapositivas?.[i];
-      const desc = i < 0 ? (im.copy?.suelta || im.frase || "") : (d?.significado || d?.texto || "");
+      const desc = i < 0 ? (im.copy?.suelta || "") : (d?.significado || "");
       return `<div><label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" data-iSel="${h(f)}" style="width:auto" checked><span class="estado">${f === "frase.jpg" ? "Imagen suelta" : h(f.replace(/\.jpg$/, ""))}</span></label>
         <a href="${base}${h(f)}" download="${h(p.id)}-${h(f)}"><img src="${base}${h(f)}?v=${Date.now()}" style="width:100%;border-radius:6px;margin-top:4px"></a>
-        <textarea data-iDesc="${h(f)}" rows="3" placeholder="Descripción de esta imagen" style="width:100%;margin-top:4px;font-size:12px">${h(desc)}</textarea></div>`;
+        <textarea data-iDesc="${h(f)}" rows="3" placeholder="Sin descripción: dale a «Reescribir descripciones» o escríbela aquí" style="width:100%;margin-top:4px;font-size:12px">${h(desc)}</textarea></div>`;
     }).join("")}</div>
     <div id="ghlImgCaja" style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--b)"></div>` : ""}
     ${im?.copy?.suelta || im?.copy?.carrusel ? `<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));margin-top:10px">${[["suelta", "Copy de la imagen suelta"], ["carrusel", "Copy del carrusel"]].filter(([k]) => im.copy[k]).map(([k, t]) => `<div class="card" style="padding:10px"><div class="fila" style="align-items:center;justify-content:space-between"><b>${t}</b><button class="mini" data-copiaimg="${k}">Copiar</button></div><div class="estado" style="white-space:pre-wrap;margin-top:6px">${h(im.copy[k])}${im.copy.hashtags?.length ? "\n\n" + h(im.copy.hashtags.join(" ")) : ""}</div></div>`).join("")}</div>` : ""}

@@ -518,6 +518,8 @@ async function api(req, res, partes) {
   if (accion === "imagenes") { // imágenes 4:5 para el feed: frase + carrusel
     const IMG = await import("./imagenes-post.js");
     if (m === "GET") return json(res, 200, IMG.leerImagenes(id) || {});
+    const bi = await cuerpo(req).catch(() => ({}));
+    if (bi?.soloTexto) { encolar(id, "render", (av) => IMG.reescribirDescripciones(id, { avisar: av })); return json(res, 200, { ok: true }); }
     encolar(id, "render", (av) => IMG.sacarImagenes(id, { avisar: av }));
     return json(res, 200, { ok: true });
   }

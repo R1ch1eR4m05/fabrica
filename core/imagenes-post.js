@@ -73,10 +73,11 @@ async function elegirFrase(guion) {
 // copy para publicar: el de la imagen suelta (qué significa la frase) y el del carrusel (la idea completa), más una línea por diapositiva
 const SIS_COPY = `Escribes el texto para publicar en Instagram/Facebook de imágenes de un video de reflexión (filosofía para la vida diaria) en español de México, tono sereno y cercano, sin clichés de gurú ni promesas.
 Recibes la frase de la imagen suelta, las frases del carrusel en orden y el tema del video.
+Cada descripción debe DESARROLLAR la idea, no repetir la frase de la imagen: explica qué significa, con una situación cotidiana concreta, y cómo aplicarla hoy. Nunca copies la frase literal como descripción.
 Devuelve SOLO JSON:
-{"suelta":"copy de la imagen suelta: 1 línea gancho + 2 a 4 líneas cortas que explican qué significa la frase y cómo se aplica en la vida diaria + 1 pregunta o invitación a guardarla/compartirla",
- "carrusel":"copy del carrusel: 1 línea gancho que invite a deslizar + 3 a 5 líneas cortas con la idea completa que recorre las diapositivas + cierre que invite a guardar",
- "diapositivas":["por cada diapositiva, en el mismo orden, 1 frase corta (máx 20 palabras) con lo que significa"],
+{"suelta":"descripción de la imagen suelta (60 a 100 palabras): 1 línea gancho + explicación desarrollada de qué significa la frase con un ejemplo de la vida diaria + una acción pequeña para hoy + 1 pregunta o invitación a guardarla/compartirla",
+ "carrusel":"descripción del carrusel (60 a 100 palabras): 1 línea gancho que invite a deslizar + la idea completa que recorre las diapositivas + cierre que invite a guardar",
+ "diapositivas":["por cada diapositiva, en el mismo orden, una descripción desarrollada de 40 a 70 palabras que se pueda publicar sola: qué significa la frase, un ejemplo cotidiano y cómo aplicarla; termina con una pregunta o invitación corta"],
  "hashtags":["5 a 8 hashtags en español, sin repetir"]}
 No copies frases de otras cuentas. Separa las líneas con \\n. Sin emojis de más (máximo 2 por copy).`;
 
@@ -84,7 +85,7 @@ async function copysConIA(guion, frase, carrusel) {
   const base = { suelta: "", carrusel: "", diapositivas: carrusel.map(() => ""), hashtags: guion.subir?.hashtags || [] };
   if (!(CFG.anthropicKey || CFG.geminiKey)) return base;
   try {
-    const j = jsonDe((await pedir(SIS_COPY, `Tema: ${guion.titulo || guion.subir?.titulo || ""}\nImagen suelta: ${frase.o}\nCarrusel:\n${carrusel.map((x, i) => `${i + 1}. ${x.t}`).join("\n")}`, { maxTokens: 2500 })).texto);
+    const j = jsonDe((await pedir(SIS_COPY, `Tema: ${guion.titulo || guion.subir?.titulo || ""}\nImagen suelta: ${frase.o}\nCarrusel:\n${carrusel.map((x, i) => `${i + 1}. ${x.t}`).join("\n")}`, { maxTokens: 6000 })).texto);
     return { suelta: String(j.suelta || ""), carrusel: String(j.carrusel || ""), diapositivas: carrusel.map((_, i) => String(j.diapositivas?.[i] || "")), hashtags: (j.hashtags?.length ? j.hashtags : base.hashtags).map((t) => (String(t).startsWith("#") ? t : "#" + t)) };
   } catch (e) { console.warn("Copy de imágenes:", e.message); return base; }
 }
@@ -142,3 +143,21 @@ export async function sacarImagenes(id, { avisar = () => {} } = {}) {
 }
 
 export const leerImagenes = (id) => { try { return JSON.parse(fs.readFileSync(path.join(dirImagenes(id), "imagenes.json"), "utf8")); } catch { return null; } };
+
+// vuelve a escribir solo las descripciones (sin rehacer las imágenes)
+export async function reescribirDescripciones(id, { avisar = () => {} } = {}) {
+  const info = leerImagenes(id), guion = leer(id, "proyecto.json") && leer(id, "guion.json");
+  if (!info) throw new Error("Primero saca las imágenes.");
+  if (!(CFG.anthropicKey || CFG.geminiKey)) throw new Error("No hay IA conectada: pon ANTHROPIC_API_KEY (o GEMINI_API_KEY) en el .env. Mientras, las descripciones se pueden escribir a mano en cada cuadro.");
+  avisar({ paso: "render", progreso: 0.3, msg: "Escribiendo las descripciones…" });
+  const carrusel = (info.copy?.diapositivas || []).map((d) => ({ t: d.texto }));
+  const c = await copysConIA(guion || {}, { o: info.frase }, carrusel);
+  if (!c.suelta && !c.carrusel) throw new Error("La IA no respondió (revisa la cuota de Gemini o la llave de Claude) y no se cambió nada.");
+  info.copy = { suelta: c.suelta, carrusel: c.carrusel, hashtags: c.hashtags, diapositivas: carrusel.map((x, i) => ({ texto: x.t, significado: c.diapositivas[i] })) };
+  const dir = dirImagenes(id);
+  fs.writeFileSync(path.join(dir, "imagenes.json"), JSON.stringify(info, null, 2));
+  fs.writeFileSync(path.join(dir, "texto.txt"), textoParaPublicar(guion || {}, { o: info.frase }, carrusel, c));
+  try { fs.copyFileSync(path.join(dir, "texto.txt"), path.join(DIR_LISTOS, `${id}-imagenes`, "texto.txt")); } catch {}
+  avisar({ paso: "render", progreso: 1, msg: "Descripciones listas." });
+  return info;
+}
