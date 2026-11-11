@@ -346,6 +346,7 @@ function pintarProyecto() {
   });
   if ($("#rMejorar")) $("#rMejorar").onclick = () => { const k = $("#rMejorar").dataset.k.split(","); api(`/api/proyectos/${p.id}/mejorar`, "POST", { brillo: k.includes("brillo"), volumen: k.includes("volumen"), recordar: $("#rRecordar")?.checked }).then(() => avisar("Aplicando mejoras… sale en la barra de la fila.")).catch((e) => avisar(e.message, true)); };
   if ($("#rRevisar")) $("#rRevisar").onclick = () => api(`/api/proyectos/${p.id}/revisar`, "POST", {}).then(() => avisar("Revisando… sale en la barra de la fila.")).catch((e) => avisar(e.message, true));
+  if ($("#ghlImgCaja")) pintarGHLImagenes(p);
   if ($("#iSacar")) $("#iSacar").onclick = () => api(`/api/proyectos/${p.id}/imagenes`, "POST", {}).then(() => avisar("Sacando imágenes… sale en la barra de la fila.")).catch((e) => avisar(e.message, true));
   if ($("#iTexto")) $("#iTexto").onclick = async () => { const t = await (await fetch(`/proyectos/${p.id}/imagenes/texto.txt?v=${Date.now()}`)).text(); try { await navigator.clipboard.writeText(t); avisar("Texto copiado."); } catch { prompt("Copia el texto:", t); } };
   for (const b of document.querySelectorAll("[data-copiaimg]")) b.onclick = async () => { const c = p.imagenesPost?.copy || {}; const t = `${c[b.dataset.copiaimg] || ""}${c.hashtags?.length ? "\n\n" + c.hashtags.join(" ") : ""}`; try { await navigator.clipboard.writeText(t); avisar("Copy copiado."); } catch { prompt("Copia el texto:", t); } };
@@ -562,6 +563,53 @@ async function pintarGHL(p, leerForm, guardarAntes, forzar = false) {
   };
 }
 
+// programar las imágenes del feed en GHL: elegir cuáles, descripción de cada una y de la publicación
+async function pintarGHLImagenes(p) {
+  const caja = $("#ghlImgCaja"); if (!caja) return;
+  const im = p.imagenesPost || {}, tags = (im.copy?.hashtags || []).join(" ");
+  if (!S.info.ghl) { caja.innerHTML = `<b>Programar imágenes en GoHighLevel</b><div class="estado">Pon <code>GHL_TOKEN</code> y <code>GHL_LOCATION_ID</code> en el .env y reinicia la fábrica. Mientras, usa «Copiar todo el texto».</div>`; return; }
+  caja.innerHTML = `<b>Programar imágenes en GoHighLevel</b> <span class="estado" id="gimEst">cargando tus cuentas…</span>`;
+  let cs; try { cs = await api("/api/ghl/cuentas"); } catch (e) { $("#gimEst").textContent = e.message; return; }
+  cs = cs.filter((a) => !/youtube/.test(a.plataforma));
+  const MARCAS = { levania: "Levania", monarca: "Monarca" };
+  const asignadas = JSON.parse(localStorage.getItem("ghlMarcaDe") || "{}");
+  const marcaDe = (a) => asignadas[a.id] || (/monarca/i.test(a.nombre) ? "monarca" : "levania");
+  const porDefecto = p.estilo === "reflexion-estatuas" || /monarca/i.test(`${p.canal || ""} ${p.nicho || ""}`) ? "monarca" : "levania";
+  const manana = new Date(Date.now() + 864e5); manana.setHours(19, 0, 0, 0);
+  const local = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 16);
+  caja.innerHTML = `<b>Programar imágenes en GoHighLevel</b> <span class="estado">marca las imágenes que quieras arriba y revisa su descripción</span>
+    <div class="fila" style="margin:8px 0;align-items:center;gap:8px;flex-wrap:wrap"><label class="estado">Cómo</label>
+      <select id="gimModo" style="width:auto"><option value="carrusel">Un carrusel con las marcadas (una sola publicación)</option><option value="separadas">Cada imagen por separado (una por día)</option></select>
+      <label class="estado">Marca</label><select id="gimMarca" style="width:auto">${Object.entries(MARCAS).map(([k, n]) => `<option value="${k}" ${k === porDefecto ? "selected" : ""}>${n}</option>`).join("")}</select></div>
+    <div id="gimTextoCaja"><div class="estado">Descripción de la publicación (carrusel o imagen sola)</div><textarea id="gimTexto" rows="5" style="width:100%"></textarea></div>
+    <div class="fila" id="gimLista" style="margin:8px 0;flex-wrap:wrap"></div>
+    <div class="fila"><label class="estado">Cuándo</label><input type="datetime-local" id="gimFecha" value="${local(manana)}" style="width:auto"><button class="btn primario peq" id="gimIr" ${cs.length ? "" : "disabled"}>Programar imágenes en GHL</button></div>`;
+  const marcadas = () => [...document.querySelectorAll("[data-iSel]:checked")].map((x) => x.dataset.isel);
+  const desc = (f) => document.querySelector(`[data-iDesc="${f}"]`)?.value.trim() || "";
+  let editado = false;
+  const textoAuto = () => { const m = marcadas(); return (m.length === 1 ? desc(m[0]) || im.copy?.suelta : im.copy?.carrusel || desc(m[0])) + (tags ? `\n\n${tags}` : ""); };
+  const refrescar = () => { $("#gimTextoCaja").style.display = $("#gimModo").value === "carrusel" ? "" : "none"; if (!editado) $("#gimTexto").value = textoAuto().trim(); };
+  $("#gimTexto").oninput = () => { editado = true; };
+  for (const x of document.querySelectorAll("[data-iSel]")) x.onchange = refrescar;
+  $("#gimModo").onchange = refrescar;
+  const lista = () => { const m = $("#gimMarca").value, xs = cs.filter((a) => marcaDe(a) === m);
+    $("#gimLista").innerHTML = xs.length ? xs.map((a) => `<label class="estado" style="display:flex;gap:6px;align-items:center;${a.caducada ? "opacity:.5" : ""}"><input type="checkbox" value="${h(a.id)}" data-gimc style="width:auto" ${a.caducada ? "disabled" : "checked"}>${h(a.plataforma)} · ${h(a.nombre)}</label>`).join("") : `<span class="estado">${MARCAS[m]} no tiene redes de imagen conectadas en GHL (se asignan en el cuadro de «Programar en GoHighLevel» del video).</span>`; };
+  $("#gimMarca").onchange = lista; lista(); refrescar();
+  $("#gimIr").onclick = async () => {
+    const sel = marcadas(), ids = [...document.querySelectorAll("[data-gimc]:checked")].map((x) => x.value);
+    if (!sel.length) return avisar("Marca al menos una imagen.", true);
+    if (!ids.length) return avisar("Elige al menos una red.", true);
+    const f = new Date($("#gimFecha").value), sep = $("#gimModo").value === "separadas";
+    const posts = sep ? sel.map((a) => ({ archivos: [a], texto: [desc(a), tags].filter(Boolean).join("\n\n") })) : [{ archivos: sel, texto: $("#gimTexto").value.trim() }];
+    if (posts.some((x) => !x.texto)) return avisar("Falta la descripción de alguna publicación.", true);
+    const redes = cs.filter((a) => ids.includes(a.id)).map((a) => `${a.plataforma} (${a.nombre})`).join(", ");
+    if (!confirm(`Se programarán ${posts.length} publicación(es) con ${sel.length} imagen(es) de ${$("#gimMarca").selectedOptions[0].text.toUpperCase()} en: ${redes}\nDesde el ${f.toLocaleString("es-MX", { dateStyle: "full", timeStyle: "short" })}${sep && posts.length > 1 ? " (una por día)" : ""}. ¿Seguir?`)) return;
+    $("#gimIr").disabled = true; $("#gimIr").textContent = "Subiendo y programando…";
+    try { const r = await api(`/api/proyectos/${p.id}/ghlimagenes`, "POST", { cuentas: ids, fecha: f.toISOString(), posts }); avisar(`Listo: ${r.programados.length} publicación(es) programadas. Revísalas en el Social Planner de GHL.`); abrir(p.id, { mantener: true }); }
+    catch (e) { avisar(e.message, true); $("#gimIr").disabled = false; $("#gimIr").textContent = "Programar imágenes en GHL"; }
+  };
+}
+
 // ---------- historia con Flow: un clip por escena ----------
 const ORIGEN_CLIP = { banco: "del banco", pexels: "Pexels" };
 function galeriaAnuncios(p) {
@@ -625,7 +673,14 @@ function panelImagenes(p) {
     <div class="fila" style="align-items:center"><button class="btn peq primario" id="iSacar">${fs_.length ? "Rehacer imágenes" : "Sacar imágenes para el feed"}</button>
       ${fs_.length ? `<button class="mini" id="iTexto">Copiar todo el texto</button>` : ""}</div>
     <div class="estado">Con las imágenes y frases de este video (sin gastar): la frase más fuerte como imagen suelta y un carrusel de una diapositiva por escena, en 4:5. También quedan en <b>listos/${h(p.id)}-imagenes</b>.</div>
-    ${fs_.length ? `<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(130px,1fr));margin-top:8px">${fs_.map((f) => `<a href="${base}${h(f)}" download="${h(p.id)}-${h(f)}"><img src="${base}${h(f)}?v=${Date.now()}" style="width:100%;border-radius:6px"><div class="estado">${f === "frase.jpg" ? "Imagen suelta" : h(f.replace(/\.jpg$/, ""))}</div>${(() => { const d = f === "frase.jpg" ? null : im.copy?.diapositivas?.[parseInt(f.replace(/\D/g, ""), 10) - 1]; return d?.significado ? `<div class="estado" style="font-size:12px;opacity:.85">${h(d.significado)}</div>` : ""; })()}</a>`).join("")}</div>` : ""}
+    ${fs_.length ? `<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin-top:8px">${fs_.map((f) => {
+      const i = f === "frase.jpg" ? -1 : parseInt(f.replace(/\D/g, ""), 10) - 1, d = i < 0 ? null : im.copy?.diapositivas?.[i];
+      const desc = i < 0 ? (im.copy?.suelta || im.frase || "") : (d?.significado || d?.texto || "");
+      return `<div><label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" data-iSel="${h(f)}" style="width:auto" checked><span class="estado">${f === "frase.jpg" ? "Imagen suelta" : h(f.replace(/\.jpg$/, ""))}</span></label>
+        <a href="${base}${h(f)}" download="${h(p.id)}-${h(f)}"><img src="${base}${h(f)}?v=${Date.now()}" style="width:100%;border-radius:6px;margin-top:4px"></a>
+        <textarea data-iDesc="${h(f)}" rows="3" placeholder="Descripción de esta imagen" style="width:100%;margin-top:4px;font-size:12px">${h(desc)}</textarea></div>`;
+    }).join("")}</div>
+    <div id="ghlImgCaja" style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--b)"></div>` : ""}
     ${im?.copy?.suelta || im?.copy?.carrusel ? `<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));margin-top:10px">${[["suelta", "Copy de la imagen suelta"], ["carrusel", "Copy del carrusel"]].filter(([k]) => im.copy[k]).map(([k, t]) => `<div class="card" style="padding:10px"><div class="fila" style="align-items:center;justify-content:space-between"><b>${t}</b><button class="mini" data-copiaimg="${k}">Copiar</button></div><div class="estado" style="white-space:pre-wrap;margin-top:6px">${h(im.copy[k])}${im.copy.hashtags?.length ? "\n\n" + h(im.copy.hashtags.join(" ")) : ""}</div></div>`).join("")}</div>` : ""}
   </div>`;
 }

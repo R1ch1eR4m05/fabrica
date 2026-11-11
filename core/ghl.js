@@ -5,6 +5,7 @@ import path from "node:path";
 import { CFG, DIR_LISTOS } from "./config.js";
 import { dirProyecto, leer, guardar } from "./proyectos.js";
 import { leerCopys } from "./copy.js";
+import { dirImagenes } from "./imagenes-post.js";
 
 const API = "https://services.leadconnectorhq.com";
 export const ghlListo = () => !!(CFG.ghlToken && CFG.ghlLocation);
@@ -108,5 +109,54 @@ export async function programar(id, { cuentasIds = [], fecha } = {}, avisar = ()
   const p = leer(id, "proyecto.json");
   p.ghl = { ...(p.ghl || {}), programados: [...(p.ghl?.programados || []), ...hechos] }; guardar(id, "proyecto.json", p);
   avisar({ progreso: 1, msg: "Programado en GHL." });
+  return hechos;
+}
+
+// sube una imagen del feed a la biblioteca de medios de GHL (solo si cambió desde la última vez)
+async function subirImagen(id, archivo) {
+  const p = leer(id, "proyecto.json"), f = path.join(dirImagenes(id), archivo);
+  if (!fs.existsSync(f)) throw new Error(`No encuentro la imagen ${archivo}. Dale a «Rehacer imágenes».`);
+  const mt = fs.statSync(f).mtimeMs;
+  const c = p.ghl?.imagenes?.[archivo];
+  if (c?.mtime === mt && c.url) return c.url;
+  const form = new FormData();
+  form.append("file", new Blob([fs.readFileSync(f)], { type: "image/jpeg" }), `${id}-${archivo}`);
+  form.append("hosted", "false"); form.append("name", `${id}-${archivo}`);
+  const j = await pedir("POST", "/medias/upload-file", form, { form: true, ms: 120000 });
+  const p2 = leer(id, "proyecto.json");
+  p2.ghl = { ...(p2.ghl || {}), imagenes: { ...(p2.ghl?.imagenes || {}), [archivo]: { url: j.url, mtime: mt } } }; guardar(id, "proyecto.json", p2);
+  return j.url;
+}
+
+// programa las imágenes del feed. posts: [{ archivos: ["carrusel-01.jpg", ...], texto }] — un post por elemento
+// (varias imágenes = carrusel; una sola = imagen suelta). Cada post cae un día después del anterior.
+export async function programarImagenes(id, { cuentasIds = [], fecha, posts = [] } = {}, avisar = () => {}) {
+  if (!cuentasIds.length) throw new Error("Elige al menos una cuenta.");
+  if (!posts.length) throw new Error("Elige al menos una imagen.");
+  const todas = await cuentas(), elegidas = todas.filter((a) => cuentasIds.includes(a.id) && !/youtube/.test(a.plataforma));
+  if (!elegidas.length) throw new Error("Elige una red que acepte imágenes (Instagram, Facebook…). YouTube no.");
+  const base = fecha ? new Date(fecha) : new Date(Date.now() + 10 * 60000);
+  if (isNaN(base) || base < Date.now() - 60000) throw new Error("La fecha ya pasó.");
+  for (const x of posts) {
+    if (!x.archivos?.length || x.archivos.some((a) => !/^(frase|carrusel-\d+)\.jpg$/.test(a))) throw new Error("Imagen no válida.");
+    if (!String(x.texto || "").trim()) throw new Error("Cada publicación necesita su descripción.");
+  }
+  const usuario = await usuarioGHL();
+  const porRed = {};
+  for (const a of elegidas) (porRed[a.plataforma] ||= []).push(a.id);
+  const hechos = [];
+  for (const [i, x] of posts.entries()) {
+    avisar({ progreso: (i + 0.2) / posts.length, msg: `Subiendo imágenes de la publicación ${i + 1} de ${posts.length}…` });
+    const urls = []; for (const a of x.archivos) urls.push(await subirImagen(id, a));
+    const cuando = new Date(base.getTime() + i * 864e5);
+    for (const [plataforma, ids] of Object.entries(porRed)) {
+      const cuerpo = { accountIds: ids, summary: String(x.texto), media: urls.map((u) => ({ url: u, type: "image/jpeg" })), status: "scheduled", scheduleDate: cuando.toISOString(), type: "post", userId: usuario };
+      const j = await pedir("POST", `/social-media-posting/${CFG.ghlLocation}/posts`, cuerpo);
+      hechos.push({ plataforma, tipo: x.archivos.length > 1 ? "carrusel" : "imagen", imagenes: x.archivos, cuentas: ids, fecha: cuando.toISOString(), postId: j.results?.post?._id || j.results?.post?.id || j.post?._id || j.id || null });
+    }
+  }
+  const p = leer(id, "proyecto.json");
+  p.ghl = { ...(p.ghl || {}), programados: [...(p.ghl?.programados || []), ...hechos] }; guardar(id, "proyecto.json", p);
+  avisar({ progreso: 1, msg: "Imágenes programadas en GHL." });
   return hechos;
 }

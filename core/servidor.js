@@ -540,6 +540,11 @@ async function api(req, res, partes) {
     try { return json(res, 200, { ok: true, programados: await GHL.programar(id, { cuentasIds: b.cuentas || [], fecha: b.fecha }) }); }
     catch (e) { return json(res, 502, { error: e.message }); }
   }
+  if (accion === "ghlimagenes" && m === "POST") { // programar las imágenes del feed (suelta / carrusel) en GHL
+    const b = await cuerpo(req);
+    try { return json(res, 200, { ok: true, programados: await GHL.programarImagenes(id, { cuentasIds: b.cuentas || [], fecha: b.fecha, posts: b.posts || [] }) }); }
+    catch (e) { return json(res, 502, { error: e.message }); }
+  }
   if (accion === "copys") { // copy por red para GHL
     if (m === "GET") return json(res, 200, COPY.leerCopys(id));
     if (m === "PUT") return json(res, 200, COPY.guardarCopys(id, await cuerpo(req)));
