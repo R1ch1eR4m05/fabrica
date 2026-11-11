@@ -1,0 +1,205 @@
+{
+ "titulo": "Las cinco escalas de tu problema",
+ "formato": "16:9",
+ "duracion": "largo",
+ "idea": "Versión larga horizontal de La vista desde arriba: cinco capítulos, uno por escala (tu calle, el planeta, el sistema solar, las estrellas, el universo)",
+ "opciones": {
+  "subtitulos": "si",
+  "hud": "si",
+  "marca": "monarca"
+ },
+ "guion": {
+  "titulo": "Las cinco escalas de tu problema",
+  "alturaFin": 4.3e+26,
+  "escenas": [
+   {
+    "tipo": "gancho",
+    "voz": "Empecemos aquí, en tu calle, a la altura de tus ojos. Mira ese problema que cargas sobre la cabeza. Hoy parece lo más grande del mundo, y no te culpo: desde aquí, lo es.",
+    "altura": 1.7,
+    "capitulo": "Tu calle"
+   },
+   {
+    "tipo": "escena",
+    "voz": "Sube doce metros, la altura de un edificio de cuatro pisos. Tu problema sigue ahí, pero ahora cabe entre dos tejados. La casa de enfrente ya no te tapa todo.",
+    "altura": 12
+   },
+   {
+    "tipo": "escena",
+    "voz": "A sesenta metros ves la calle entera. Los coches parecen juguetes y la gente es apenas una mancha. Cada una de esas manchas también carga algo que le parece enorme.",
+    "altura": 60,
+    "reel": true
+   },
+   {
+    "tipo": "escena",
+    "voz": "A doscientos cincuenta metros, tu calle es una línea más en una cuadrícula. Hay cientos de calles iguales, y detrás de cada ventana alguien está preocupado por algo.",
+    "altura": 250
+   },
+   {
+    "tipo": "escena",
+    "voz": "Casi un kilómetro de altura. La ciudad ya es un tablero. Tu problema, el que no te dejó dormir, es menos que un punto en este mapa.",
+    "altura": 900,
+    "hito": "LA CIUDAD"
+   },
+   {
+    "tipo": "escena",
+    "voz": "Cuatro kilómetros. Se ve dónde termina la ciudad y empiezan los campos. Y esto apenas es el primer capítulo. Sigamos subiendo.",
+    "altura": 4000
+   },
+   {
+    "tipo": "escena",
+    "voz": "Doce mil metros: la altura a la que vuela un avión de pasajeros. Desde aquí, la curva de la Tierra ya empieza a insinuarse en el horizonte.",
+    "altura": 12000,
+    "capitulo": "El planeta"
+   },
+   {
+    "tipo": "escena",
+    "voz": "Cien kilómetros. Aquí está la línea de Kármán, el límite convencional entre la atmósfera y el espacio. Del otro lado ya no hay aire que respirar ni cielo azul.",
+    "altura": 100000,
+    "hito": "EL BORDE DEL ESPACIO",
+    "reel": true
+   },
+   {
+    "tipo": "escena",
+    "voz": "A unos cuatrocientos kilómetros orbita la Estación Espacial. Quienes viven ahí ven amanecer cada noventa minutos, y muchos cuentan que ver la Tierra sin fronteras les cambió la forma de pensar.",
+    "altura": 408000,
+    "hito": "LA ESTACIÓN ESPACIAL"
+   },
+   {
+    "tipo": "escena",
+    "voz": "A treinta y seis mil kilómetros, los satélites giran a la misma velocidad que la Tierra y parecen quietos sobre un punto. Tu problema, en cambio, nunca se queda quieto en tu cabeza.",
+    "altura": 35786000
+   },
+   {
+    "tipo": "escena",
+    "voz": "La Luna, a casi cuatrocientos mil kilómetros. La luz tarda un segundo y cuarto en llegar hasta aquí. Desde esta distancia, tu ciudad, tu país y tu problema son la misma bolita azul.",
+    "altura": 384400000,
+    "hito": "LA LUNA"
+   },
+   {
+    "tipo": "escena",
+    "voz": "A un millón y medio de kilómetros trabaja el telescopio James Webb, mirando el fondo del universo. Desde aquí, la Tierra y la Luna son dos puntos juntos, y nada más.",
+    "altura": 1500000000.0,
+    "hito": "EL TELESCOPIO JAMES WEBB"
+   },
+   {
+    "tipo": "escena",
+    "voz": "Ciento cincuenta millones de kilómetros: el Sol. Su luz tarda ocho minutos en llegar a ti, así que cuando lo miras, ves el pasado. Casi nada de lo que ves está pasando ahora mismo.",
+    "altura": 149600000000.0,
+    "hito": "EL SOL",
+    "capitulo": "El sistema solar"
+   },
+   {
+    "tipo": "escena",
+    "voz": "Júpiter. Dentro de él cabrían más de mil Tierras, y su tormenta más famosa lleva siglos girando. Aun así, desde aquí es solo un punto de luz.",
+    "altura": 778000000000.0,
+    "hito": "JÚPITER",
+    "reel": true
+   },
+   {
+    "tipo": "escena",
+    "voz": "Saturno y sus anillos de hielo y roca. Miden cientos de miles de kilómetros de ancho y, en gran parte de su extensión, son delgadísimos: apenas unas decenas de metros de grosor.",
+    "altura": 1433000000000.0,
+    "hito": "SATURNO"
+   },
+   {
+    "tipo": "escena",
+    "voz": "Neptuno. La luz del Sol tarda más de cuatro horas en llegar hasta aquí. Desde este punto, el Sol es solo la estrella más brillante del cielo.",
+    "altura": 4500000000000.0,
+    "hito": "NEPTUNO"
+   },
+   {
+    "tipo": "escena",
+    "voz": "Más allá de Neptuno está el cinturón de Kuiper, hogar de Plutón y de incontables cuerpos helados que casi nadie ha visto de cerca.",
+    "altura": 7500000000000.0,
+    "hito": "EL CINTURÓN DE KUIPER"
+   },
+   {
+    "tipo": "escena",
+    "voz": "A unas ciento veinte veces la distancia entre la Tierra y el Sol termina la influencia del viento solar. Las sondas Voyager ya la cruzaron. Y todavía estamos saliendo de casa.",
+    "altura": 18000000000000.0,
+    "hito": "EL BORDE DEL SOL"
+   },
+   {
+    "tipo": "escena",
+    "voz": "Poco más de cuatro años luz hasta Próxima Centauri, la estrella más cercana al Sol. La luz que te llega de ella salió hace más de cuatro años.",
+    "altura": 4e+16,
+    "hito": "LA ESTRELLA MÁS CERCANA",
+    "capitulo": "Las estrellas"
+   },
+   {
+    "tipo": "escena",
+    "voz": "Sirio, la estrella más brillante de nuestro cielo, está a ocho años luz y medio. Cada punto que ves de noche es un sol, con su propia distancia y su propio pasado.",
+    "altura": 8.1e+16
+   },
+   {
+    "tipo": "escena",
+    "voz": "Vega está a veinticinco años luz: lo que ves hoy de ella pasó hace veinticinco años. Mirar el cielo es mirar el pasado.",
+    "altura": 2.4e+17,
+    "reel": true
+   },
+   {
+    "tipo": "escena",
+    "voz": "A mil años luz, nuestro Sol ya se pierde entre millones de estrellas. Todo lo que la humanidad ha enviado al espacio queda atrás, como un susurro en una plaza llena.",
+    "altura": 9.46e+18
+   },
+   {
+    "tipo": "escena",
+    "voz": "A veintiséis mil años luz está el centro de la Vía Láctea. Allí vive un agujero negro supermasivo con millones de veces la masa de nuestro Sol.",
+    "altura": 2.46e+20,
+    "hito": "EL CENTRO DE LA GALAXIA"
+   },
+   {
+    "tipo": "escena",
+    "voz": "Y esta es nuestra galaxia entera: cien mil años luz de lado y cientos de miles de millones de estrellas. Tu Sol es una más, en uno de sus brazos.",
+    "altura": 9.46e+20,
+    "hito": "LA VÍA LÁCTEA ENTERA"
+   },
+   {
+    "tipo": "escena",
+    "voz": "Andrómeda, la gran galaxia vecina, a dos millones y medio de años luz. Se acerca a nosotros, y se calcula que en unos cuatro o cinco mil millones de años chocará con la Vía Láctea.",
+    "altura": 2.4e+22,
+    "hito": "ANDRÓMEDA",
+    "capitulo": "El universo"
+   },
+   {
+    "tipo": "escena",
+    "voz": "El cúmulo de Virgo reúne más de mil galaxias a unos cincuenta y cuatro millones de años luz. Cada una, con cientos de miles de millones de soles.",
+    "altura": 5.1e+23,
+    "hito": "EL CÚMULO DE VIRGO",
+    "reel": true
+   },
+   {
+    "tipo": "escena",
+    "voz": "A mil millones de años luz, las galaxias se ordenan en hilos y vacíos, como una telaraña gigante. Nosotros somos una mota en uno de esos hilos.",
+    "altura": 9.5e+24
+   },
+   {
+    "tipo": "escena",
+    "voz": "A diez mil millones de años luz, lo que ves es luz que salió cuando el universo era mucho más joven. Estás mirando su infancia.",
+    "altura": 9.5e+25
+   },
+   {
+    "tipo": "escena",
+    "voz": "Y este es el límite de lo que podemos ver: el universo observable, de unos noventa y tres mil millones de años luz de lado. Más allá, no sabemos qué hay.",
+    "altura": 3.3e+26,
+    "hito": "EL UNIVERSO OBSERVABLE"
+   },
+   {
+    "tipo": "cierre",
+    "voz": "Ahora vuelve. Tu problema sigue ahí, pero ya sabes qué tamaño tiene en el cuadro completo. Marco Aurelio lo hacía cada mañana: mirar desde arriba, y luego bajar a hacer lo que toca.",
+    "altura": 4.1e+26
+   }
+  ],
+  "subir": {
+   "titulo": "Las cinco escalas de tu problema: de tu calle al universo",
+   "descripcion": "Un viaje de siete minutos desde tu calle hasta el borde del universo observable para ver el tamaño real de lo que hoy te pesa. Inspirado en el ejercicio estoico de mirar desde arriba de Marco Aurelio.",
+   "hashtags": [
+    "#estoicismo",
+    "#marcoaurelio",
+    "#universo",
+    "#filosofia",
+    "#perspectiva"
+   ]
+  }
+ }
+}

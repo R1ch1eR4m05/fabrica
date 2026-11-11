@@ -1,0 +1,170 @@
+{
+ "titulo": "La opinión de los demás",
+ "formato": "9:16",
+ "duracion": "corto",
+ "idea": "Cuántas personas piensan de verdad en lo que hiciste, medido de tu calle al universo (Marco Aurelio y el efecto de foco)",
+ "opciones": {
+  "subtitulos": "si",
+  "hud": "si",
+  "marca": "monarca"
+ },
+ "guion": {
+  "titulo": "La opinión de los demás",
+  "alturaFin": 4.3e+26,
+  "escenas": [
+   {
+    "tipo": "gancho",
+    "voz": "Crees que todos están pensando en lo que dijiste ayer.",
+    "altura": 1.7,
+    "der": {
+     "titulo": "TE CONOCEN EN",
+     "valor": "Tu cabeza"
+    }
+   },
+   {
+    "tipo": "escena",
+    "voz": "Casi nadie en esta calle lo notó.",
+    "altura": 25,
+    "der": {
+     "titulo": "TE CONOCEN EN",
+     "valor": "Tu calle"
+    }
+   },
+   {
+    "tipo": "escena",
+    "voz": "En una ciudad hay miles de historias, y la tuya es solo una.",
+    "altura": 900,
+    "hito": "LA CIUDAD",
+    "der": {
+     "titulo": "TE CONOCEN EN",
+     "valor": "Tu ciudad"
+    }
+   },
+   {
+    "tipo": "escena",
+    "voz": "Tu país entero, desde aquí, es un puñado de luces.",
+    "altura": 60000,
+    "der": {
+     "titulo": "TE CONOCEN EN",
+     "valor": "Tu país"
+    }
+   },
+   {
+    "tipo": "escena",
+    "voz": "Los astronautas ven la Tierra sin fronteras, y sin nombres.",
+    "altura": 408000,
+    "hito": "LA ESTACIÓN ESPACIAL",
+    "der": {
+     "titulo": "TE CONOCEN EN",
+     "valor": "Todo el planeta"
+    }
+   },
+   {
+    "tipo": "escena",
+    "voz": "Desde la Luna no llega ningún aplauso. Ni ninguna crítica.",
+    "altura": 384400000,
+    "hito": "LA LUNA",
+    "der": {
+     "titulo": "TE CONOCEN EN",
+     "valor": "La Luna"
+    }
+   },
+   {
+    "tipo": "escena",
+    "voz": "El Sol lleva miles de millones de años viendo pasar imperios y no recuerda a ninguno.",
+    "altura": 149600000000.0,
+    "hito": "EL SOL",
+    "der": {
+     "titulo": "TE CONOCEN EN",
+     "valor": "El Sol"
+    }
+   },
+   {
+    "tipo": "escena",
+    "voz": "Marco Aurelio gobernaba medio mundo y aun así se repetía que pronto todos lo olvidarían.",
+    "altura": 4500000000000.0,
+    "hito": "NEPTUNO",
+    "der": {
+     "titulo": "TE CONOCEN EN",
+     "valor": "El sistema solar"
+    }
+   },
+   {
+    "tipo": "escena",
+    "voz": "Casi dos mil años después seguimos leyéndolo, no por su fama, sino por lo que se atrevió a pensar.",
+    "altura": 4e+16,
+    "hito": "LA ESTRELLA MÁS CERCANA",
+    "der": {
+     "titulo": "TE CONOCEN EN",
+     "valor": "Nadie lo planeó"
+    }
+   },
+   {
+    "tipo": "escena",
+    "voz": "Cientos de miles de millones de estrellas, y ninguna espera tu aprobación.",
+    "altura": 4.7e+20,
+    "hito": "LA VÍA LÁCTEA",
+    "der": {
+     "titulo": "TE CONOCEN EN",
+     "valor": "La galaxia"
+    }
+   },
+   {
+    "tipo": "escena",
+    "voz": "Lo que otros piensan de ti es apenas ruido en el borde del cielo.",
+    "altura": 2.4e+22,
+    "hito": "ANDRÓMEDA",
+    "der": {
+     "titulo": "TE CONOCEN EN",
+     "valor": "Casi nadie"
+    }
+   },
+   {
+    "tipo": "escena",
+    "voz": "Hazlo bien, hazlo por ti, y deja que el ruido sea solo ruido.",
+    "altura": 5.1e+23,
+    "hito": "EL CÚMULO DE VIRGO",
+    "der": {
+     "titulo": "TE CONOCEN EN",
+     "valor": "Tú"
+    }
+   },
+   {
+    "tipo": "escena",
+    "voz": "Esto es todo lo que no te está mirando. Qué libertad.",
+    "altura": 3.3e+26,
+    "hito": "EL UNIVERSO OBSERVABLE",
+    "der": {
+     "titulo": "TE CONOCEN EN",
+     "valor": "Tú"
+    }
+   },
+   {
+    "tipo": "cierre",
+    "voz": "Vive hoy como alguien a quien nadie vigila. Y haz lo correcto igual.",
+    "altura": 4e+26,
+    "der": {
+     "titulo": "TE CONOCEN EN",
+     "valor": "Tú"
+    }
+   }
+  ],
+  "subir": {
+   "titulo": "Nadie está pensando tanto en ti (qué libertad)",
+   "descripcion": "Un viaje de tu calle al universo para ver cuánto pesa de verdad la opinión de los demás. Marco Aurelio y la libertad de no ser vigilado.",
+   "hashtags": [
+    "#estoicismo",
+    "#marcoaurelio",
+    "#opinionajena",
+    "#libertad",
+    "#filosofia"
+   ]
+  },
+  "hud": {
+   "izq": "TU ALTURA",
+   "der": "TE CONOCEN EN",
+   "derNota": "",
+   "sig": "SIGUIENTE"
+  }
+ }
+}

@@ -30,6 +30,9 @@ Habla con Richie en español de México, directo y sin rodeos.
 ### Copy para publicar (GHL)
 Cada video tiene `proyectos/<id>/copys.json` ({instagram, facebook, tiktok, youtube:{titulo, descripcion}}), editable en el panel. Si Richie pide el copy, escríbelo ahí: gancho en la primera línea, cierre solo de los autorizados, 3-5 hashtags. La etiqueta de IA NO va en el texto ni en el video: se marca en la app al publicar.
 
+## Proyectos de ejemplo precargados
+Un estilo puede traer `estilos/<id>/ejemplos/*.json` (`{ titulo, formato, duracion, idea, opciones, guion }`). Al abrir el panel (o con `node fabrica.js precargar`) se crean como proyectos con el guion listo, una sola vez (se anotan en `proyectos/.precargados.json`; si Richie borra uno, no vuelve). Los proyectos no van en GitHub porque Actualizar hace `reset --hard`.
+
 ## Cuando pida un estilo nuevo
 Sigue ESTILOS.md: carpeta nueva con `estilo.json`, `GUION.md`, `plantilla.html` e `ideas.json`.
 Pruébalo con un proyecto de prueba y `node fabrica.js fotos`, en 9:16 y 16:9. Mira las imágenes y corrige lo que se encime o se salga del cuadro.
@@ -82,7 +85,7 @@ Estado: noviembre 2026, Flow genera desde el panel del agente ("Configuración d
 
 ## Filosofía · Viaje de escala (`viaje-escala`)
 - La cámara sube sin parar desde tu calle (1.7 m) hasta el universo observable (~4×10²⁶ m); un panel de datos (altura, siguiente hito, "tu problema ocupa X %") y una frase en cursiva cuentan una idea filosófica que se vuelve tangible con la altura. Todo con código 3D (three.js): no gasta Flow ni APIMart ni voz (la frase lleva la narración; con voz también funciona).
-- Guion según `estilos/viaje-escala/GUION.md`: por escena `voz`, `altura` (m, obligatoria y creciente), `hito`, `nota`, y opcionales `izq`/`der` para cambiar los datos del panel (otras ideas: "lo que controlas"). Ejemplo completo: `estilos/viaje-escala/ejemplo-vista-desde-arriba.json`.
+- Guion según `estilos/viaje-escala/GUION.md`: por escena `voz`, `altura` (m, obligatoria y creciente), `hito`, `nota`, y opcionales `izq`/`der` para cambiar los datos del panel (otras ideas: "lo que controlas"). Ejemplo completo: `estilos/viaje-escala/ejemplos/ (cuatro guiones completos; se precargan como proyectos)`.
 - Mismo estilo en 9:16 (Reels, 60-90 s) y 16:9 largo (6-12 min por capítulos: marca `capitulo` y `reel`; "Cortar por capítulos" saca un video y un Reel de cada uno).
 - Motor: `src/viaje.js` + three.js empaquetados en `lib/viaje.js` (si cambias `src/`, corre `bash estilos/viaje-escala/construir.sh`). Siete mundos procedurales: calle, mapa, Tierra y Luna, sistema solar, estrellas cercanas, Vía Láctea y telaraña cósmica.
 - Render: usa el navegador (WebGL). En la laptop con tarjeta gráfica va bien; en el VPS (sin GPU) usa la opción Calidad "Rápida" (3D a mitad de resolución). Revisa con `node fabrica.js fotos <id> t1,t2,…` en 9:16 y 16:9 antes del render completo.

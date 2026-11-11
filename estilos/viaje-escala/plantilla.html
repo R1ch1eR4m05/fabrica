@@ -143,9 +143,12 @@ Motor.iniciar({
       };
       const nota = (txt, x, y, al = "left") => { c.textAlign = al; c.font = `500 ${13 * u}px Jost`; c.letterSpacing = `${2.4 * u}px`; c.globalAlpha = entra * 0.62; c.fillText(txt, x, y); c.globalAlpha = entra; };
       // izquierda: altura
-      const izq = e.izq || {};
+      const izq = e.izq || {}, der = e.der || {}, vIzq = izq.valor || fmtDist(h), vDer = der.valor || fmtProblema(h, viaje.vfov);
+      c.font = `600 ${62 * u}px Cormorant`; c.letterSpacing = "0px";
+      const wI = c.measureText(vIzq).width, wD = c.measureText(vDer.replace(/\^/g, "")).width;
+      const ajuste = Math.min(1, Math.max(0.55, (W - 2 * mx) / (wI + wD + 40 * u))); // datos largos: se achican los dos para no encimarse
       etiqueta(izq.titulo || tema.izq, mx, ancla);
-      valor(izq.valor || fmtDist(h), mx, ancla + 62 * u);
+      valor(vIzq, mx, ancla + 62 * u, "left", 62 * ajuste);
       if (izq.nota || e.nota) nota(String(izq.nota || e.nota).toUpperCase(), mx, ancla + 88 * u);
       // siguiente hito
       let sig = null; for (let j = i; j < M.guion.escenas.length; j++) { const g = M.guion.escenas[j]; if (g.hito && Number(g.altura) > h * 1.0005) { sig = g; break; } }
@@ -156,9 +159,8 @@ Motor.iniciar({
         valor(fmtDist(Number(sig.altura) - h), mx, ancla + 178 * u, "left", 34);
       }
       // derecha: el tamaño de tu problema (o lo que ponga el guion)
-      const der = e.der || {};
       etiqueta(der.titulo || tema.der, W - mx, ancla, "right");
-      valor(der.valor || fmtProblema(h, viaje.vfov), W - mx, ancla + 62 * u, "right");
+      valor(vDer, W - mx, ancla + 62 * u, "right", 62 * ajuste);
       nota(String(der.nota || tema.derNota).toUpperCase(), W - mx, ancla + 88 * u, "right");
       c.restore();
     }

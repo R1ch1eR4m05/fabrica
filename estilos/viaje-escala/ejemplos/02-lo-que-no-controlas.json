@@ -1,0 +1,172 @@
+{
+ "titulo": "Lo que no controlas",
+ "formato": "9:16",
+ "duracion": "corto",
+ "idea": "Sube y cuenta todo lo que no depende de ti, hasta que solo queda tu respuesta (Epicteto)",
+ "opciones": {
+  "subtitulos": "si",
+  "hud": "si",
+  "marca": "monarca"
+ },
+ "guion": {
+  "titulo": "Lo que no controlas",
+  "alturaFin": 4.3e+26,
+  "escenas": [
+   {
+    "tipo": "gancho",
+    "voz": "Hoy te preocupaste por cosas que no puedes mover.",
+    "altura": 1.7,
+    "der": {
+     "titulo": "HOY TE PREOCUPÓ",
+     "valor": "Todo esto",
+     "nota": "¿DEPENDE DE TI?"
+    }
+   },
+   {
+    "tipo": "escena",
+    "voz": "El tráfico no se mueve porque tú te enojes.",
+    "altura": 25,
+    "der": {
+     "titulo": "NO DEPENDE DE TI",
+     "valor": "El tráfico"
+    }
+   },
+   {
+    "tipo": "escena",
+    "voz": "Ni el clima, ni la hora a la que otros llegan.",
+    "altura": 900,
+    "hito": "LA CIUDAD",
+    "der": {
+     "titulo": "NO DEPENDE DE TI",
+     "valor": "El clima"
+    }
+   },
+   {
+    "tipo": "escena",
+    "voz": "Ni lo que piensan de ti cuando no estás.",
+    "altura": 60000,
+    "der": {
+     "titulo": "NO DEPENDE DE TI",
+     "valor": "Opinión ajena"
+    }
+   },
+   {
+    "tipo": "escena",
+    "voz": "Ni lo que pasó ayer. El pasado ya no tiene dueño.",
+    "altura": 408000,
+    "hito": "LA ESTACIÓN ESPACIAL",
+    "der": {
+     "titulo": "NO DEPENDE DE TI",
+     "valor": "El pasado"
+    }
+   },
+   {
+    "tipo": "escena",
+    "voz": "Epicteto lo decía así: unas cosas dependen de nosotros y otras no.",
+    "altura": 384400000,
+    "hito": "LA LUNA",
+    "der": {
+     "titulo": "EPICTETO",
+     "valor": "Dos listas"
+    }
+   },
+   {
+    "tipo": "escena",
+    "voz": "Dependen de ti tu juicio, tu impulso y tu respuesta.",
+    "altura": 149600000000.0,
+    "hito": "EL SOL",
+    "der": {
+     "titulo": "DEPENDE DE TI",
+     "valor": "Tu juicio"
+    }
+   },
+   {
+    "tipo": "escena",
+    "voz": "Lo demás, el cuerpo, el dinero, la fama, no es tuyo del todo.",
+    "altura": 4500000000000.0,
+    "hito": "NEPTUNO",
+    "der": {
+     "titulo": "NO DEPENDE DE TI",
+     "valor": "Cuerpo, dinero, fama"
+    }
+   },
+   {
+    "tipo": "escena",
+    "voz": "Cuatro años luz hasta la estrella más cercana. Esa distancia tampoco depende de ti.",
+    "altura": 4e+16,
+    "hito": "LA ESTRELLA MÁS CERCANA",
+    "der": {
+     "titulo": "NO DEPENDE DE TI",
+     "valor": "La distancia"
+    }
+   },
+   {
+    "tipo": "escena",
+    "voz": "Cientos de miles de millones de estrellas siguen su camino sin pedirte permiso.",
+    "altura": 4.7e+20,
+    "hito": "LA VÍA LÁCTEA",
+    "der": {
+     "titulo": "NO DEPENDE DE TI",
+     "valor": "Las estrellas"
+    }
+   },
+   {
+    "tipo": "escena",
+    "voz": "Y aun así, aquí estás, eligiendo qué pensar.",
+    "altura": 2.4e+22,
+    "hito": "ANDRÓMEDA",
+    "der": {
+     "titulo": "DEPENDE DE TI",
+     "valor": "Qué piensas"
+    }
+   },
+   {
+    "tipo": "escena",
+    "voz": "Para los estoicos, tu respuesta es lo único que nadie te puede quitar.",
+    "altura": 5.1e+23,
+    "hito": "EL CÚMULO DE VIRGO",
+    "der": {
+     "titulo": "DEPENDE DE TI",
+     "valor": "Tu respuesta"
+    }
+   },
+   {
+    "tipo": "escena",
+    "voz": "Mira todo lo que no controlas. Y ahora mira lo que sí.",
+    "altura": 3.3e+26,
+    "hito": "EL UNIVERSO OBSERVABLE",
+    "der": {
+     "titulo": "DEPENDE DE TI",
+     "valor": "Tu respuesta",
+     "nota": "EMPIEZA POR AQUÍ"
+    }
+   },
+   {
+    "tipo": "cierre",
+    "voz": "Suelta lo que no es tuyo. Quédate con tu respuesta. Hoy, solo eso.",
+    "altura": 4e+26,
+    "der": {
+     "titulo": "DEPENDE DE TI",
+     "valor": "Tu respuesta"
+    }
+   }
+  ],
+  "subir": {
+   "titulo": "Lo que no controlas (y lo único que sí)",
+   "descripcion": "Sube desde tu calle hasta el universo y separa lo que depende de ti de lo que no, según Epicteto.",
+   "hashtags": [
+    "#estoicismo",
+    "#epicteto",
+    "#filosofia",
+    "#controldeemociones",
+    "#perspectiva"
+   ]
+  },
+  "hud": {
+   "izq": "TU ALTURA",
+   "der": "NO DEPENDE DE TI",
+   "derNota": "",
+   "sig": "SIGUIENTE"
+  }
+ }
+}

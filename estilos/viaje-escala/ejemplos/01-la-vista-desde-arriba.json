@@ -1,0 +1,111 @@
+{
+ "titulo": "La vista desde arriba",
+ "formato": "9:16",
+ "duracion": "corto",
+ "idea": "El tamaño real de tu problema, de tu calle al universo (Marco Aurelio y su ejercicio de mirar desde arriba)",
+ "opciones": {
+  "subtitulos": "si",
+  "hud": "si",
+  "marca": "monarca"
+ },
+ "guion": {
+  "titulo": "La vista desde arriba",
+  "alturaFin": 4.3e+26,
+  "escenas": [
+   {
+    "tipo": "gancho",
+    "voz": "Hoy cargas un problema que te parece enorme.",
+    "altura": 1.7,
+    "nota": "ASÍ LO VES DESDE AQUÍ"
+   },
+   {
+    "tipo": "escena",
+    "voz": "Sube veinticinco metros y ya es una nube sobre un techo.",
+    "altura": 25,
+    "nota": "MÁS ALTO QUE UN EDIFICIO"
+   },
+   {
+    "tipo": "escena",
+    "voz": "Desde la azotea más alta, nadie en esta calle sabe que existe.",
+    "altura": 900,
+    "hito": "LA CIUDAD"
+   },
+   {
+    "tipo": "escena",
+    "voz": "Tu ciudad entera ya es una mancha entre miles.",
+    "altura": 60000,
+    "nota": "CASI EL BORDE DEL ESPACIO"
+   },
+   {
+    "tipo": "escena",
+    "voz": "Aquí arriba los astronautas ven amanecer cada noventa minutos.",
+    "altura": 400000,
+    "hito": "LA ESTACIÓN ESPACIAL"
+   },
+   {
+    "tipo": "escena",
+    "voz": "Desde la Luna, tu casa, tu país y tu ciudad son la misma bolita azul.",
+    "altura": 384400000,
+    "hito": "LA LUNA"
+   },
+   {
+    "tipo": "escena",
+    "voz": "El Sol. Su luz tarda ocho minutos en llegar a ti, y no sabe tu nombre.",
+    "altura": 149600000000.0,
+    "hito": "EL SOL"
+   },
+   {
+    "tipo": "escena",
+    "voz": "Neptuno. Desde aquí el Sol es solo la estrella más brillante.",
+    "altura": 4500000000000.0,
+    "hito": "NEPTUNO"
+   },
+   {
+    "tipo": "escena",
+    "voz": "La estrella más cercana está a cuatro años luz. Todo lo que conoces queda atrás.",
+    "altura": 4e+16,
+    "hito": "LA ESTRELLA MÁS CERCANA"
+   },
+   {
+    "tipo": "escena",
+    "voz": "Cientos de miles de millones de estrellas. Ninguna sabe de tu problema.",
+    "altura": 4.7e+20,
+    "hito": "LA VÍA LÁCTEA"
+   },
+   {
+    "tipo": "escena",
+    "voz": "Andrómeda, nuestra vecina, a dos millones y medio de años luz.",
+    "altura": 2.4e+22,
+    "hito": "ANDRÓMEDA"
+   },
+   {
+    "tipo": "escena",
+    "voz": "Más de mil galaxias en un solo cúmulo. Y hay millones de cúmulos.",
+    "altura": 5.1e+23,
+    "hito": "EL CÚMULO DE VIRGO"
+   },
+   {
+    "tipo": "escena",
+    "voz": "Esto es el universo observable. Tú estás en el centro de la imagen.",
+    "altura": 3.3e+26,
+    "hito": "EL UNIVERSO OBSERVABLE"
+   },
+   {
+    "tipo": "cierre",
+    "voz": "Marco Aurelio lo practicaba cada mañana: mira desde arriba. Tu problema sigue siendo real, pero ya no te ahoga.",
+    "altura": 4e+26
+   }
+  ],
+  "subir": {
+   "titulo": "La vista desde arriba: el tamaño real de tu problema",
+   "descripcion": "Sube desde tu calle hasta el universo y mira cuánto espacio ocupa lo que hoy te pesa. Un ejercicio estoico de Marco Aurelio.",
+   "hashtags": [
+    "#estoicismo",
+    "#marcoaurelio",
+    "#filosofia",
+    "#perspectiva",
+    "#universo"
+   ]
+  }
+ }
+}

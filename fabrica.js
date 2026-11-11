@@ -2,6 +2,7 @@
 // Órdenes de la fábrica (las usa Claude Code o el VPS para lotes):
 //   node fabrica.js panel                         abre el panel
 //   node fabrica.js estilos                       lista los estilos
+//   node fabrica.js precargar                     crea los proyectos de ejemplo de los estilos (estilos/<id>/ejemplos/*.json) que aún no existen
 //   node fabrica.js nuevo <estilo> "<idea>" [--formato 9:16|16:9] [--duracion corto|largo]
 //   node fabrica.js guion <id>                    escribe el guion con la API de Claude
 //   node fabrica.js listo <id>                    marca el guion.json (escrito a mano/Claude Code) como listo
@@ -64,6 +65,7 @@ async function main() {
       };
       process.on("unhandledRejection", anotar("Promesa sin atrapar"));
       process.on("uncaughtException", anotar("Error sin atrapar"));
+      try { const { precargar } = await import("./core/precargar.js"); const n = precargar(); if (n.length) console.log(`  Proyectos de ejemplo creados: ${n.join(", ")}`); } catch (e) { console.error("  Precargar ejemplos:", e.message); }
       const { arrancar } = await import("./core/servidor.js");
       arrancar();
       if (!args.includes("--sin-abrir") && String(CFG.host).split(",")[0].trim() === "127.0.0.1") {
@@ -72,6 +74,10 @@ async function main() {
         setTimeout(() => exec(cmd, () => {}), 600);
       }
       return;
+    }
+    case "precargar": {
+      const { precargar } = await import("./core/precargar.js"); const n = precargar();
+      console.log(n.length ? `Proyectos de ejemplo creados: ${n.join(", ")}` : "No hay ejemplos nuevos por precargar."); return;
     }
     case "estilos":
       for (const e of listarEstilos()) console.log(`${e.listo ? "✓" : "·"} ${e.id.padEnd(20)} ${e.nombre}${e.listo ? "" : "  (pronto)"}`);
