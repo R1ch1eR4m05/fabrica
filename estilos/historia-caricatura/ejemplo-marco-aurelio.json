@@ -1,0 +1,251 @@
+{
+  "titulo": "El emperador que vendió su palacio",
+  "luz": "dia",
+  "reparto": {
+    "marco": {
+      "nombre": "Marco Aurelio",
+      "ropa": "#efe8d8",
+      "pantalon": "#e2d8c2",
+      "botas": "#6b4a2a",
+      "pelo": "#5a3b26",
+      "barba": "#4a3020",
+      "piel": 1,
+      "semilla": 3,
+      "toga": "#5b2a86"
+    },
+    "legionario": {
+      "nombre": "Legionario",
+      "ropa": "#b8322f",
+      "pantalon": "#8a6a44",
+      "botas": "#5a3b2a",
+      "sombrero": "casco",
+      "lanza": true,
+      "escudo": "#c0353a",
+      "piel": 2,
+      "semilla": 5
+    },
+    "senador": {
+      "nombre": "Senador",
+      "ropa": "#efe8d8",
+      "pantalon": "#e2d8c2",
+      "faja": "#8a2a3a",
+      "pelo": "#9a9a9a",
+      "cuerpo": "robusto",
+      "piel": 0,
+      "semilla": 6
+    },
+    "comprador": {
+      "nombre": "Comprador",
+      "ropa": "#3f8a5a",
+      "pantalon": "#5a4632",
+      "pelo": "#1d140e",
+      "bigote": "#1d140e",
+      "piel": 3,
+      "semilla": 2
+    }
+  },
+  "escenas": [
+    {
+      "tipo": "gancho",
+      "texto": "Un emperador romano vendió los tesoros de su propio palacio.",
+      "lugar": "palacio",
+      "luz": "dia",
+      "personajes": [
+        {
+          "id": "marco",
+          "cara": "serio"
+        }
+      ],
+      "camara": "acercar",
+      "plano": "medio"
+    },
+    {
+      "tipo": "narracion",
+      "texto": "Año 169. Roma pelea contra los marcomanos en el Danubio,",
+      "lugar": "campamento",
+      "luz": "atardecer",
+      "personajes": [
+        {
+          "id": "legionario",
+          "cara": "grita",
+          "pose": "levanta-arma"
+        }
+      ],
+      "multitud": {
+        "tipo": "soldados-romanos",
+        "n": 600
+      },
+      "camara": "subir",
+      "plano": "medio"
+    },
+    {
+      "tipo": "narracion",
+      "texto": "y una peste ya mató a miles de soldados y civiles.",
+      "lugar": "campamento",
+      "luz": "nublado",
+      "personajes": [
+        {
+          "id": "legionario",
+          "cara": "dolor"
+        },
+        {
+          "id": "marco",
+          "cara": "serio"
+        }
+      ],
+      "camara": "paneo-der",
+      "plano": "medio"
+    },
+    {
+      "tipo": "narracion",
+      "texto": "El tesoro está vacío. Lo fácil era subir impuestos.",
+      "lugar": "palacio",
+      "luz": "dia",
+      "personajes": [
+        {
+          "id": "senador",
+          "cara": "nervioso"
+        },
+        {
+          "id": "marco",
+          "cara": "serio"
+        }
+      ],
+      "multitud": {
+        "tipo": "senadores",
+        "n": 40
+      },
+      "camara": "rodear",
+      "plano": "medio"
+    },
+    {
+      "tipo": "narracion",
+      "texto": "Marco Aurelio dijo que no.",
+      "lugar": "palacio",
+      "luz": "dia",
+      "personajes": [
+        {
+          "id": "marco",
+          "cara": "serio"
+        }
+      ],
+      "camara": "acercar",
+      "plano": "cerca"
+    },
+    {
+      "tipo": "narracion",
+      "texto": "Puso a la venta copas de oro y cristal, joyas y hasta los vestidos de seda de su esposa.",
+      "lugar": "foro",
+      "luz": "dia",
+      "personajes": [
+        {
+          "id": "comprador",
+          "cara": "sorpresa"
+        },
+        {
+          "id": "marco",
+          "cara": "tranquilo"
+        }
+      ],
+      "multitud": {
+        "tipo": "pueblo",
+        "n": 300
+      },
+      "camara": "pasar",
+      "plano": "medio"
+    },
+    {
+      "tipo": "dato",
+      "texto": "La subasta en el Foro de Trajano duró dos meses.",
+      "lugar": "foro",
+      "luz": "dia",
+      "personajes": [
+        {
+          "id": "comprador",
+          "cara": "contento"
+        }
+      ],
+      "multitud": {
+        "tipo": "pueblo",
+        "n": 800
+      },
+      "camara": "subir",
+      "plano": "medio",
+      "cifra": "2 MESES",
+      "cifraSub": "de subasta",
+      "fuente": "Historia Augusta, Vida de Marco 17; Eutropio VIII.13"
+    },
+    {
+      "tipo": "narracion",
+      "texto": "Con ese oro pagó la guerra. Y al ganar, ofreció devolver el dinero a quien quisiera regresar lo que compró.",
+      "lugar": "foro",
+      "luz": "dia",
+      "personajes": [
+        {
+          "id": "marco",
+          "cara": "sonrie"
+        },
+        {
+          "id": "comprador",
+          "cara": "sorpresa"
+        }
+      ],
+      "camara": "rodear",
+      "plano": "medio"
+    },
+    {
+      "tipo": "cierre",
+      "texto": "Y de noche, en su tienda, escribía notas para sí mismo. Hoy las leemos como Meditaciones.",
+      "lugar": "campamento",
+      "luz": "noche",
+      "personajes": [
+        {
+          "id": "marco",
+          "cara": "tranquilo",
+          "pose": "sentado",
+          "x": 0
+        }
+      ],
+      "camara": "alejar",
+      "plano": "cerca",
+      "fuego": true
+    }
+  ],
+  "fuentes": [
+    {
+      "dato": "Subasta de copas de oro y cristal, vestidos de seda de su esposa y joyas en el Foro de Trajano, durante dos meses, para no cobrar impuestos extra; después ofreció devolver el dinero a quien regresara lo comprado",
+      "url": "https://penelope.uchicago.edu/Thayer/E/Roman/Texts/Historia_Augusta/Marcus_Aurelius/2*.html"
+    },
+    {
+      "dato": "Subasta en el Foro de Trajano durante dos meses porque no quiso cobrar impuestos extra",
+      "url": "https://sourcebooks.web.fordham.edu/ancient/eutropius-marcusaurelius1.asp"
+    },
+    {
+      "dato": "Guerra marcomana en el Danubio y peste que mató a miles de civiles y soldados",
+      "url": "https://penelope.uchicago.edu/Thayer/E/Roman/Texts/Historia_Augusta/Marcus_Aurelius/2*.html"
+    },
+    {
+      "dato": "En otoño de 169 volvió a la campaña y subastó propiedad imperial para financiarla",
+      "url": "https://wiki.krisyotam.com/content/wikipedia_en_all_nopic_2026-03/Marcomannic_War"
+    },
+    {
+      "dato": "Las Meditaciones se escribieron en griego en los campamentos del Danubio, para sí mismo (Ta eis heauton)",
+      "url": "https://semanariouniversidad.com/suplementos/las-meditaciones-de-marco-aurelio/"
+    },
+    {
+      "dato": "Escritas durante las campañas, sin intención de publicarlas",
+      "url": "https://www.nationalgeographicla.com/historia/2025/11/marco-aurelio-el-emperador-filosofo-las-reglas-que-guiaron-su-poder-y-su-serenidad"
+    }
+  ],
+  "subir": {
+    "titulo": "El emperador que vendió los tesoros de su palacio 🏛️",
+    "descripcion": "Roma estaba en guerra, con peste y sin dinero. Marco Aurelio no subió impuestos: subastó lo suyo durante dos meses. Y de noche escribía sus Meditaciones.",
+    "hashtags": [
+      "#MarcoAurelio",
+      "#estoicismo",
+      "#historia",
+      "#Roma",
+      "#Meditaciones"
+    ]
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "nombre": "Historia · Caricatura 3D",
+  "descripcion": "Historias reales (Roma, estoicos, batallas, personajes históricos) con personajes de caricatura en un mundo 3D pintado, tinta, desenfoque y cámara que nunca se detiene. Todo con código: sin créditos de Flow.",
+  "orden": 5,
+  "formatos": [
+    "9:16",
+    "16:9"
+  ],
+  "duraciones": {
+    "corto": "30 a 50 segundos (7 a 10 escenas, 100 a 160 palabras)",
+    "largo": "60 a 90 segundos"
+  },
+  "tipos": [
+    "gancho",
+    "narracion",
+    "dato",
+    "cierre"
+  ],
+  "visuales": [],
+  "camposAvanzados": [
+    "lugar",
+    "luz",
+    "personajes",
+    "multitud",
+    "camara",
+    "plano",
+    "foco",
+    "cifra",
+    "cifraSub"
+  ],
+  "inicioVoz": 0.1,
+  "pausaEntreEscenas": 0.15,
+  "colaFinal": 0.6,
+  "opciones": [
+    {
+      "clave": "subtitulos",
+      "nombre": "Subtítulos",
+      "valores": {
+        "no": "Sin subtítulos (como la referencia)",
+        "si": "Con subtítulos palabra por palabra"
+      }
+    },
+    {
+      "clave": "marca",
+      "nombre": "Sello",
+      "valores": {
+        "ninguna": "Sin sello",
+        "monarca": "M de Monarca"
+      }
+    },
+    {
+      "clave": "calidad",
+      "nombre": "Calidad",
+      "valores": {
+        "alta": "Alta (1080×1920, necesita tarjeta gráfica)",
+        "rapida": "Rápida (mitad de resolución, para probar)"
+      }
+    }
+  ],
+  "sonido": {
+    "ambiente": "suave",
+    "volumenAmbiente": 0.16,
+    "golpesEn": [],
+    "volumenEfectos": 0.5,
+    "efectosPorTipo": {
+      "gancho": "whoosh",
+      "narracion": "whoosh",
+      "dato": "golpe"
+    }
+  },
+  "musicaIA": {
+    "prompt": "Epic but restrained cinematic underscore for a short animated history story: low strings ostinato, soft war drums, warm horns, builds slowly, sits under a fast narrating voice.",
+    "reusar": true,
+    "parametros": {
+      "animo": "épico",
+      "ritmo": "medio",
+      "energia": "media",
+      "instrumentos": [
+        "cuerdas",
+        "tambores",
+        "cornos"
+      ]
+    }
+  },
+  "portadaEn": 0.8,
+  "vozSugerida": "Una sola voz pareja y rápida (3.2 a 3.8 palabras por segundo), sin silencios. Para Monarca, la voz de hombre grave.",
+  "creditos": "Motor de personajes, tinta y color basado en claude-animated-shorts (Mr omi) y Shorts animados con Claude (Crea con LuisPa), licencia MIT."
+}

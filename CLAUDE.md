@@ -80,6 +80,14 @@ Estado: noviembre 2026, Flow genera desde el panel del agente ("Configuración d
 - Texto de la miniatura: 2-4 palabras, que digan la verdad del video, nunca frases de otros canales. Para escribirlo tú: `proyectos/<id>/miniatura.json` → `{ "opciones": [{ "lineas": ["PAZ","EN EL TAO"], "acento": 1, "escena": 3, "promptFondo": "(inglés, solo con --ia)" }] }` (hasta 3). Sin eso lo pone la IA (o, sin IA, sale del título).
 - Las miniaturas de otras cuentas son solo referencia: nunca copies su imagen ni su texto.
 
+## Historia · Caricatura 3D (`historia-caricatura`)
+- Historias reales (Roma, estoicos, batallas) con personajes de caricatura en un mundo 3D pintado (three.js), tinta, desenfoque y color. Todo con código: no gasta Flow ni APIMart.
+- Guion según `estilos/historia-caricatura/GUION.md`: `reparto` (vestuario de cada personaje, una vez) y por escena `lugar`, `luz`, `personajes` (id, cara, pose), `multitud`, `camara`, `plano`, `cifra`. Ejemplo completo: `estilos/historia-caricatura/ejemplo-marco-aurelio.json`.
+- Solo existe lo que dice GUION.md (6 lugares, 4 luces, caras, poses, cámaras). Para un lugar o accesorio nuevo, agrégalo en `escenario.js` (`LUGARES`) y documéntalo en GUION.md.
+- Motor: `escenario.js` (propio) + `lib/caricatura.js` (kit MIT de LuisPa / Mr omi + three + postprocessing, en un solo archivo; cómo reconstruirlo en `kit/LEEME.md`).
+- Render: pesado (sombras, tinta, desenfoque por cuadro). En la laptop con tarjeta gráfica va bien; en el VPS (sin GPU) usa la opción Calidad "Rápida" o renderiza en la laptop. Revisa con `node fabrica.js fotos <id> s1,s2,…` antes del render completo.
+- Antes de renderizar mira las fotos: personajes cortados por la orilla, cámara dentro de un objeto, fuego o multitud tapando caras.
+
 ## Anuncios (`anuncios`) — ver ANUNCIOS.md
 - 8 plantillas (oferta, advertorial, dato, testimonio, versus, antes-despues, notificaciones, ugc) como imágenes (cada escena = una variación) o video, en 9:16, 4:5 y 1:1.
 - Guion según `estilos/anuncios/GUION.md`. Testimonios SOLO con reseñas reales del brief; datos con 2 fuentes; nada de promesas de salud/dinero.

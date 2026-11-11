@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><title>Historia · Caricatura</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}canvas{display:block;width:100vw;height:100vh;object-fit:contain}</style>
+</head><body><canvas id="lienzo"></canvas>
+<script src="../_comun/motor.js"></script>
+<script type="module">
+// Historia · Caricatura: personajes planos con contorno en un mundo 3D pintado (three.js), tinta, desenfoque y color.
+// El guion dice el lugar, la luz, quién sale, qué cara pone y cómo se mueve la cámara en cada escena (ver GUION.md).
+// Cambio de lugar: fundido de 6 cuadros. La cámara nunca se queda quieta.
+import { Escenario } from "./escenario.js";
+
+const F = "../_comun/fuentes/";
+const XF = 0.2; // fundido entre escenas (s)
+let esc = null, subt = "no", marca = "ninguna";
+
+Motor.inicioVoz = 0.1;
+Motor.iniciar({
+  fuentes: [
+    ["Montserrat", F + "montserrat-latin-800-normal.woff2", { weight: "800" }],
+    ["Cinzel", F + "cinzel-latin-800-normal.woff2", { weight: "800" }],
+  ],
+  async preparar(M) {
+    const op = M.proyecto.opciones || {};
+    subt = op.subtitulos || "no"; marca = op.marca || "ninguna";
+    esc = new Escenario(M, M.guion);
+    // arma de una vez los mundos de todas las escenas (así el primer cuadro de cada una no tarda)
+    for (const e of M.guion.escenas) esc.mundo(e);
+  },
+  dibujar(c, t, M) {
+    const W = M.W, H = M.H, u = M.u;
+    const i = M.escenaEn(t), T = M.tiempos.escenas[i];
+    // escena anterior debajo durante el fundido
+    if (i > 0 && t < T.ini + XF) {
+      c.drawImage(esc.dibujar(i - 1, t), 0, 0, W, H);
+      c.globalAlpha = Math.min(1, (t - T.ini) / XF);
+      c.drawImage(esc.dibujar(i, t), 0, 0, W, H);
+      c.globalAlpha = 1;
+    } else c.drawImage(esc.dibujar(i, t), 0, 0, W, H);
+
+    const e = M.guion.escenas[i];
+    // cifra discreta arriba (nunca sobre las caras)
+    if (e.cifra) {
+      const a = T.ini + 0.15, pop = M.salida((t - a) / 0.25), sal = 1 - M.rango(t, (M.tiempos.escenas[i + 1]?.ini ?? M.duracion) - 0.25, (M.tiempos.escenas[i + 1]?.ini ?? M.duracion));
+      if (pop > 0) {
+        c.save(); c.globalAlpha = Math.min(pop, sal); c.translate(W / 2, (M.vertical ? 300 : 170) * u); c.scale(0.85 + 0.15 * pop, 0.85 + 0.15 * pop);
+        c.textAlign = "center"; c.lineJoin = "round";
+        c.font = `800 ${92 * u}px Montserrat`; c.lineWidth = 9 * u; c.strokeStyle = "#1a1010"; c.strokeText(e.cifra, 0, 0);
+        c.fillStyle = e.cifraColor || "#ffd23f"; c.fillText(e.cifra, 0, 0);
+        if (e.cifraSub) { c.font = `800 ${44 * u}px Montserrat`; c.lineWidth = 7 * u; c.strokeText(e.cifraSub, 0, 56 * u); c.fillStyle = "#fff"; c.fillText(e.cifraSub, 0, 56 * u); }
+        c.restore();
+      }
+    }
+    // subtítulos opcionales (el estilo de referencia va sin ellos)
+    if (subt === "si" && T.palabras?.length) {
+      const fr = M.frases(T.palabras, 4), act = fr.find((f) => t >= f[0].t0 - 0.05 && t <= f[f.length - 1].t1 + 0.25);
+      if (act) {
+        c.save(); c.textAlign = "center"; c.lineJoin = "round"; c.font = `800 ${70 * u}px Montserrat`;
+        const y = H * (M.vertical ? 0.74 : 0.86), txt = act.map((p) => p.w).join(" "), w = c.measureText(txt).width;
+        let x = W / 2 - w / 2; c.textAlign = "left";
+        for (const p of act) {
+          const s = p.w + " ", ws = c.measureText(s).width, on = t >= p.t0 - 0.03;
+          c.lineWidth = 12 * u; c.strokeStyle = "#140c0c"; c.strokeText(p.w, x, y);
+          c.fillStyle = on && t <= p.t1 + 0.1 ? "#ffd23f" : "#ffffff"; c.fillText(p.w, x, y); x += ws;
+        }
+        c.restore();
+      }
+    }
+    // sello de marca
+    if (marca === "monarca") {
+      c.save(); c.globalAlpha = 0.85; c.font = `800 ${58 * u}px Cinzel`; c.textAlign = "right"; c.lineWidth = 6 * u; c.strokeStyle = "rgba(0,0,0,0.55)";
+      c.strokeText("M", W - 46 * u, H - (M.vertical ? 120 : 50) * u); c.fillStyle = "#f4ead2"; c.fillText("M", W - 46 * u, H - (M.vertical ? 120 : 50) * u); c.restore();
+    }
+  },
+});
+</script>
+</body></html>
