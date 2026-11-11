@@ -4,7 +4,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { DIR_ESTILOS } from "./config.js";
-import { ffmpeg } from "./ff.js";
+import { ffmpeg, duracion } from "./ff.js";
 
 const SR = 44100;
 
@@ -86,7 +86,10 @@ export async function mezclar({ estilo, guion, tiempos, voz, salida, tmp, dirPro
   else if (s.ambiente && SINTE[s.ambiente]) amb = await sintetizar(tmp, s.ambiente, D.toFixed(2));
   else if (s.ambiente) amb = path.join(DIR_ESTILOS, estilo.id, s.ambiente); // archivo de música del estilo
   if (amb && fs.existsSync(amb)) {
-    entradas.push("-stream_loop", "-1", "-i", amb);
+    // bucle FINITO: con "-stream_loop -1" el ffmpeg de npm se queda colgado en "Preparando el audio"
+    let veces = 0;
+    try { const da = await duracion(amb); if (da > 0 && da < D) veces = Math.ceil(D / da); } catch {}
+    entradas.push(...(veces ? ["-stream_loop", String(veces)] : []), "-i", amb);
     const vol = (propia || deBiblioteca) ? (tiempos.sinVoz ? s.volumenMusicaSinVoz ?? 0.9 : s.volumenMusica ?? 0.16) : ((tiempos.sinVoz ? s.volumenSinVoz : null) ?? s.volumenAmbiente ?? 0.35);
     // las pistas reales vienen a volúmenes muy distintos (de -7 a -18 LUFS): se igualan antes de bajarlas
     const iguala = propia || deBiblioteca ? "loudnorm=I=-16:TP=-1.5:LRA=11,aresample=48000," : "";
