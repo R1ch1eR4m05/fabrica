@@ -1,0 +1,103 @@
+{
+  "nombre": "Filosofía · Viaje de escala",
+  "descripcion": "La cámara sube sin parar desde tu calle hasta el universo mientras un panel de datos y una frase en cursiva cuentan la idea (el tamaño de tu problema, lo que no controlas…). Todo con código 3D: no gasta Flow ni APIMart. Sirve en vertical (Reels) y en horizontal largo (YouTube, por capítulos).",
+  "orden": 7,
+  "formatos": [
+    "9:16",
+    "16:9"
+  ],
+  "duraciones": {
+    "corto": "60 a 90 segundos (12 a 16 escenas, 150 a 220 palabras)",
+    "largo": "6 a 12 minutos en 16:9 (por capítulos: cada uno sube una escala distinta)"
+  },
+  "minutosLargo": 9,
+  "tipos": [
+    "gancho",
+    "escena",
+    "cierre"
+  ],
+  "visuales": [],
+  "camposAvanzados": [
+    "altura",
+    "hito",
+    "nota",
+    "izq",
+    "der",
+    "capitulo",
+    "reel"
+  ],
+  "vozOpcional": true,
+  "lectura": {
+    "porSegundo": 2.6,
+    "extra": 2.2
+  },
+  "inicioVoz": 0.4,
+  "pausaEntreEscenas": 0.35,
+  "colaFinal": 2.2,
+  "opciones": [
+    {
+      "clave": "subtitulos",
+      "nombre": "Frase en cursiva",
+      "valores": {
+        "si": "Con la frase en pantalla",
+        "no": "Sin frase"
+      }
+    },
+    {
+      "clave": "hud",
+      "nombre": "Panel de datos",
+      "valores": {
+        "si": "Con panel (altura, siguiente, tu problema)",
+        "no": "Sin panel"
+      }
+    },
+    {
+      "clave": "marca",
+      "nombre": "Sello",
+      "valores": {
+        "ninguna": "Sin sello",
+        "monarca": "M de Monarca"
+      }
+    },
+    {
+      "clave": "calidad",
+      "nombre": "Calidad del 3D",
+      "valores": {
+        "alta": "Alta (resolución completa; necesita tarjeta gráfica para ir rápido)",
+        "rapida": "Rápida (3D a mitad de resolución, para probar o para el VPS)"
+      }
+    }
+  ],
+  "sonido": {
+    "ambiente": "oscuro",
+    "volumenAmbiente": 0.22,
+    "golpesEn": [],
+    "volumenEfectos": 0.4,
+    "efectosPorTipo": {}
+  },
+  "musicaIA": {
+    "prompt": "Slow cosmic ambient underscore for a contemplative philosophy short: a deep warm drone that very slowly rises in pitch and brightness, soft shimmering pads, distant sub-bass pulse, no drums, no melody, sits quietly under a calm voice or subtitles, builds gently to the end.",
+    "reusar": true,
+    "parametros": {
+      "animo": "contemplativo",
+      "ritmo": "muy lento",
+      "energia": "baja",
+      "instrumentos": [
+        "drone",
+        "pads",
+        "sub-bajo"
+      ]
+    }
+  },
+  "miniaturas": {
+    "busquedas": [
+      "la vista desde arriba estoicismo",
+      "Marco Aurelio perspectiva cósmica",
+      "tamaño del universo viaje",
+      "escala del universo"
+    ]
+  },
+  "portadaEn": 0.9,
+  "vozSugerida": "Hombre, voz grave y pausada (la de Monarca). Con voz o sin voz funciona: la frase en cursiva ya lleva la narración.",
+  "creditos": "Motor 3D propio sobre three.js (MIT). Referencia de formato: experiencias de 'viaje de escala' en tiempo real."
+}

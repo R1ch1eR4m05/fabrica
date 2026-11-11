@@ -80,6 +80,14 @@ Estado: noviembre 2026, Flow genera desde el panel del agente ("Configuración d
 - Texto de la miniatura: 2-4 palabras, que digan la verdad del video, nunca frases de otros canales. Para escribirlo tú: `proyectos/<id>/miniatura.json` → `{ "opciones": [{ "lineas": ["PAZ","EN EL TAO"], "acento": 1, "escena": 3, "promptFondo": "(inglés, solo con --ia)" }] }` (hasta 3). Sin eso lo pone la IA (o, sin IA, sale del título).
 - Las miniaturas de otras cuentas son solo referencia: nunca copies su imagen ni su texto.
 
+## Filosofía · Viaje de escala (`viaje-escala`)
+- La cámara sube sin parar desde tu calle (1.7 m) hasta el universo observable (~4×10²⁶ m); un panel de datos (altura, siguiente hito, "tu problema ocupa X %") y una frase en cursiva cuentan una idea filosófica que se vuelve tangible con la altura. Todo con código 3D (three.js): no gasta Flow ni APIMart ni voz (la frase lleva la narración; con voz también funciona).
+- Guion según `estilos/viaje-escala/GUION.md`: por escena `voz`, `altura` (m, obligatoria y creciente), `hito`, `nota`, y opcionales `izq`/`der` para cambiar los datos del panel (otras ideas: "lo que controlas"). Ejemplo completo: `estilos/viaje-escala/ejemplo-vista-desde-arriba.json`.
+- Mismo estilo en 9:16 (Reels, 60-90 s) y 16:9 largo (6-12 min por capítulos: marca `capitulo` y `reel`; "Cortar por capítulos" saca un video y un Reel de cada uno).
+- Motor: `src/viaje.js` + three.js empaquetados en `lib/viaje.js` (si cambias `src/`, corre `bash estilos/viaje-escala/construir.sh`). Siete mundos procedurales: calle, mapa, Tierra y Luna, sistema solar, estrellas cercanas, Vía Láctea y telaraña cósmica.
+- Render: usa el navegador (WebGL). En la laptop con tarjeta gráfica va bien; en el VPS (sin GPU) usa la opción Calidad "Rápida" (3D a mitad de resolución). Revisa con `node fabrica.js fotos <id> t1,t2,…` en 9:16 y 16:9 antes del render completo.
+- Datos: toda cifra con 2 fuentes; las alturas del guion salen de distancias reales (ver tabla de GUION.md).
+
 ## Historia · Caricatura 3D (`historia-caricatura`)
 - Historias reales (Roma, estoicos, batallas) con personajes de caricatura en un mundo 3D pintado (three.js), tinta, desenfoque y color. Todo con código: no gasta Flow ni APIMart.
 - Guion según `estilos/historia-caricatura/GUION.md`: `reparto` (vestuario de cada personaje, una vez) y por escena `lugar`, `luz`, `personajes` (id, cara, pose), `multitud`, `camara`, `plano`, `cifra`. Ejemplo completo: `estilos/historia-caricatura/ejemplo-marco-aurelio.json`.

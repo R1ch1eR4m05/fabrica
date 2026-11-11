@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><title>Viaje de escala</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}canvas#lienzo{display:block;width:100vw;height:100vh;object-fit:contain}</style>
+</head><body><canvas id="lienzo"></canvas>
+<script src="../_comun/motor.js"></script>
+<script type="module">
+// Viaje de escala: la cámara sube sin parar (de tu calle al universo) mientras un panel de datos cuenta lo que pasa.
+// El guion da, por escena, la ALTURA en metros a la que está la cámara cuando empieza; el resto se interpola en logaritmo
+// (curva suave y monótona), así que el cuadro depende solo de t. Ver GUION.md.
+import { Viaje, AU, LY } from "./lib/viaje.js";
+
+const F = "../_comun/fuentes/";
+let viaje = null, knots = null, opt = {}, tema = {}, esc = 1;
+const ln = Math.log;
+
+// ---------- altura(t): interpolación monótona (PCHIP) sobre ln(altura) ----------
+function armarCurva(M) {
+  const es = M.guion.escenas, T = M.tiempos.escenas, pts = [];
+  let prev = 1.7;
+  es.forEach((e, i) => {
+    let a = Number(e.altura); if (!(a > 0)) a = prev * 6; prev = a;
+    // la cámara llega a esa altura mientras se lee la frase (no justo al empezar la escena)
+    const fin = T[i].fin ?? T[i + 1]?.ini ?? M.duracion, tk = T[i].ini + (i === 0 ? 0.6 : 0.4) * (fin - T[i].ini);
+    if (i === 0) pts.push([0, ln(a)]);
+    pts.push([tk, ln(a)]);
+  });
+  const fin = Number(M.guion.alturaFin) > 0 ? Number(M.guion.alturaFin) : Math.exp(pts[pts.length - 1][1]) * 8;
+  pts.push([Math.max(M.duracion, pts[pts.length - 1][0] + 1), ln(fin)]);
+  for (let i = 1; i < pts.length; i++) if (pts[i][0] <= pts[i - 1][0]) pts[i][0] = pts[i - 1][0] + 0.001;
+  const n = pts.length, d = [], m = new Array(n);
+  for (let i = 0; i < n - 1; i++) d[i] = (pts[i + 1][1] - pts[i][1]) / (pts[i + 1][0] - pts[i][0]);
+  m[0] = d[0]; m[n - 1] = d[n - 2];
+  for (let i = 1; i < n - 1; i++) {
+    if (d[i - 1] * d[i] <= 0) m[i] = 0;
+    else { const h0 = pts[i][0] - pts[i - 1][0], h1 = pts[i + 1][0] - pts[i][0], w1 = 2 * h1 + h0, w2 = h1 + 2 * h0; m[i] = (w1 + w2) / (w1 / d[i - 1] + w2 / d[i]); }
+  }
+  return { pts, m };
+}
+function alturaEn(t) { // devuelve { h (m), v (ln por segundo) }
+  const { pts, m } = knots; let i = 0; while (i < pts.length - 2 && t >= pts[i + 1][0]) i++;
+  const [t0, y0] = pts[i], [t1, y1] = pts[i + 1], hh = t1 - t0, s = Math.min(1, Math.max(0, (t - t0) / hh));
+  const s2 = s * s, s3 = s2 * s;
+  const y = (2 * s3 - 3 * s2 + 1) * y0 + (s3 - 2 * s2 + s) * hh * m[i] + (-2 * s3 + 3 * s2) * y1 + (s3 - s2) * hh * m[i + 1];
+  const dy = ((6 * s2 - 6 * s) * y0 + (3 * s2 - 4 * s + 1) * hh * m[i] + (-6 * s2 + 6 * s) * y1 + (3 * s2 - 2 * s) * hh * m[i + 1]) / hh;
+  return { h: Math.exp(y), v: Math.abs(dy) };
+}
+
+// ---------- formato de números ----------
+const nf = (x, d = 0) => x.toLocaleString("es-MX", { maximumFractionDigits: d, minimumFractionDigits: 0 });
+function fmtDist(m) {
+  if (m < 1) return nf(m * 100, 0) + " cm";
+  if (m < 10) return nf(m, 1) + " m";
+  if (m < 1000) return nf(m, 0) + " m";
+  const km = m / 1000;
+  if (km < 10) return nf(km, 2) + " km";
+  if (km < 1e6) return nf(km, km < 100 ? 1 : 0) + " km";
+  if (m < 0.8 * AU) return nf(km / 1e6, 1) + " millones de km";
+  const ua = m / AU, ly = m / LY;
+  if (ly < 0.3) return nf(ua, ua < 10 ? 2 : ua < 100 ? 1 : 0) + " UA";
+  if (ly < 1000) return nf(ly, ly < 10 ? 2 : ly < 100 ? 1 : 0) + " años luz";
+  if (ly < 1e6) return nf(ly, 0) + " años luz";
+  if (ly < 1e9) return nf(ly / 1e6, ly / 1e6 < 10 ? 2 : 1) + " millones de años luz";
+  return nf(ly / 1e9, 1) + " mil millones de años luz";
+}
+function fmtProblema(h, vfov) {
+  const campo = 2 * h * Math.tan((vfov * Math.PI) / 360), p = Math.min(100, Math.pow(0.5 / campo, 2) * 100);
+  if (p >= 1) return nf(p, 1) + " %";
+  if (p >= 0.001) return nf(p, 3) + " %";
+  const e = Math.floor(Math.log10(p)), mant = p / Math.pow(10, e);
+  return mant.toFixed(1) + "×10^" + e + "^ %"; // lo que va entre ^ se dibuja como exponente
+}
+
+Motor.inicioVoz = 0.4;
+Motor.iniciar({
+  fuentes: [
+    ["Cormorant", F + "cormorant-garamond-latin-500-normal.woff2", { weight: "500" }],
+    ["Cormorant", F + "cormorant-garamond-latin-600-normal.woff2", { weight: "600" }],
+    ["Cormorant", F + "cormorant-garamond-latin-500-italic.woff2", { weight: "500", style: "italic" }],
+    ["Cormorant", F + "cormorant-garamond-latin-600-italic.woff2", { weight: "600", style: "italic" }],
+    ["Jost", F + "jost-latin-400-normal.woff2", { weight: "400" }],
+    ["Jost", F + "jost-latin-500-normal.woff2", { weight: "500" }],
+    ["Cinzel", F + "cinzel-latin-800-normal.woff2", { weight: "800" }],
+  ],
+  async preparar(M) {
+    opt = M.proyecto.opciones || {};
+    tema = Object.assign({ izq: "TU ALTURA", der: "TU PROBLEMA OCUPA", derNota: "DE LO QUE VES", sig: "SIGUIENTE" }, M.guion.hud || {});
+    esc = opt.calidad === "rapida" ? 0.5 : 1;   // rápida = el 3D a la mitad de resolución (para probar o para el VPS sin tarjeta gráfica)
+    viaje = new Viaje(Math.round(M.W * esc), Math.round(M.H * esc));
+    knots = armarCurva(M);
+  },
+  dibujar(c, t, M) {
+    const W = M.W, H = M.H, u = M.u, i = M.escenaEn(t), T = M.tiempos.escenas[i], e = M.guion.escenas[i];
+    const { h, v } = alturaEn(t);
+    const q = viaje.dibujar(h, t);
+    c.drawImage(q.canvas, 0, 0, W, H);
+
+    // líneas de velocidad cuando ya vuelas por el espacio
+    const lh = Math.log10(h), kv = Math.min(1, Math.max(0, (v - 0.03) / 0.25)) * Math.min(1, Math.max(0, (lh - 5.3) / 1.2));
+    if (kv > 0.01) {
+      c.save(); c.translate(W / 2, H / 2); c.lineCap = "round";
+      const R = Math.hypot(W, H) * 0.55;
+      for (let k = 0; k < 80; k++) {
+        const a = M.hash(k * 3.1) * 6.2832, ph = (M.hash(k * 7.7 + 2) + t * (0.18 + 0.5 * M.hash(k))) % 1;
+        const r0 = Math.pow(ph, 2.2) * R, r1 = r0 + (0.02 + 0.22 * kv) * ph * R;
+        c.strokeStyle = `rgba(255,255,255,${(0.38 * ph * kv).toFixed(3)})`; c.lineWidth = (0.6 + 1.6 * ph) * u;
+        c.beginPath(); c.moveTo(Math.cos(a) * r0, Math.sin(a) * r0); c.lineTo(Math.cos(a) * r1, Math.sin(a) * r1); c.stroke();
+      }
+      c.restore();
+    }
+
+    // etiquetas (la Luna, el Sol, Andrómeda…) y el aro de "TÚ"
+    for (const l of q.etiquetas) {
+      l.x /= esc; l.y /= esc;
+      if (!l.anillo && opt.hud !== "no" && l.y < (M.vertical ? 150 : 70) * u + 210 * u) continue; // no encimar el panel de datos
+      c.save(); c.globalAlpha = Math.min(1, l.a);
+      if (l.anillo) {
+        const r = (15 + 3 * Math.sin(t * 3)) * u; c.strokeStyle = "#fff"; c.lineWidth = 2 * u; c.beginPath(); c.arc(l.x, l.y, r, 0, 6.2832); c.stroke();
+        c.fillStyle = "#fff"; c.beginPath(); c.arc(l.x, l.y, 3 * u, 0, 6.2832); c.fill();
+      } else { c.fillStyle = "#fff"; c.beginPath(); c.arc(l.x, l.y, 3.2 * u, 0, 6.2832); c.fill(); }
+      c.font = `500 ${15 * u}px Jost`; c.letterSpacing = `${2.4 * u}px`; c.textBaseline = "middle"; c.shadowColor = "rgba(0,0,0,.8)"; c.shadowBlur = 6 * u;
+      const ancho = c.measureText(l.txt).width, aIzq = l.x + 24 * u + ancho > W - 30 * u;
+      c.textAlign = aIzq ? "right" : "left"; c.fillStyle = "#fff"; c.fillText(l.txt, aIzq ? l.x - 24 * u : l.x + 24 * u, l.y); c.restore();
+    }
+
+    // sombras suaves para que el texto se lea sobre cielos claros
+    const sombra = (x, y, r, a) => { const g = c.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, `rgba(0,0,0,${a})`); g.addColorStop(1, "rgba(0,0,0,0)"); c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2); };
+    const ancla = M.vertical ? 150 * u : 70 * u, mx = (M.vertical ? 56 : 72) * u;
+    if (opt.hud !== "no") {
+      sombra(mx + 150 * u, ancla + 90 * u, 420 * u, 0.5); sombra(W - mx - 150 * u, ancla + 90 * u, 400 * u, 0.42);
+      const entra = M.suave((t - 0.3) / 1.0);
+      c.save(); c.globalAlpha = entra; c.fillStyle = "#fff"; c.textBaseline = "alphabetic";
+      const etiqueta = (txt, x, y, al = "left") => { c.textAlign = al; c.font = `500 ${16 * u}px Jost`; c.letterSpacing = `${3 * u}px`; c.globalAlpha = entra * 0.85; c.fillText(txt, x, y); c.globalAlpha = entra; };
+      const valor = (txt, x, y, al = "left", tam = 62) => {
+        c.letterSpacing = "0px"; c.font = `600 ${tam * u}px Cormorant`;
+        const partes = txt.split("^"); // [antes, exponente, después] cuando hay exponente
+        if (partes.length < 3) { c.textAlign = al; c.fillText(txt, x, y); return; }
+        const chico = `600 ${tam * 0.55 * u}px Cormorant`, grande = c.font, w = (f, s) => { c.font = f; return c.measureText(s).width; };
+        const total = w(grande, partes[0]) + w(chico, partes[1]) + w(grande, partes[2]);
+        let cx = al === "right" ? x - total : x; c.textAlign = "left";
+        c.font = grande; c.fillText(partes[0], cx, y); cx += w(grande, partes[0]);
+        c.font = chico; c.fillText(partes[1], cx, y - tam * 0.38 * u); cx += w(chico, partes[1]);
+        c.font = grande; c.fillText(partes[2], cx, y);
+      };
+      const nota = (txt, x, y, al = "left") => { c.textAlign = al; c.font = `500 ${13 * u}px Jost`; c.letterSpacing = `${2.4 * u}px`; c.globalAlpha = entra * 0.62; c.fillText(txt, x, y); c.globalAlpha = entra; };
+      // izquierda: altura
+      const izq = e.izq || {};
+      etiqueta(izq.titulo || tema.izq, mx, ancla);
+      valor(izq.valor || fmtDist(h), mx, ancla + 62 * u);
+      if (izq.nota || e.nota) nota(String(izq.nota || e.nota).toUpperCase(), mx, ancla + 88 * u);
+      // siguiente hito
+      let sig = null; for (let j = i; j < M.guion.escenas.length; j++) { const g = M.guion.escenas[j]; if (g.hito && Number(g.altura) > h * 1.0005) { sig = g; break; } }
+      if (sig) {
+        c.strokeStyle = "rgba(255,255,255,.28)"; c.lineWidth = 1.5 * u; c.beginPath(); c.moveTo(mx, ancla + 112 * u); c.lineTo(mx + 190 * u, ancla + 112 * u); c.stroke();
+        c.textAlign = "left"; c.font = `500 ${13 * u}px Jost`; c.letterSpacing = `${2.4 * u}px`; c.globalAlpha = entra * 0.6; c.fillText(tema.sig, mx, ancla + 142 * u);
+        const wS = c.measureText(tema.sig).width; c.globalAlpha = entra; c.font = `500 ${15 * u}px Jost`; c.fillText(String(sig.hito).toUpperCase(), mx + wS + 16 * u, ancla + 142 * u);
+        valor(fmtDist(Number(sig.altura) - h), mx, ancla + 178 * u, "left", 34);
+      }
+      // derecha: el tamaño de tu problema (o lo que ponga el guion)
+      const der = e.der || {};
+      etiqueta(der.titulo || tema.der, W - mx, ancla, "right");
+      valor(der.valor || fmtProblema(h, viaje.vfov), W - mx, ancla + 62 * u, "right");
+      nota(String(der.nota || tema.derNota).toUpperCase(), W - mx, ancla + 88 * u, "right");
+      c.restore();
+    }
+
+    // subtítulo (la narración, también cuando va con voz)
+    const txt = e.texto ?? e.voz;
+    if (txt && opt.subtitulos !== "no") {
+      const sig = M.tiempos.escenas[i + 1]?.ini ?? M.duracion;
+      const a = M.suave((t - T.ini - 0.12) / 0.55) * (1 - M.suave((t - (sig - 0.4)) / 0.4));
+      if (a > 0.01) {
+        c.save(); c.globalAlpha = a; c.textAlign = "center"; c.textBaseline = "alphabetic"; c.lineJoin = "round";
+        const tam = (M.vertical ? 52 : 46) * u; c.font = `italic 600 ${tam}px Cormorant`; c.letterSpacing = "0px";
+        const lineas = M.lineas(c, txt, W * (M.vertical ? 0.84 : 0.7)), y0 = (M.vertical ? H * 0.745 : H * 0.88) - (lineas.length - 1) * tam * 0.55;
+        sombra(W / 2, y0, W * 0.5, 0.34 * a);
+        lineas.forEach((ln_, k) => { const y = y0 + k * tam * 1.12; c.lineWidth = 9 * u; c.strokeStyle = "rgba(0,0,0,.55)"; c.strokeText(ln_, W / 2, y); c.fillStyle = "#fff"; c.fillText(ln_, W / 2, y); });
+        c.restore();
+      }
+    }
+
+    // sello de marca
+    if (opt.marca === "monarca") {
+      c.save(); c.globalAlpha = 0.85; c.font = `800 ${52 * u}px Cinzel`; c.textAlign = "right"; c.lineWidth = 6 * u; c.strokeStyle = "rgba(0,0,0,.55)"; c.letterSpacing = "0px";
+      const y = H - (M.vertical ? 130 : 46) * u; c.strokeText("M", W - 46 * u, y); c.fillStyle = "#f4ead2"; c.fillText("M", W - 46 * u, y); c.restore();
+    }
+    // entrada desde negro
+    const f = 1 - M.suave(t / 1.2); if (f > 0) { c.fillStyle = `rgba(0,0,0,${f})`; c.fillRect(0, 0, W, H); }
+  },
+});
+</script>
+</body></html>
