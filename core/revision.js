@@ -4,7 +4,8 @@
 // Idea y umbrales base tomados de qc.py de cinecode (MIT, Sarp Yıldız); código propio.
 import fs from "node:fs";
 import path from "node:path";
-import { CFG, FORMATOS } from "./config.js";
+import { CFG, FORMATOS, DIR_LISTOS } from "./config.js";
+import { leerAjustes } from "./ajustes.js";
 import { dirProyecto, leer } from "./proyectos.js";
 import { spawn } from "node:child_process";
 import { correr, ffmpeg, duracion } from "./ff.js";
@@ -111,6 +112,12 @@ export async function revisar(id, { avisar = () => {} } = {}) {
   r.cortes = await negrosYCongelados(archivo);
   r.celular = { archivo: "revision-celular.jpg", tiempos: await tiraCelular(archivo, dur, path.join(dir, "revision-celular.jpg")),
     msg: "Así se ve a tamaño de celular: revisa que el texto se lea sin acercarte." };
+  r.formato.arreglo = r.formato.estado === "verde" ? null : { texto: "El video salió con otra medida. Dale otra vez a Render (arriba) con el formato correcto del proyecto." };
+  r.gancho.arreglo = r.gancho.estado === "verde" ? null : { texto: "Esto no se arregla con un botón porque depende de la escena 1: rehaz esa escena pidiendo movimiento desde el primer cuadro (en historias: Reanimar o Rehacer en Flow y escribe \"movimiento de cámara rápido al inicio\"; en frases: pon el texto con entrada animada). Después vuelve a darle Render." };
+  r.brillo.arreglo = r.brillo.estado === "verde" ? null : { auto: "brillo", texto: "Se puede subir la luz del video sin rehacer nada: el botón de abajo aplica el ajuste y vuelve a revisar." };
+  r.volumen.arreglo = r.volumen.estado === "verde" ? null : { auto: "volumen", texto: "Se puede nivelar el volumen a -15 LUFS sin rehacer nada: el botón de abajo lo aplica y vuelve a revisar." };
+  r.cortes.arreglo = r.cortes.estado === "verde" ? null : { texto: "Hay pantalla negra o imagen congelada: casi siempre es un clip faltante o una escena sin imagen. Revisa las escenas de esos segundos y dale Render otra vez." };
+  r.mejoras = leerMarca(id);
   r.estado = ["formato", "gancho", "brillo", "volumen", "cortes"].reduce((e, k) => peor(e, r[k].estado), "verde");
   fs.writeFileSync(path.join(dir, "revision.json"), JSON.stringify(r, null, 2));
   avisar({ paso: "render", progreso: 1, msg: `Revisión: ${r.estado}.` });
@@ -118,3 +125,45 @@ export async function revisar(id, { avisar = () => {} } = {}) {
 }
 
 export const leerRevision = (id) => { try { return JSON.parse(fs.readFileSync(path.join(dirProyecto(id), "revision.json"), "utf8")); } catch { return null; } };
+
+// ---- mejoras automáticas (brillo y volumen): se aplican sobre el final.mp4 sin volver a dibujar el video ----
+const leerMarca = (id) => { try { return JSON.parse(fs.readFileSync(path.join(dirProyecto(id), "mejoras.json"), "utf8")); } catch { return null; } };
+
+export async function mejorar(id, { brillo: subirLuz = false, volumen: nivelar = false, desdeRender = false, avisar = () => {} } = {}) {
+  const dir = dirProyecto(id), fin = path.join(dir, "final.mp4"), orig = path.join(dir, "final-original.mp4"), marca = path.join(dir, "mejoras.json");
+  if (!fs.existsSync(fin)) throw new Error("Este video todavía no tiene final.mp4.");
+  const m = leerMarca(id);
+  // si el final.mp4 ya era el mejorado, se parte siempre del original (no se empalman los ajustes)
+  const yaMejorado = m && fs.existsSync(orig) && Math.abs(fs.statSync(fin).mtimeMs - m.mtimeFinal) < 50;
+  if (!yaMejorado) fs.copyFileSync(fin, orig);
+  const hecho = { fecha: new Date().toISOString() };
+  const vf = [], af = [];
+  if (subirLuz) {
+    const b = await brillo(orig);
+    if (b.valor < 62) { const d = Math.min(0.12, Math.max(0.03, (62 - b.valor) / 255)); vf.push(`eq=brightness=${d.toFixed(3)}:gamma=1.08`); hecho.brillo = +d.toFixed(3); }
+  }
+  if (nivelar) { af.push("loudnorm=I=-15:TP=-1.5:LRA=11"); hecho.volumen = "-15 LUFS"; }
+  if (!vf.length && !af.length) { // nada que cambiar: se deja el original
+    if (yaMejorado) fs.copyFileSync(orig, fin);
+    fs.rmSync(marca, { force: true });
+  } else {
+    avisar({ paso: "render", progreso: 0.5, msg: "Aplicando mejoras (brillo / volumen)…" });
+    const tmp = path.join(dir, "final-mejorado.mp4");
+    await ffmpeg(["-i", orig, ...(vf.length ? ["-vf", vf.join(","), "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p"] : ["-c:v", "copy"]),
+      ...(af.length ? ["-af", af.join(","), "-c:a", "aac", "-b:a", "192k"] : ["-c:a", "copy"]), "-movflags", "+faststart", tmp]);
+    fs.copyFileSync(tmp, fin); fs.rmSync(tmp, { force: true });
+    fs.writeFileSync(marca, JSON.stringify({ ...hecho, mtimeFinal: fs.statSync(fin).mtimeMs }, null, 2));
+  }
+  if (desdeRender) return hecho;
+  const p = leer(id, "proyecto.json") || {};
+  try { const nombre = `${id}-${String(p.formato || "9:16").replace(":", "x")}`; fs.copyFileSync(fin, path.join(DIR_LISTOS, `${nombre}.mp4`)); } catch {}
+  return await revisar(id, { avisar });
+}
+
+// después de cada render: aplica lo que Richie dejó activado para todos los videos (ajustes.json) o para este video
+export async function mejoraAuto(id) {
+  const p = leer(id, "proyecto.json") || {};
+  const o = { ...(leerAjustes().mejoras || {}), ...(p.mejoras || {}) };
+  if (!o.brillo && !o.volumen) return null;
+  return await mejorar(id, { brillo: !!o.brillo, volumen: !!o.volumen, desdeRender: true });
+}

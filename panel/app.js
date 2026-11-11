@@ -344,6 +344,7 @@ function pintarProyecto() {
     $("#vModelo").innerHTML = Object.entries(a.modelosVoz).map(([k, n]) => `<option value="${h(k)}" ${k === actual ? "selected" : ""}>Voz: ${h(n)}</option>`).join("");
     $("#vModelo").onchange = async () => { await api("/api/ajustes", "PUT", { modeloPorEstilo: { [p.estilo]: $("#vModelo").value } }); avisar(`Modelo de voz guardado para ${est?.nombre || "este estilo"}. Dale "Rehacer voz" para oírlo.`); };
   });
+  if ($("#rMejorar")) $("#rMejorar").onclick = () => { const k = $("#rMejorar").dataset.k.split(","); api(`/api/proyectos/${p.id}/mejorar`, "POST", { brillo: k.includes("brillo"), volumen: k.includes("volumen"), recordar: $("#rRecordar")?.checked }).then(() => avisar("Aplicando mejoras… sale en la barra de la fila.")).catch((e) => avisar(e.message, true)); };
   if ($("#rRevisar")) $("#rRevisar").onclick = () => api(`/api/proyectos/${p.id}/revisar`, "POST", {}).then(() => avisar("Revisando… sale en la barra de la fila.")).catch((e) => avisar(e.message, true));
   if ($("#iSacar")) $("#iSacar").onclick = () => api(`/api/proyectos/${p.id}/imagenes`, "POST", {}).then(() => avisar("Sacando imágenes… sale en la barra de la fila.")).catch((e) => avisar(e.message, true));
   if ($("#iTexto")) $("#iTexto").onclick = async () => { const t = await (await fetch(`/proyectos/${p.id}/imagenes/texto.txt?v=${Date.now()}`)).text(); try { await navigator.clipboard.writeText(t); avisar("Texto copiado."); } catch { prompt("Copia el texto:", t); } };
@@ -609,7 +610,11 @@ function panelRevision(p) {
   const nombres = { formato: "Formato", gancho: "Gancho (primeros 2 s)", brillo: "Brillo", volumen: "Volumen", cortes: "Negros / congelados" };
   return `<div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--b)">
     <div class="fila" style="align-items:center"><b>Revisar antes de publicar</b> ${r ? `<span>${ic[r.estado]}</span>` : ""}<button class="mini" id="rRevisar">${r ? "Volver a revisar" : "Revisar"}</button></div>
-    ${r ? `<div style="margin-top:6px">${Object.keys(nombres).map((k) => r[k] ? `<div class="estado">${ic[r[k].estado]} <b>${nombres[k]}:</b> ${h(r[k].msg)}</div>` : "").join("")}</div>
+    ${r ? `<div style="margin-top:6px">${Object.keys(nombres).map((k) => r[k] ? `<div class="estado">${ic[r[k].estado]} <b>${nombres[k]}:</b> ${h(r[k].msg)}${r[k].arreglo ? `<div style="opacity:.85;margin:2px 0 4px 22px">👉 ${h(r[k].arreglo.texto)}</div>` : ""}</div>` : "").join("")}</div>
+    ${(() => { const au = ["brillo", "volumen"].filter((k) => r[k]?.arreglo?.auto); return au.length || r.mejoras ? `<div class="fila" style="margin-top:8px;align-items:center;gap:8px;flex-wrap:wrap">
+      ${au.length ? `<button class="btn peq primario" id="rMejorar" data-k="${au.join(",")}">Arreglar ${au.join(" y ")} ahora</button>` : ""}
+      ${r.mejoras ? `<span class="estado">Ya aplicado: ${[r.mejoras.brillo ? "más luz" : "", r.mejoras.volumen ? "volumen a -15 LUFS" : ""].filter(Boolean).join(" y ")}.</span>` : ""}
+      <label class="estado"><input type="checkbox" id="rRecordar" checked> Aplicarlo también a los siguientes videos</label></div>` : ""; })()}
     <div class="estado" style="margin-top:6px">📱 ${h(r.celular?.msg || "")}</div>
     <img src="/proyectos/${h(p.id)}/revision-celular.jpg?v=${Date.now()}" style="width:100%;max-width:820px;border-radius:8px;margin-top:6px">` : `<div class="estado">Mide el gancho, el brillo, el volumen y cómo se ve en el celular. Se hace solo al terminar cada video.</div>`}
   </div>`;

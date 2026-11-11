@@ -164,6 +164,7 @@ export async function render(id, avisar = () => {}) {
   return await terminar();
 
   async function terminar() {
+  try { const { mejoraAuto } = await import("./revision.js"); await mejoraAuto(id); } catch (e) { console.error("Mejoras automáticas:", e.message); }
   const nombre = `${id}-${proyecto.formato.replace(":", "x")}`;
   fs.copyFileSync(path.join(dir, "final.mp4"), path.join(DIR_LISTOS, `${nombre}.mp4`));
   fs.copyFileSync(path.join(dir, "portada.jpg"), path.join(DIR_LISTOS, `${nombre}.jpg`));

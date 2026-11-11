@@ -199,7 +199,7 @@ async function api(req, res, partes) {
       // ¿de qué marca es? explícito, o por el asunto/encabezado: "INFORME FABRICA MONARCA" → monarca (sin marca: la activa)
       const txt0 = String(datos.texto ?? datos.informe ?? crudo);
       const cab = `${datos.asunto || datos.subject || ""}\n${txt0.slice(0, 300)}`;
-      const marcaInf = datos.nicho || qn || INV.listarNichos().find((x) => new RegExp(`INFORME\\s+FABRICA\\W{0,3}(${[x.id, x.nombre].filter(Boolean).map((v) => String(v).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})\\b`, "i").test(cab))?.id;
+      const marcaInf = datos.nicho || qn || INV.listarNichos().find((x) => new RegExp(`INFORME\\s+(?:FABRICA\\W{0,3})?(${[x.id, x.nombre].filter(Boolean).map((v) => String(v).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})\\b`, "i").test(cab))?.id;
       try { nombre = INV.guardarInforme(txt0, fuente, marcaInf); } catch (e) { return json(res, 400, { error: e.message }); }
       const conIA = INV.hayIA();
       json(res, 200, { recibido: true, informe: nombre, convirtiendo: conIA, pendiente: !conIA });
@@ -505,6 +505,14 @@ async function api(req, res, partes) {
     const REV = await import("./revision.js");
     if (m === "GET") return json(res, 200, REV.leerRevision(id) || {});
     encolar(id, "render", (av) => REV.revisar(id, { avisar: av }));
+    return json(res, 200, { ok: true });
+  }
+  if (accion === "mejorar" && m === "POST") { // brillo / volumen sobre el final.mp4; "recordar" lo deja activo para los siguientes videos
+    const REV = await import("./revision.js");
+    const b = await cuerpo(req).catch(() => ({}));
+    const o = { brillo: !!b.brillo, volumen: !!b.volumen };
+    if (b.recordar) { const a0 = leerAjustes().mejoras || {}; guardarAjustes({ mejoras: { ...a0, ...(b.brillo ? { brillo: true } : {}), ...(b.volumen ? { volumen: true } : {}) } }); }
+    encolar(id, "render", (av) => REV.mejorar(id, { ...o, avisar: av }));
     return json(res, 200, { ok: true });
   }
   if (accion === "imagenes") { // imágenes 4:5 para el feed: frase + carrusel
