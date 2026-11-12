@@ -33,7 +33,7 @@ LO QUE VIENE (lo más importante): de lo que funciona en inglés, ¿qué todaví
 - Las métricas que reporte Muse no las verifica la fábrica: tómalas como orientación. Para métricas exactas, Apify.
 
 ## Monarca (u otra marca)
-Pídele a Muse una **tarea aparte** con el asunto **INFORME FABRICA MONARCA** (mismo formato, con las cuentas de Monarca).
+Pídele a Muse una **tarea aparte** con el asunto **INFORME MONARCA** (o **INFORME FABRICA MONARCA**; la fábrica reconoce los dos) (mismo formato, con las cuentas de Monarca).
 La fábrica lee el asunto y guarda esas propuestas en Monarca; las de "INFORME FABRICA" a secas van a la marca activa (Levania).
 No mezcles las cuentas de las dos marcas en un mismo informe: las propuestas saldrían revueltas.
 En n8n no cambia nada (el filtro "INFORME FABRICA" atrapa los dos); solo vuelve a importar `n8n/informe-diario-muse.json` para que mande también el asunto.

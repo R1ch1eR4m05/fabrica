@@ -12,7 +12,7 @@
         },
         "simple": false,
         "filters": {
-          "q": "subject:\"INFORME FABRICA\" newer_than:2d"
+          "q": "(subject:\"INFORME FABRICA\" OR subject:\"INFORME MONARCA\" OR subject:\"INFORME LEVANIA\") newer_than:2d"
         },
         "options": {}
       },
