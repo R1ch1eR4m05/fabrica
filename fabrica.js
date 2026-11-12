@@ -26,6 +26,7 @@
 //   node fabrica.js revisar <id>  revisión antes de publicar (formato, gancho, brillo, volumen, negros/congelados, vista de celular)
 //   node fabrica.js imagenes <id>  imágenes 4:5 para el feed: la frase más fuerte + carrusel (sin gastar créditos)
 //   node fabrica.js capitulos <id> [--sin-reels]  video largo → un video por capítulo (+ Reel vertical de cada uno)
+//   node fabrica.js conectar-vps root@IP          (laptop, una vez) conecta laptop ⇄ VPS por SSH: investigaciones a la laptop y Flow desde el VPS
 //   node fabrica.js comparar-voces ["texto"] [--estilo id]   mismo texto con cada modelo de voz → listos/comparar-voces/
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -73,6 +74,11 @@ async function main() {
         const cmd = process.platform === "win32" ? `start "" "${url}"` : process.platform === "darwin" ? `open "${url}"` : `xdg-open "${url}"`;
         setTimeout(() => exec(cmd, () => {}), 600);
       }
+      return;
+    }
+    case "conectar-vps": {
+      const { conectarVps } = await import("./core/tunel.js");
+      try { conectarVps(libres[0]); } catch (e) { console.error("\n  " + e.message + "\n"); process.exitCode = 1; }
       return;
     }
     case "precargar": {

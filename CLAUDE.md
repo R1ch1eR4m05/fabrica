@@ -176,6 +176,10 @@ Al terminar cada video (y con "Revisar" en el panel o `node fabrica.js revisar <
 - No borres nada de `proyectos/` ni de `listos/` sin que Richie lo pida.
 - Código y textos propios: no copies código ni textos de plantillas de terceros (la "Plantilla gratis de Animaciones" de Skool no permite reutilizarse para esto).
 
+## Laptop ⇄ VPS por SSH (sin Tailscale)
+- Una vez en la laptop: "Conectar al VPS (Windows).cmd" o `node fabrica.js conectar-vps root@109.123.247.83` (pide la contraseña del VPS una sola vez, instala una llave, pone `LAPTOP_URL=http://127.0.0.1:4872` en el VPS y `VPS_SSH`/`ESPEJO_*` en la laptop).
+- Desde entonces, al abrir la fábrica de la laptop se abre sola un túnel (`core/tunel.js`): `127.0.0.1:4871` en la laptop = panel del VPS; `127.0.0.1:4872` en el VPS = panel de la laptop. Así las investigaciones del VPS llegan a la laptop y "Generar en la laptop (Flow)" funciona desde el VPS/celular mientras la fábrica de la laptop esté abierta. No abras otro túnel a mano al 4871.
+
 ## Flow desde el celular (VPS → laptop) y APIMart en cualquier estilo de imágenes
 - Flow solo corre en la laptop. Con `LAPTOP_URL`/`LAPTOP_CLAVE` en el .env del VPS, el botón "Generar en la laptop (Flow)" manda el proyecto a la laptop (por Tailscale), la laptop genera y el espejo regresa las imágenes al VPS. La laptop debe estar prendida, con la fábrica abierta, escuchando en su IP de Tailscale (`HOST=127.0.0.1,100.x.x.x`) y con `ESPEJO_*` configurado.
 - "Generar con APIMart" está en todos los estilos de imágenes por escena (Estatuas, Historia): Nano Banana 2, unos centavos por imagen; lo generado entra al banco.

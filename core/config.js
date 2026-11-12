@@ -42,7 +42,8 @@ export const CFG = {
   apifyToken: e.APIFY_TOKEN || "",
   flowSkillDir: e.FLOW_SKILL_DIR || "", python: e.PYTHON || "",
   // laptop → VPS: cada imagen del banco y pista de música nueva se manda también al panel del VPS
-  espejoUrl: e.ESPEJO_URL || "", espejoClave: e.ESPEJO_CLAVE || "",
+  // con VPS_SSH (túnel automático, ver core/tunel.js) el VPS se ve en 127.0.0.1:4871
+  espejoUrl: e.ESPEJO_URL || (e.VPS_SSH ? `http://127.0.0.1:${e.TUNEL_LOCAL || 4871}` : ""), espejoClave: e.ESPEJO_CLAVE || "",
   laptopUrl: e.LAPTOP_URL || "", laptopClave: e.LAPTOP_CLAVE || "", // en el VPS: para pedirle Flow a la laptop por Tailscale
   ghlToken: e.GHL_TOKEN || "", ghlLocation: e.GHL_LOCATION_ID || "", ghlUsuario: e.GHL_USER_ID || "",
   flowUrl: (e.FLOW_MCP_URL || "http://127.0.0.1:8787").replace(/\/$/, ""),

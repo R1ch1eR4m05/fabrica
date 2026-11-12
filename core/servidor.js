@@ -575,8 +575,10 @@ export function arrancar() {
   // banco de imágenes: mete lo que ya se generó antes (una vez al arrancar)
   BANCO.llenarBancoDeAntes().then((n) => n && console.log(`  · Banco de imágenes: ${n} nuevas de videos anteriores`)).catch(() => {});
   // investigaciones: laptop ⇄ VPS (cada una trae las que le falten a la otra; así da igual desde dónde las veas)
-  const traer = () => INV.traerDelOtro().then((n) => n && emitir({ id: "_investigador", paso: "investigar", estado: "listo", msg: `Llegaron ${n} investigación(es) del otro equipo` })).catch((e) => console.warn("  · Investigaciones del otro equipo:", e.message));
+  const traer = () => INV.traerDelOtro().then((n) => n && emitir({ id: "_investigador", paso: "investigar", estado: "listo", msg: `Llegaron ${n} investigación(es) del otro equipo` })).catch((e) => { if (e.message !== traer.ultimo) console.warn("  · Investigaciones del otro equipo:", e.message, "(no lo repito hasta que cambie)"); traer.ultimo = e.message; });
   setTimeout(traer, 15000); setInterval(traer, 10 * 60000);
+  // laptop con VPS_SSH: túnel SSH al VPS (al conectar, trae de una vez las investigaciones)
+  import("./tunel.js").then((T) => T.iniciarTunel(() => setTimeout(traer, 3000))).catch((e) => console.warn("  · Túnel al VPS:", e.message));
   // carpeta de entrada: lo que caiga en investigacion/entrada/ se importa solo (cada minuto)
   setInterval(async () => {
     if (investigando) return;
