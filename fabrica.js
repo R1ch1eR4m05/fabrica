@@ -52,6 +52,7 @@ async function main() {
           const h = spawn(process.execPath, [process.argv[1], ...process.argv.slice(2), ...extra], { stdio: "inherit", env: { ...process.env, FABRICA_HIJO: "1" } });
           h.on("exit", (c) => {
             if (c === 3) { console.log("\n  Fábrica actualizada. Reiniciando…\n"); extra = ["--sin-abrir"]; lanzar(); }
+            else if (c === 4) process.exit(4); // puerto ocupado: no reintentar en bucle
             else if (c && c !== 130) { console.log("\n  El panel se cayó (el error quedó en fabrica-errores.log). Lo vuelvo a levantar…\n"); extra = ["--sin-abrir"]; setTimeout(lanzar, 1500); }
             else process.exit(c ?? 0);
           });

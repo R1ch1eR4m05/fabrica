@@ -590,7 +590,13 @@ export function arrancar() {
   }, 60000);
   // HOST puede ser una lista separada por comas (p. ej. "172.17.0.1,127.0.0.1": n8n por Docker y Tailscale por localhost)
   const hosts = String(CFG.host).split(",").map((x) => x.trim()).filter(Boolean);
-  for (const h of hosts.slice(1)) http.createServer(srv.listeners("request")[0]).listen(CFG.puerto, h);
+  const ocupado = (e) => {
+    if (e.code !== "EADDRINUSE") throw e;
+    console.error(`\n  ✗ El puerto ${CFG.puerto} ya lo usa otra fábrica abierta (la vieja sigue respondiendo con la configuración de antes).\n    Cierra todas las ventanas de la fábrica y ábrela de nuevo con "Abrir fábrica (Windows).cmd".\n`);
+    process.exit(4);
+  };
+  for (const h of hosts.slice(1)) http.createServer(srv.listeners("request")[0]).on("error", ocupado).listen(CFG.puerto, h);
+  srv.on("error", ocupado);
   srv.listen(CFG.puerto, hosts[0], () => {
     const dir = hosts.map((h) => `http://${h === "0.0.0.0" ? "TU-IP" : h}:${CFG.puerto}/`).join("  ·  ");
     console.log(`\n  Fábrica lista → ${dir}\n  (deja esta ventana abierta mientras la usas)\n`);
