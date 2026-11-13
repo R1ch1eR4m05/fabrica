@@ -181,7 +181,17 @@ export async function laptopLista() {
     if (r.status === 401) return { ok: false, motivo: "La laptop rechazó la clave (LAPTOP_CLAVE debe ser la PANEL_CLAVE de la laptop)." };
     const d = await r.json();
     return d.flow ? { ok: true } : { ok: false, motivo: "La laptop responde, pero Flow no está listo ahí (¿skill instalada y sesión de Google?)." };
-  } catch { return { ok: false, motivo: "No alcanzo la laptop: que esté prendida, con la fábrica abierta y Tailscale conectado." }; }
+  } catch { return { ok: false, motivo: "No alcanzo la laptop: que esté prendida y con la fábrica abierta (conectada al VPS con \"Conectar al VPS\")." }; }
+}
+// estado de la laptop para el letrero del panel (se refresca en segundo plano para no hacer lento /api/info)
+let estadoLaptop = { ok: false, motivo: "Revisando la laptop…", t: 0 }, revisando = false;
+export function laptopEstado() {
+  if (!hayLaptop()) return null;
+  if (!revisando && Date.now() - estadoLaptop.t > 20000) {
+    revisando = true;
+    laptopLista().then((r) => (estadoLaptop = { ...r, t: Date.now() })).finally(() => (revisando = false));
+  }
+  return { ok: estadoLaptop.ok, motivo: estadoLaptop.motivo || "" };
 }
 export async function flowEnLaptop(id, { maxCreditos = 25 } = {}) {
   const l = await laptopLista(); if (!l.ok) throw new Error(l.motivo);

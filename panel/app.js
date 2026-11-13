@@ -26,7 +26,9 @@ async function cargar() {
     `<span class="chip ${S.info.voz ? "ok" : "am"}">${S.info.voz ? "Voz ElevenLabs ✓" : "Voz de prueba (sin llave)"}</span>`,
     `<span class="chip ${S.info.pexels ? "ok" : ""}">${S.info.pexels ? "Pexels ✓" : "Sin Pexels"}</span>`,
     `<span class="chip ${S.info.apify ? "ok" : ""}">${S.info.apify ? "Apify ✓" : "Sin Apify"}</span>`,
-    `<span class="chip ${S.info.flow ? "ok" : ""}" title="${S.info.flowSkill ? "Google Flow Skill (en esta compu)" : "flow-mcp en " + location.hostname + ":8787"}">${S.info.flowSkill ? "Flow (skill) ✓" : S.info.flow ? "Flow conectado ✓" : "Flow cerrado"}</span>`,
+    S.info.flow || !S.info.laptopFlow
+      ? `<span class="chip ${S.info.flow ? "ok" : ""}" title="${S.info.flowSkill ? "Google Flow Skill (en esta compu)" : "flow-mcp en " + location.hostname + ":8787"}">${S.info.flowSkill ? "Flow (skill) ✓" : S.info.flow ? "Flow conectado ✓" : "Flow cerrado"}</span>`
+      : `<span class="chip ${S.info.laptopFlow.ok ? "ok" : ""}" title="${h(S.info.laptopFlow.ok ? "Flow corre en tu laptop: usa «Generar en la laptop (Flow)»" : S.info.laptopFlow.motivo)}">${S.info.laptopFlow.ok ? "Flow en la laptop ✓" : "Flow: laptop desconectada"}</span>`,
     `<span id="chipAct"></span>`,
   ].join("");
   pintarLista();

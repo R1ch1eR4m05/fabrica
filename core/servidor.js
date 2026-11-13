@@ -253,7 +253,7 @@ async function api(req, res, partes) {
   }
 
   if (recurso === "info") return json(res, 200, {
-    flow: await flowDisponible(), flowSkill: flowSkillListo(), laptop: BANCO.hayLaptop(), espejo: BANCO.hayEspejo(), apify: !!CFG.apifyToken, ghl: GHL.ghlListo(),
+    flow: await flowDisponible(), flowSkill: flowSkillListo(), laptop: BANCO.hayLaptop(), laptopFlow: BANCO.laptopEstado(), espejo: BANCO.hayEspejo(), apify: !!CFG.apifyToken, ghl: GHL.ghlListo(),
     estilos: listarEstilos(), formatos: FORMATOS, efectos: EFECTOS,
     ia: INV.hayIA(), motorIA: CFG.anthropicKey ? "Claude" : CFG.geminiKey ? "Gemini" : null, voz: !!(CFG.elevenKey || CFG.googleTtsKey), pexels: !!(CFG.pexelsKey || CFG.pixabayKey), gemini: !!CFG.geminiKey, apimart: !!CFG.apimartKey, trabajando: actual ? { id: actual.id, paso: actual.paso } : null,
   });
