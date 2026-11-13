@@ -60,13 +60,21 @@ export function iniciarTunel(alConectar = () => {}) {
 const correr = (bin, args, opts = {}) => spawnSync(bin, args, { encoding: "utf8", ...opts });
 
 function ponerEnv(archivo, valores) {
-  let txt = fs.existsSync(archivo) ? fs.readFileSync(archivo, "utf8") : "";
+  // respeta los saltos de Windows (\r\n); la primera aparición se actualiza y las repetidas se comentan (en .env gana la última)
+  const txt = fs.existsSync(archivo) ? fs.readFileSync(archivo, "utf8") : "";
+  const nl = txt.includes("\r\n") ? "\r\n" : "\n";
+  const lineas = txt.split(/\r\n|\r|\n/);
   for (const [k, v] of Object.entries(valores)) {
-    const linea = `${k}=${v}`;
-    const re = new RegExp(`^#?\\s*${k}=.*$`, "m");
-    txt = re.test(txt) ? txt.replace(re, linea) : txt.replace(/\n?$/, "\n") + linea + "\n";
+    let hecho = false;
+    for (let i = 0; i < lineas.length; i++) {
+      if (!new RegExp(`^\\s*#?\\s*${k}=`).test(lineas[i])) continue;
+      const comentada = /^\s*#/.test(lineas[i]);
+      if (!hecho) { lineas[i] = `${k}=${v}`; hecho = true; }
+      else if (!comentada) lineas[i] = `# (reemplazada por conectar-vps) ${k}=…`;
+    }
+    if (!hecho) { while (lineas.length && lineas[lineas.length - 1] === "") lineas.pop(); lineas.push(`${k}=${v}`, ""); }
   }
-  fs.writeFileSync(archivo, txt);
+  fs.writeFileSync(archivo, lineas.join(nl));
 }
 
 export function conectarVps(destino) {
