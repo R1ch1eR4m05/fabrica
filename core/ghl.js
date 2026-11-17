@@ -60,12 +60,17 @@ async function subirMiniatura(id) {
   return j.url;
 }
 
+// quita etiquetas tipo <cite>…</cite> que a veces deja la IA en las fuentes. YouTube rechaza CUALQUIER "<" o ">"
+// en título y descripción ("Descripción de vídeo no válida"), y además pide ≤ 100 caracteres de título y ≤ 5000 bytes de descripción.
+export const limpiarTexto = (t) => String(t || "").replace(/<\/?[a-z][^>]*>/gi, "").replace(/[ \t]{2,}/g, " ").trim();
+const paraYoutube = (t) => limpiarTexto(t).replace(/</g, "‹").replace(/>/g, "›");
+const recortarBytes = (t, max) => { let s = t; while (Buffer.byteLength(s, "utf8") > max) s = s.slice(0, -1); return s; };
 const textoPara = (c, plataforma) => {
-  if (/instagram/.test(plataforma)) return c.instagram;
-  if (/facebook/.test(plataforma)) return c.facebook;
-  if (/tiktok/.test(plataforma)) return c.tiktok;
-  if (/youtube/.test(plataforma)) return [c.youtube?.titulo, c.youtube?.descripcion].filter(Boolean).join("\n\n");
-  return c.instagram || c.facebook;
+  if (/instagram/.test(plataforma)) return limpiarTexto(c.instagram);
+  if (/facebook/.test(plataforma)) return limpiarTexto(c.facebook);
+  if (/tiktok/.test(plataforma)) return limpiarTexto(c.tiktok);
+  if (/youtube/.test(plataforma)) return recortarBytes(paraYoutube([c.youtube?.titulo, c.youtube?.descripcion].filter(Boolean).join("\n\n")), 4900);
+  return limpiarTexto(c.instagram || c.facebook);
 };
 
 // GHL exige quién crea la publicación (userId). Si no está GHL_USER_ID en el .env, se busca solo: el dueño/admin de la subcuenta
@@ -102,7 +107,7 @@ export async function programar(id, { cuentasIds = [], fecha } = {}, avisar = ()
     const esYoutube = /youtube/.test(plataforma);
     const cuerpo = { accountIds: ids, summary: textoPara(c, plataforma) || "", media: [{ url, type: "video/mp4", ...(esYoutube && miniatura ? { thumbnail: miniatura } : {}) }], status: "scheduled", scheduleDate: cuando.toISOString(),
       type: /instagram|facebook/.test(plataforma) ? "reel" : "post", userId: usuario,
-      ...(esYoutube ? { youtubePostDetails: { title: (c.youtube?.titulo || leer(id, "guion.json")?.titulo || id).slice(0, 100), privacyLevel: "public", type: "video" } } : {}) };
+      ...(esYoutube ? { youtubePostDetails: { title: paraYoutube(c.youtube?.titulo || leer(id, "guion.json")?.titulo || id).slice(0, 100), privacyLevel: "public", type: "video" } } : {}) };
     const j = await pedir("POST", `/social-media-posting/${CFG.ghlLocation}/posts`, cuerpo);
     hechos.push({ plataforma, cuentas: ids, fecha: cuando.toISOString(), postId: j.results?.post?._id || j.results?.post?.id || j.post?._id || j.id || null });
   }

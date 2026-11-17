@@ -76,6 +76,15 @@ export async function escribirGuion(proyecto, { cambios = "", guionActual = null
   const g = extraerJSON(r.texto);
   // si la IA no puso fuentes pero sí buscó, se guardan las páginas que consultó
   if ((!g.fuentes || !g.fuentes.length) && r.fuentes?.length) g.fuentes = r.fuentes.slice(0, 6).map((x) => ({ dato: x.titulo || "Fuente consultada", url: x.url }));
+  return sinEtiquetas(g);
+}
+
+// Gemini con búsqueda a veces deja <cite>…</cite> en los textos; YouTube rechaza la descripción si trae "<" o ">"
+const quitarEtiquetas = (t) => String(t).replace(/<\/?[a-z][^>]*>/gi, "");
+export function sinEtiquetas(g) {
+  for (const f of g.fuentes || []) if (f && typeof f.dato === "string") f.dato = quitarEtiquetas(f.dato);
+  if (typeof g.fuente === "string") g.fuente = quitarEtiquetas(g.fuente);
+  if (g.subir) for (const k of ["titulo", "descripcion"]) if (typeof g.subir[k] === "string") g.subir[k] = quitarEtiquetas(g.subir[k]);
   return g;
 }
 
@@ -108,5 +117,5 @@ async function escribirLargo(proyecto, est, minutos, cambios) {
     escenas.push(...cap);
   }
   if (!escenas.length) throw new Error("La IA no devolvió escenas.");
-  return { titulo: ind.titulo, estiloVisual: ind.estiloVisual || est.estiloVisual, escenas, fuentes: ind.fuentes || [], subir: ind.subir };
+  return sinEtiquetas({ titulo: ind.titulo, estiloVisual: ind.estiloVisual || est.estiloVisual, escenas, fuentes: ind.fuentes || [], subir: ind.subir });
 }

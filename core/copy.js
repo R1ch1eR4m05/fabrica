@@ -17,13 +17,14 @@ function base(id) {
   const cierre = INV.cierreValido(prop?.cierre, cfg) || (cfg.cierres || [])[0] || "";
   const hashtags = [...new Set([...(s.hashtags || []), ...(prop?.hashtags || [])].map((h) => "#" + String(h).replace(/^#/, "").replace(/\s+/g, "")))].filter((h) => h.length > 1);
   const ia = ""; // la etiqueta de IA se marca en la app al publicar (regla de Levania), no en el texto
-  const fuentes = (g.fuentes || []).map((f) => f.dato ? `${f.dato}${f.url ? " (" + f.url + ")" : ""}` : "").filter(Boolean);
+  const sinEtiquetas = (t) => String(t || "").replace(/<\/?[a-z][^>]*>/gi, "").trim(); // la IA a veces deja <cite>…</cite>
+  const fuentes = (g.fuentes || []).map((f) => f.dato ? `${sinEtiquetas(f.dato)}${f.url ? " (" + f.url + ")" : ""}` : "").filter(Boolean);
   return { p, g, est, prop, cfg, titulo: s.titulo || prop?.tituloPost || g.titulo || p.titulo, desc: s.descripcion || prop?.descripcion || p.idea || "", cierre, hashtags, ia, fuentes };
 }
 
 export function copysBasicos(id) {
   const b = base(id), tags = (n) => b.hashtags.slice(0, n).join(" ");
-  const fuente = b.g.fuente ? `Fuente: ${b.g.fuente}` : b.fuentes.length ? `Fuente: ${b.fuentes[0].replace(/\s*\(.*\)$/, "")}` : "";
+  const fuente = b.g.fuente ? `Fuente: ${String(b.g.fuente).replace(/<\/?[a-z][^>]*>/gi, "")}` : b.fuentes.length ? `Fuente: ${b.fuentes[0].replace(/\s*\(.*\)$/, "")}` : "";
   const cuerpo = [b.titulo, "", b.desc, b.cierre && "", b.cierre].filter((x) => x !== undefined && x !== null && x !== false).join("\n").replace(/\n{3,}/g, "\n\n").trim();
   return {
     instagram: [cuerpo, fuente, b.ia, tags(5)].filter(Boolean).join("\n\n"),
