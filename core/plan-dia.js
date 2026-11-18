@@ -16,6 +16,13 @@ const DIR_INV = path.dirname(INV.DIR_INFORMES);
 const hoyCDMX = () => new Date(Date.now() - 6 * 3600e3).toISOString().slice(0, 10);
 export const fPlan = (fecha = hoyCDMX()) => path.join(DIR_INV, `plan-${fecha}.json`);
 
+// el plan más reciente (hoy o el último que haya)
+export function planReciente() {
+  const f = fs.readdirSync(DIR_INV).filter((x) => /^plan-\d{4}-\d{2}-\d{2}\.json$/.test(x)).sort().pop();
+  if (!f) return null;
+  try { return { ...JSON.parse(fs.readFileSync(path.join(DIR_INV, f), "utf8")), dia: f.slice(5, 15) }; } catch { return null; }
+}
+
 // el informe más reciente de la marca (pendiente o ya convertido)
 export function informeReciente(nicho = "monarca") {
   const fs_ = fs.readdirSync(INV.DIR_INFORMES).filter((f) => f.endsWith(".md")).sort().reverse();

@@ -418,7 +418,7 @@ function convertirDirecto(nombre, fuente, texto) {
     fs.writeFileSync(f, JSON.stringify(c, null, 2));
   } catch {}
   const f = path.join(DIR_INFORMES, nombre); if (fs.existsSync(f)) fs.renameSync(f, f.replace(/\.md$/, ".hecho.md"));
-  return { ...r, directo: true };
+  return { ...r, directo: true, nicho: cfg.id, informeHecho: f.replace(/\.md$/, ".hecho.md") };
 }
 
 export async function importarInforme(texto, fuente = "informe", avisar = () => {}, nicho) {
@@ -427,9 +427,10 @@ export async function importarInforme(texto, fuente = "informe", avisar = () => 
 
 // reintenta solos los informes que no se pudieron convertir (cada 15 min, hasta 8 veces)
 export async function reintentarPendientes(avisar = () => {}) {
-  if (!hayIA()) return [];
   const hechos = [];
   for (const n of informesPendientes()) {
+    // sin IA solo se pueden convertir los que traen PROPUESTAS_JSON (el informe de la mañana); los demás esperan a Claude Code
+    if (!hayIA() && !/PROPUESTAS[_ ]JSON/i.test(fs.readFileSync(path.join(DIR_INFORMES, n), "utf8"))) continue;
     const marca = path.join(DIR_INFORMES, n + ".intentos");
     const est = fs.existsSync(marca) ? JSON.parse(fs.readFileSync(marca, "utf8")) : { n: 0, ultimo: 0 };
     if (est.n >= 8 || Date.now() - est.ultimo < 15 * 60000) continue;

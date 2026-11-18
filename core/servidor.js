@@ -53,6 +53,18 @@ function emitir(ev) {
   for (const r of oyentes) r.write(linea);
 }
 
+// informe de la mañana convertido (Monarca) → arma solo el plan del día (5 videos con horario); con IA también escribe los guiones
+async function planDespuesDeInforme(r) {
+  if (!r?.directo || r.nicho !== "monarca") return;
+  try {
+    const PD = await import("./plan-dia.js");
+    emitir({ id: "_investigador", paso: "investigar", estado: "trabajando", msg: "Armando el plan del día con el informe…" });
+    const plan = await PD.armarPlanDia({ archivo: r.informeHecho, nicho: "monarca" });
+    const sinGuion = plan.videos.filter((v) => !v.guion).length;
+    emitir({ id: "_investigador", paso: "investigar", estado: "listo", plan: true, msg: `Plan del día listo: ${plan.videos.length} videos${sinGuion ? ` (${sinGuion} sin guion: pídele a Claude Code «escribe los guiones del plan»)` : ""}` });
+  } catch (e) { console.error("Plan del día:", e.message); emitir({ id: "_investigador", paso: "investigar", estado: "error", msg: `Llegó el informe pero no pude armar el plan del día: ${e.message}` }); }
+}
+
 const NOMBRE_PASO = { guion: "el guion", voz: "la voz", fondo: "las imágenes/fondo", musica: "la música", render: "el render" };
 const quienVa = () => (actual ? `${NOMBRE_PASO[actual.paso] || actual.paso} de «${actual.id}» (lleva ${Math.round((Date.now() - actual.desde) / 60000)} min)` : "");
 
@@ -150,6 +162,18 @@ async function api(req, res, partes) {
       catch (e) { return json(res, 502, { error: e.message }); }
     }
   }
+  // plan del día (informe de la mañana → 5 videos): GET = el más reciente; POST { accion: "armar" | "crear" }
+  if (recurso === "plan-dia") {
+    const PD = await import("./plan-dia.js");
+    if (m === "GET") return json(res, 200, PD.planReciente() || {});
+    if (m === "POST") {
+      const b = await cuerpo(req).catch(() => ({}));
+      try {
+        if (b.accion === "crear") return json(res, 200, { hechos: await PD.crearDelPlan(b.fecha || undefined) });
+        return json(res, 200, await PD.armarPlanDia({ nicho: b.nicho || "monarca", forzar: !!b.forzar }));
+      } catch (e) { return json(res, 400, { error: e.message }); }
+    }
+  }
   if (recurso === "voces" && id === "comparar") {
     const f = path.join(DIR_LISTOS, "comparar-voces", "comparacion.json");
     if (m === "GET") { try { return json(res, 200, JSON.parse(fs.readFileSync(f, "utf8"))); } catch { return json(res, 200, { modelos: [] }); } }
@@ -212,7 +236,7 @@ async function api(req, res, partes) {
       const cab = `${datos.asunto || datos.subject || ""}\n${txt0.slice(0, 300)}`;
       const marcaInf = datos.nicho || qn || INV.listarNichos().find((x) => new RegExp(`INFORME\\s+(?:FABRICA\\W{0,3})?(${[x.id, x.nombre].filter(Boolean).map((v) => String(v).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})\\b`, "i").test(cab))?.id;
       try { nombre = INV.guardarInforme(txt0, fuente, marcaInf); } catch (e) { return json(res, 400, { error: e.message }); }
-      const conIA = INV.hayIA();
+      const conIA = INV.hayIA() || /PROPUESTAS[_ ]JSON/i.test(txt0); // el informe de la mañana se convierte sin IA
       json(res, 200, { recibido: true, informe: nombre, convirtiendo: conIA, pendiente: !conIA });
       if (!conIA) { emitir({ id: "_investigador", paso: "investigar", estado: "listo", msg: "Informe guardado. Pídele a Claude Code que lo convierta." }); return; }
       const correr = async () => {
@@ -222,6 +246,7 @@ async function api(req, res, partes) {
         try {
           const r = await INV.convertirInforme(nombre, fuente, av);
           emitir({ id: "_investigador", paso: "investigar", estado: "listo", msg: `Llegó un informe (${fuente}): ${r.propuestas} propuestas`, resultado: r });
+          await planDespuesDeInforme(r);
         } catch (e) { console.error("Informe", nombre, e.message); emitir({ id: "_investigador", paso: "investigar", estado: "error", msg: `No pude convertir el informe todavía (${e.message}). Quedó guardado y se reintenta solo cada 15 minutos.` }); }
         finally { investigando = null; }
       };
@@ -595,8 +620,8 @@ export function arrancar() {
     if (investigando) return;
     investigando = { inicio: Date.now() };
     try {
-      for (const r of await INV.reintentarPendientes()) emitir({ id: "_investigador", paso: "investigar", estado: "listo", msg: `Se convirtió un informe pendiente: ${r.propuestas} propuestas`, resultado: r });
-      for (const r of await INV.revisarEntrada()) emitir({ id: "_investigador", paso: "investigar", estado: "listo", msg: r.pendiente ? "Llegó un informe nuevo (pendiente de convertir)" : `Llegó un informe: ${r.propuestas} propuestas`, resultado: r });
+      for (const r of await INV.reintentarPendientes()) { if (r.pendiente) continue; emitir({ id: "_investigador", paso: "investigar", estado: "listo", msg: `Se convirtió un informe pendiente: ${r.propuestas} propuestas`, resultado: r }); await planDespuesDeInforme(r); }
+      for (const r of await INV.revisarEntrada()) { emitir({ id: "_investigador", paso: "investigar", estado: "listo", msg: r.pendiente ? "Llegó un informe nuevo (pendiente de convertir)" : `Llegó un informe: ${r.propuestas} propuestas`, resultado: r }); await planDespuesDeInforme(r); }
     } catch (e) { console.error(e); } finally { investigando = null; }
   }, 60000);
   // HOST puede ser una lista separada por comas (p. ej. "172.17.0.1,127.0.0.1": n8n por Docker y Tailscale por localhost)

@@ -1041,6 +1041,24 @@ async function guardarGuion() {
   S.sucio = false; avisar("Guion guardado."); S.proyectos = await api("/api/proyectos"); abrir(S.actual.id, { mantener: true });
 }
 
+// ---------- plan del día (informe de la mañana → 5 videos) ----------
+function tarjetaPlan(plan) {
+  const TIPO = { short: "Short", largo: "Largo 16:9", experimento: "Experimento" };
+  if (!plan.videos?.length) return `<div class="card" style="margin-bottom:16px"><b>Plan del día</b><p class="estado">Todavía no hay plan. Se arma solo cuando llega el informe de la mañana de Muse (con PROPUESTAS_JSON).</p><div class="fila"><button class="btn peq" id="pdArmar">Armar con el último informe</button></div></div>`;
+  const conGuion = plan.videos.filter((v) => v.guion?.escenas?.length && !v.creado).length;
+  const filas = plan.videos.map((v, i) => {
+    const s = v.guion?.subir || {}, titulo = s.titulos?.[0] || v.base?.frase || v.base?.idea || "";
+    const estado = v.creado ? `<a href="#${h(v.creado)}" data-abrir="${h(v.creado)}" style="color:var(--a)">creado ✓</a>` : v.guion?.escenas?.length ? "guion listo" : `<span style="color:var(--rojo,#e66)">sin guion</span>`;
+    const insp = (v.inspiracion || [])[0];
+    return `<tr><td>${i + 1}</td><td><b>${TIPO[v.tipo] || v.tipo}</b></td><td>${h(titulo)}${v.guion?.escenas?.[0]?.voz ? `<div class="estado">Gancho: ${h(v.guion.escenas[0].voz)}</div>` : ""}<div class="estado">${h(v.base?.motivo || "")}${insp ? ` · <a href="${h(insp)}" target="_blank" rel="noopener" style="color:var(--a)">inspiración</a>` : ""}</div></td><td style="white-space:nowrap">${h(v.horario?.cuando || "sin hueco")}</td><td style="white-space:nowrap">${estado}</td></tr>`;
+  }).join("");
+  return `<div class="card" style="margin-bottom:16px"><div class="fila" style="justify-content:space-between"><b>Plan del día · ${h(plan.dia || "")}</b><span class="estado">${h(plan.informe || "")}</span></div>
+    ${(plan.avisos || []).map((a) => `<div class="nota" style="margin:6px 0">${h(a)}</div>`).join("")}
+    <table style="width:100%;border-collapse:collapse;margin-top:6px;font-size:14px"><tbody>${filas}</tbody></table>
+    ${plan.videos.some((v) => !v.guion) ? `<p class="estado">Para los que no tienen guion, dile a Claude Code: <code>escribe los guiones del plan</code> y recarga.</p>` : ""}
+    <div class="fila" style="margin-top:8px">${conGuion ? `<button class="btn primario peq" id="pdCrear">Crear los ${conGuion} videos con guion</button>` : ""}<button class="btn peq" id="pdArmar" title="Vuelve a leer el último informe (no pisa los guiones ya escritos)">Rehacer con el último informe</button></div></div>`;
+}
+
 // ---------- investigador ----------
 const marcarAcento = (t) => h(t).replace(/\*([^*]+)\*/g, "<em style='color:var(--a)'>$1</em>");
 const lista = (v) => String(v || "").split(/[,\n]/).map((x) => x.trim()).filter(Boolean);
@@ -1053,12 +1071,14 @@ async function investigador(archivo) {
   const permitidos = c.estilos || [];
   archivo = archivo || d.lista[0]?.archivo;
   const inv = archivo ? await api(`/api/investigacion/${archivo}`) : null;
+  const plan = c.id === "monarca" ? await api("/api/plan-dia").catch(() => ({})) : null;
   $("#main").innerHTML = `
     <h1>Investigador de virales</h1>
     <div class="fila" style="margin:-4px 0 10px"><label style="margin:0">Nicho</label><select id="iNicho" style="width:auto;font-weight:600">${d.nichos.map((n) => `<option value="${h(n.id)}" ${n.id === c.id ? "selected" : ""}>${h(n.nombre)}</option>`).join("")}</select><button class="btn peq" id="iNuevoNicho" title="Otra marca o página con sus propias cuentas, público y estilos">+ Nuevo nicho</button></div>
     <p class="sub">Revisa lo que está funcionando en <b>${h(c.nombre)}</b> y te propone videos originales en sus estilos. Cada nicho tiene sus cuentas, hashtags, público, cierres y estilos.</p>
     ${!d.ia ? `<div class="nota">Sin IA conectada: pon <code>GEMINI_API_KEY</code> (gratis en aistudio.google.com) en el <code>.env</code>, o pídeselo a <b>Claude Code</b> en la carpeta de la fábrica: <code>investiga mi nicho y dame frases virales</code> (o <code>convierte los informes pendientes</code>). Recarga esta página al terminar.</div>` : `<div class="estado" style="margin-bottom:8px">Motor: ${h(d.motor)}</div>`}
     ${d.pendientes?.length ? `<div class="nota">Informes guardados sin convertir: ${d.pendientes.map(h).join(", ")}. ${d.ia ? "Se reintentan solos cada 15 minutos (Gemini a veces está saturado)." : "Dile a Claude Code: <code>convierte los informes pendientes</code>."}</div>` : ""}
+    ${plan ? tarjetaPlan(plan) : ""}
     <details class="card" style="margin-bottom:16px"><summary style="cursor:pointer;font-weight:600">Importar un informe (Gemini Deep Research, muse.ai…)</summary>
       <p class="estado">1) Copia el prompt y pégalo en Gemini con <b>Deep Research</b>. 2) Copia el informe que te dé y pégalo abajo. También puedes soltar archivos .md/.txt/.csv en <code>investigacion/entrada/</code> o mandarlos desde n8n.</p>
       <div class="fila"><button class="btn peq" id="iPrompt">Copiar prompt para Deep Research</button></div>
@@ -1126,6 +1146,9 @@ async function investigador(archivo) {
     avisar("Nicho guardado.");
   };
   $("#iCorrer").onclick = async () => { if (S.info.apify && !confirm("Esto trae publicaciones con Apify y GASTA de tu saldo (tope de unos $1.5 USD por investigación; tu plan gratis da $5 al mes). ¿Seguir?")) return; await $("#iGuardar").onclick(); api("/api/investigacion", "POST", { nicho: c.id }).catch((e) => avisar(e.message, true)); };
+  for (const a of document.querySelectorAll("[data-abrir]")) a.onclick = (e) => { e.preventDefault(); abrir(a.dataset.abrir); };
+  if ($("#pdArmar")) $("#pdArmar").onclick = async () => { avisar("Armando el plan con el último informe…"); try { await api("/api/plan-dia", "POST", { accion: "armar", nicho: "monarca" }); avisar("Plan del día listo."); investigador(archivo); } catch (e) { avisar(e.message, true); } };
+  if ($("#pdCrear")) $("#pdCrear").onclick = async () => { try { const r = await api("/api/plan-dia", "POST", { accion: "crear", fecha: plan.dia }); const n = r.hechos.filter((x) => x.id && !x.ya).length, f = r.hechos.filter((x) => x.pendiente).length; avisar(`${n} videos creados${f ? `; ${f} esperan guion` : ""}.`); S.proyectos = await api("/api/proyectos"); pintarLista(); investigador(archivo); } catch (e) { avisar(e.message, true); } };
   $("#iPrompt").onclick = async () => navigator.clipboard.writeText(await api(`/api/investigacion/prompt?${nq}`)).then(() => avisar("Prompt copiado. Pégalo en Gemini con Deep Research."));
   $("#iImportar").onclick = async () => {
     const texto = $("#iInforme").value.trim(); if (texto.length < 80) return avisar("Pega el informe completo.", true);
