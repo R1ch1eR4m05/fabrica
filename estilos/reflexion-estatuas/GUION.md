@@ -15,6 +15,8 @@ Monólogo de 45 a 120 s en segunda persona ("tú"), voz grave de hombre, tono so
   - `voz`: 1 a 3 frases cortas (4-12 s). Puntos y signos de pregunta marcan dónde se limpia el texto en pantalla.
   - `flowPrompt` (inglés): la imagen de esa escena. Alterna: estatua en plano medio o primer plano (pensativa, de espaldas, caminando, mirando al horizonte, dos estatuas), paisajes (montañas, mar oscuro, camino, bosque, banca vacía, persona en un acantilado), ruinas (Coliseo, columnas). Cada imagen debe ilustrar literalmente la frase.
   - `buscar` (inglés, 2-3 palabras): para Pexels si no hay imagen ("greek statue", "stormy sea", "empty road").
+  - `clave` (opcional): la palabra (o lista de palabras, tal como se dicen) que sale en color de acento, por ejemplo `"clave": "energía"` o `["juicio", "calma"]`. Elige la que carga la idea de la frase, una por bloque de 3-6 palabras como mucho. Sin `clave`, la fábrica elige la palabra con más peso de cada bloque.
+- En pantalla el texto sale en bloques de 3 a 6 palabras (se cortan en puntos, comas y punto y coma): escribe frases con pausas naturales para que cada bloque se entienda solo.
 - La fábrica pinta todo del mismo tono y mueve la cámara sola (acercamiento lento); no describas color ni movimiento en los prompts.
 
 ## Reglas
