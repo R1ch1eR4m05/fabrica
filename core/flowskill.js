@@ -84,6 +84,17 @@ const PARCHES = [
         if intento >= max_retries:
             raise Exception(
                 f"Generación de {kind} falló {max_retries + 1} veces seguidas. "`],
+  // nov 2026: la barrita nueva de "Descargar" ya no dispara la descarga; las imágenes se bajan directo por su enlace
+  ["flow_provider/download.py", [`    card = page.locator(_sel_card(is_video)).first
+    await card.wait_for(state="visible", timeout=30_000)
+`], `    card = page.locator(_sel_card(is_video)).first
+    await card.wait_for(state="visible", timeout=30_000)
+    if not is_video:
+        from .agente import descargar_imagen_directa
+        _directa = await descargar_imagen_directa(page, card, output_path)
+        if _directa:
+            return _directa
+`],
   // reparto fijo: el lote entra al proyecto de Flow de la marca (donde viven los personajes) en vez de crear uno nuevo
   ["flow.py", [`    await flow.startup()
     try:

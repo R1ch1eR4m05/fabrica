@@ -52,7 +52,7 @@ La skill maneja la página de Flow con selectores; cuando Google la rediseña, f
 2. Abre Flow en el Chrome de Richie (Claude in Chrome), crea un proyecto y revisa el DOM nuevo (javascript_tool). Una imagen de prueba con Nano Banana 2 Lite está bien; nada de lotes.
 3. Corrige los selectores en `core/flow-compat/agente.py` (o agrega un parche en `PARCHES` de `core/flowskill.js`). La fábrica los copia/aplica sola a la skill antes de cada lote.
 4. Sube los cambios y pídele a Richie que actualice y vuelva a dar "Generar en Flow".
-Estado: noviembre 2026, Flow genera desde el panel del agente ("Configuración de agentes": Confirmar = Nunca, 9:16, x1, modelo). Imágenes y video de texto adaptados; video desde fotogramas/ingredientes aún no.
+Estado: noviembre 2026, Flow genera desde el panel del agente ("Configuración de agentes": Confirmar = Nunca, 9:16, x1, modelo). Imágenes y video de texto adaptados; video desde fotogramas/ingredientes aún no. Desde el 17 nov 2026 la barrita "Descargar" de la lista ya no dispara la descarga: las imágenes se bajan directo por el enlace de su miniatura con `=s0` (`descargar_imagen_directa` en `agente.py`); si eso falla se intenta el menú.
 
 ## Historia con Flow (`historia-flow`)
 - Guion según `estilos/historia-flow/GUION.md`: `estiloVisual` y `personajes` (inglés, iguales para todas las escenas) y en cada escena `voz`, `texto` opcional, `flowPrompt` (inglés) y `buscar`.

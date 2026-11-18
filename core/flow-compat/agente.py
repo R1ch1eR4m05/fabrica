@@ -242,3 +242,69 @@ async def envolver(page, prompt: str) -> str:
     que = "video" if _estado["modo"] == "video" else "image"
     return (f"Generate exactly one {que} now, using exactly this prompt word for word. "
             f"Do not ask questions, do not change or add anything, do not make variations. Prompt: {prompt}")
+
+
+# ---------------- descarga de imágenes sin menú (nov 2026) ----------------
+# El Flow nuevo cambió la lista de resultados: el botón "Descargar" de la barrita (descargar · reutilizar · papelera)
+# ya no abre el submenú 1K/2K y no dispara el evento "download" de Playwright, así que el lote se quedaba 60 s
+# esperando, no guardaba nada y en el siguiente intento volvía a generar (y a gastar créditos).
+# La miniatura trae su enlace directo (flow.google.com/asb/…=s512-rw); se pide en tamaño original y se guarda.
+JS_BAJAR = """async ([src, quiere]) => {
+  const r = await fetch(src, { credentials: 'include' });
+  if (!r.ok) return { error: 'HTTP ' + r.status };
+  let b = await r.blob();
+  // Flow entrega JPEG/WebP; si el archivo se llama .png se convierte (ffmpeg elige el decodificador por la extensión)
+  if (quiere && b.type !== quiere && b.type.startsWith('image/')) {
+    const bm = await createImageBitmap(b);
+    const cv = new OffscreenCanvas(bm.width, bm.height);
+    cv.getContext('2d').drawImage(bm, 0, 0);
+    b = await cv.convertToBlob(quiere === 'image/jpeg' ? { type: quiere, quality: 0.95 } : { type: quiere });
+  }
+  const datos = await new Promise((ok, mal) => { const f = new FileReader(); f.onloadend = () => ok(f.result.split(',')[1]); f.onerror = mal; f.readAsDataURL(b); });
+  return { tipo: b.type, datos };
+}"""
+
+
+def _tamanos(src: str):
+    """Variantes del enlace, de mejor a peor: original, 2048 px, y el que trae la miniatura."""
+    base = re.sub(r"=[a-z0-9-]+$", "", src, flags=re.I) if "=" in src.rsplit("/", 1)[-1] else src
+    vistos, out = set(), []
+    for u in (base + "=s0", base + "=s2048", base + "=d", src):
+        if u not in vistos:
+            vistos.add(u); out.append(u)
+    return out
+
+
+async def descargar_imagen_directa(page, card, output_path: str):
+    """Baja la imagen de la tarjeta por su enlace directo. Regresa la ruta o None si no se pudo (y se usa el menú)."""
+    import base64
+    from pathlib import Path
+    try:
+        img = card.locator("img.image, flow-image-tile img, img").first
+        await img.wait_for(state="attached", timeout=15_000)
+        src = await img.get_attribute("src") or ""
+    except Exception as e:
+        print(f"  [download] Sin enlace directo en la tarjeta ({e}); se intenta con el menú.")
+        return None
+    if not src.startswith("http"):
+        print("  [download] La tarjeta no trae enlace http; se intenta con el menú.")
+        return None
+    ext = Path(output_path).suffix.lower()
+    quiere = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp"}.get(ext, "")
+    for url in _tamanos(src):
+        try:
+            r = await page.evaluate(JS_BAJAR, [url, quiere])
+        except Exception as e:
+            print(f"  [download] No se pudo pedir {url[-12:]} ({e})")
+            continue
+        if not r or r.get("error") or not r.get("datos"):
+            print(f"  [download] {url[-12:]} → {r.get('error') if r else 'vacío'}")
+            continue
+        datos = base64.b64decode(r["datos"])
+        if len(datos) < 20_000 or not str(r.get("tipo", "")).startswith("image/"):
+            continue
+        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+        Path(output_path).write_bytes(datos)
+        print(f"  [download] OK: imagen bajada directo ({r.get('tipo')}, {len(datos) // 1024} KB) → {output_path}")
+        return output_path
+    return None
