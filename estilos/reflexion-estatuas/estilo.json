@@ -54,6 +54,14 @@
       }
     },
     {
+      "clave": "acomodo",
+      "nombre": "Acomodo del texto",
+      "valores": {
+        "auto": "Centrado; si la cara tapa el centro, en columna a un lado (o encima si no cabe)",
+        "vertical": "Siempre en vertical a un lado del rostro (LA / VERDAD / ES QUE…)"
+      }
+    },
+    {
       "clave": "efectos",
       "nombre": "Efectos de sonido",
       "valores": {

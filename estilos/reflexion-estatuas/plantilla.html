@@ -84,8 +84,8 @@ Motor.iniciar({
       const x = capa.getContext("2d"); x.globalCompositeOperation = "source-over"; x.clearRect(0, 0, W, H); x.drawImage(c.canvas, 0, 0);
       x.globalCompositeOperation = "destination-in"; x.save(); camara(x, M, t, i, p, d); cubrir(x, mk, W, H); x.restore(); x.globalCompositeOperation = "source-over";
     }
-    texto(c, M, t, te, mk ? { z, mk, i, p, d } : null);
-    if (mk) { c.save(); c.globalAlpha = i > 0 && p < 0.25 ? p / 0.25 : 1; c.drawImage(capa, 0, 0); c.restore(); }
+    const atras = texto(c, M, t, te, mk ? { z, mk, i, p, d } : null);
+    if (mk && atras) { c.save(); c.globalAlpha = i > 0 && p < 0.25 ? p / 0.25 : 1; c.drawImage(capa, 0, 0); c.restore(); }
   },
 });
 
@@ -223,51 +223,77 @@ function texto(c, M, t, te, prof) {
   let tam = (gancho ? 124 : bloques ? 118 : 100) * u; c.font = `800 ${tam}px Cinzel`;
   const todo = pag.map((w) => w.w.toUpperCase()).join(" "), maxL = gancho ? 4 : bloques ? 3 : 5;
   while (tam > 52 * u && M.lineas(c, todo, ANCHO).length > maxL) { tam -= 4 * u; c.font = `800 ${tam}px Cinzel`; }
-  // líneas con TODAS las palabras del bloque (así nada salta de lugar al aparecer)
-  const esp = c.measureText(" ").width, lineas = []; let l = [], ancho = 0;
-  for (const w of pag) { const s = w.w.toUpperCase(), pw = c.measureText(s).width; if (l.length && ancho + esp + pw > ANCHO) { lineas.push({ l, ancho }); l = []; ancho = 0; } ancho += (l.length ? esp : 0) + pw; l.push({ ...w, s, pw }); }
-  if (l.length) lineas.push({ l, ancho });
-  const al = tam * 1.13, base = M.vertical ? 0.3 : 0.32;
-  // texto detrás: busca la altura donde la estatua tape un poco el texto (se ve la profundidad) sin que deje de leerse
-  let cy = H * base, detras = false;
+  // arma las líneas con TODAS las palabras del bloque (así nada salta de lugar al aparecer) para un tamaño y un ancho
+  const armar = (tm, ancho) => {
+    c.font = `800 ${tm}px Cinzel`; const e = c.measureText(" ").width, out = []; let l = [], an = 0;
+    for (const w of pag) { const s = w.w.toUpperCase(), pw = c.measureText(s).width; if (l.length && an + e + pw > ancho) { out.push({ l, ancho: an }); l = []; an = 0; } an += (l.length ? e : 0) + pw; l.push({ ...w, s, pw }); }
+    if (l.length) out.push({ l, ancho: an });
+    return { lineas: out, esp: e };
+  };
+  // columna a un lado de la cara (palabras en vertical: «LA / VERDAD / ES QUE / ¿ESTÁS DE ACUERDO?»): ancho 40 % y letra que quepa
+  const COL = W * (M.vertical ? 0.42 : 0.3);
+  const tamColumna = () => { c.font = `800 ${tam}px Cinzel`; const mw = Math.max(...pag.map((w) => c.measureText(w.w.toUpperCase()).width)); let tm = mw > COL ? (tam * COL) / mw : tam; while (tm > 48 * u && armar(tm, COL).lineas.length > 6) tm -= 4 * u; return tm; };
+  // x de cada línea según el acomodo: centrada, columna izquierda o derecha (con un leve escalonado, como si rodeara el rostro)
+  const xDe = (modo, ln, k) => modo === "izq" ? W * 0.06 + (k % 2) * W * 0.035 : modo === "der" ? W * 0.94 - ln.ancho - (k % 2) * W * 0.035 : (W - ln.ancho) / 2;
+  const base = M.vertical ? 0.3 : 0.32;
+  // texto detrás: busca dónde la estatua tape un poco el texto (se ve la profundidad) sin que deje de leerse
+  // opción «Acomodo del texto» = vertical: siempre en columna a un lado del rostro (palabras una bajo otra)
+  const vertical = (M.proyecto.opciones || {}).acomodo === "vertical";
+  let diseno = vertical ? { modo: "izq", f: 0.3, tam: tamColumna(), detras: false } : { modo: "centro", f: base, tam, detras: false };
   if (prof) {
     const llave = `${prof.i}|${pag[0].t0}`;
     if (!lugares.has(llave)) {
-      // nov 2026: tapaba de más (el gancho no se leía). Ahora se mide renglón por renglón (un renglón tapado a la mitad ya no se lee),
-      // al empezar y al terminar el bloque (la cámara sigue acercándose) y se permite poco: gancho ≤ 6 %, resto ≤ 12 %, ideal ~7 %.
-      const alto = lineas.length * al, tope = gancho ? 0.06 : 0.12, ideal = gancho ? 0.03 : 0.07;
+      // se mide renglón por renglón (un renglón tapado a la mitad ya no se lee), al empezar y al terminar el bloque
+      // (la cámara sigue acercándose); se permite poco: gancho ≤ 6 %, resto ≤ 12 %, ideal ~7 %.
+      const tope = gancho ? 0.06 : 0.12, ideal = gancho ? 0.03 : 0.07;
       const t0 = Math.max(te.ini, pag[0].t0), t1 = Math.min(te.fin, pag[pag.length - 1].t1 + 0.9);
-      let mejor = null;
-      for (const f of [base, base - 0.06, base + 0.06, base - 0.11, base + 0.12, base - 0.15, base + 0.2]) {
-        const y = H * f; if (y - alto / 2 < H * 0.05 || y + alto / 2 > H * 0.8) continue;
-        let cov = 0;
-        for (const tt of [t0, t1]) lineas.forEach((ln, k) => {
-          const ly = y - alto / 2 + k * al + al * 0.12;
-          cov = Math.max(cov, cobertura(M, prof, tt, { x: (W - ln.ancho) / 2, y: ly, w: ln.ancho, h: al * 0.76 }));
-        });
-        const pts = cov > tope ? -1 : cov < 0.02 ? 0.1 - Math.abs(f - base) : 1 - Math.abs(cov - ideal) * 4 - Math.abs(f - base);
-        if (!mejor || pts > mejor.pts) mejor = { f, cov, pts };
+      const probar = (modo, tm, alturas, castigo) => {
+        const { lineas: ls } = armar(tm, modo === "centro" ? ANCHO : COL), alx = tm * 1.13, alto = ls.length * alx;
+        let mejor = null;
+        for (const f of alturas) {
+          const y = H * f; if (y - alto / 2 < H * 0.05 || y + alto / 2 > H * 0.8) continue;
+          let cov = 0;
+          for (const tt of [t0, t1]) ls.forEach((ln, k) => {
+            cov = Math.max(cov, cobertura(M, prof, tt, { x: xDe(modo, ln, k), y: y - alto / 2 + k * alx + alx * 0.12, w: ln.ancho, h: alx * 0.76 }));
+          });
+          const pts = cov > tope ? -1 : (cov < 0.02 ? 0.1 : 1 - Math.abs(cov - ideal) * 4) - Math.abs(f - base) - castigo;
+          if (!mejor || pts > mejor.pts) mejor = { modo, f, tam: tm, cov, pts };
+        }
+        return mejor;
+      };
+      // 1) centrado a distintas alturas; 2) si la cara tapa el centro, columna a la izquierda o a la derecha del rostro
+      let mejor = vertical ? null : probar("centro", tam, [base, base - 0.06, base + 0.06, base - 0.11, base + 0.12, base - 0.15, base + 0.2], 0);
+      const cols = [];
+      if (!mejor || mejor.pts < 0) {
+        const tc = tamColumna();
+        for (const modo of ["izq", "der"]) { const r = probar(modo, tc, [0.3, 0.22, 0.38, 0.46, 0.55], vertical ? 0 : 0.15); if (r) cols.push(r); if (r && (!mejor || r.pts > mejor.pts)) mejor = r; }
       }
-      lugares.set(llave, mejor && mejor.pts >= 0 ? { f: mejor.f, detras: mejor.cov >= 0.02 } : { f: base, detras: false });
+      // nada cabe sin taparse: va ENCIMA (centrado, o en vertical del lado que menos tape la cara si se pidió vertical)
+      const menosTapado = cols.sort((a, b) => a.cov - b.cov)[0];
+      lugares.set(llave, mejor && mejor.pts >= 0 ? { modo: mejor.modo, f: mejor.f, tam: mejor.tam, detras: mejor.cov >= 0.02 }
+        : vertical && menosTapado ? { modo: menosTapado.modo, f: menosTapado.f, tam: menosTapado.tam, detras: false } : { ...diseno, detras: false });
     }
-    const L = lugares.get(llave); cy = H * L.f; detras = L.detras;
-    if (!detras) prof = null; // la estatua taparía demasiado: este bloque va encima
+    diseno = lugares.get(llave);
+    if (!diseno.detras) prof = null; // la estatua taparía demasiado en todos lados: este bloque va encima (y la estatua no se repinta)
   }
+  const { lineas, esp } = armar(diseno.tam, diseno.modo === "centro" ? ANCHO : COL);
+  const al = diseno.tam * 1.13, cy = H * diseno.f;
   const y0 = cy - ((lineas.length - 1) * al) / 2;
+  const cxBloque = diseno.modo === "centro" ? W / 2 : lineas.reduce((s, ln, k) => s + xDe(diseno.modo, ln, k) + ln.ancho / 2, 0) / lineas.length;
   // profundidad: el texto se mueve más lento que la estatua (parallax) y flota un poco; la estatua pasa por delante
   if (prof) {
     const zt = 1 + (prof.z - 1) * 0.35, fl = Math.sin((t - te.ini) * 1.3) * 5 * u;
-    c.save(); c.translate(W / 2, cy + fl); c.scale(zt, zt); c.translate(-W / 2, -cy);
+    c.save(); c.translate(cxBloque, cy + fl); c.scale(zt, zt); c.translate(-cxBloque, -cy);
   }
   const acento = bloques ? ACENTOS[(M.proyecto.opciones || {}).tono] || ACENTOS.turquesa : null, cl = bloques ? claves(pag, te, M) : new Set();
   // el bloque entra suave (sube 14 px y aparece en 0.18 s); el gancho ya está desde el cuadro 0
   const entra = gancho ? 1 : M.clamp((t - pag[0].t0 + 0.05) / 0.18), sube = bloques ? (1 - M.suave(entra)) * 14 * u : 0;
   // gancho: ya se lee en el cuadro 0, pero llega con un golpe (de 112 % a 100 % en 0.45 s) y cada palabra se enciende al decirse
   const golpe = gancho ? 1 + 0.12 * Math.pow(1 - M.clamp(t / 0.45), 3) : 1;
-  if (golpe !== 1) { const cy = y0 + ((lineas.length - 1) * al) / 2; c.save(); c.translate(W / 2, cy); c.scale(golpe, golpe); c.translate(-W / 2, -cy); }
+  if (golpe !== 1) { c.save(); c.translate(cxBloque, cy); c.scale(golpe, golpe); c.translate(-cxBloque, -cy); }
   c.textBaseline = "middle"; c.textAlign = "left";
   lineas.forEach((ln, k) => {
-    let x = (W - ln.ancho) / 2; const y = y0 + k * al + sube;
+    let x = xDe(diseno.modo, ln, k); const y = y0 + k * al + sube;
     for (const w of ln.l) {
       const a = M.clamp((t - w.t0) / (bloques ? 0.2 : 0.35)); // tenue → se enciende cuando se dice (también en el gancho)
       const esClave = cl.has(w.t0);
@@ -287,6 +313,7 @@ function texto(c, M, t, te, prof) {
   if (golpe !== 1) c.restore();
   if (prof) c.restore();
   c.textAlign = "center";
+  return !!prof; // true = va detrás: la estatua se vuelve a pintar encima
 }
 function mezcla(a, b, k) { // de un rgb(...) a un #hex
   const A = a.match(/\d+/g).map(Number), B = [1, 3, 5].map((i) => parseInt(b.slice(i, i + 2), 16));
