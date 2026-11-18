@@ -565,6 +565,34 @@ export function guionDesdePropuesta(p, cfg) {
 export function archivosInvestigacion() {
   return fs.readdirSync(DIR_INV).filter((f) => /^\d{4}-.*\.json$/.test(f) && !f.startsWith("datos-")).map((f) => ({ archivo: f, mtime: fs.statSync(path.join(DIR_INV, f)).mtimeMs }));
 }
+// informes ya convertidos (.hecho.md) y planes del día: también se pasan entre laptop y VPS (los pendientes no, para no convertirlos dos veces)
+const EXTRA_INF = /^[\w.-]+\.hecho\.md$/, EXTRA_PLAN = /^plan-\d{4}-\d{2}-\d{2}\.json$/;
+export function archivosExtra() {
+  const l = [];
+  for (const f of fs.readdirSync(DIR_INFORMES)) if (EXTRA_INF.test(f)) l.push({ archivo: f, tipo: "informe", mtime: fs.statSync(path.join(DIR_INFORMES, f)).mtimeMs });
+  for (const f of fs.readdirSync(DIR_INV)) if (EXTRA_PLAN.test(f)) l.push({ archivo: f, tipo: "plan", mtime: fs.statSync(path.join(DIR_INV, f)).mtimeMs });
+  return l;
+}
+export function rutaExtra(nombre) {
+  if (EXTRA_INF.test(nombre)) return path.join(DIR_INFORMES, nombre);
+  if (EXTRA_PLAN.test(nombre)) return path.join(DIR_INV, nombre);
+  return null;
+}
+async function traerExtras(base, headers) {
+  const r = await fetch(`${base}/api/investigacion/extras`, { headers, signal: AbortSignal.timeout(15000) });
+  if (!r.ok) return 0; // el otro equipo aún no está actualizado
+  let n = 0;
+  for (const x of (await r.json()).archivos || []) {
+    const f = rutaExtra(x.archivo); if (!f) continue;
+    // un informe que aquí sigue pendiente (mismo nombre sin .hecho) no se duplica
+    if (x.tipo === "informe" && fs.existsSync(f.replace(/\.hecho\.md$/, ".md"))) continue;
+    if (fs.existsSync(f) && fs.statSync(f).mtimeMs >= x.mtime) continue;
+    const q = await fetch(`${base}/api/investigacion/extra/${encodeURIComponent(x.archivo)}`, { headers, signal: AbortSignal.timeout(30000) });
+    if (!q.ok) continue;
+    fs.writeFileSync(f, await q.text()); fs.utimesSync(f, new Date(), new Date(x.mtime)); n++;
+  }
+  return n;
+}
 export async function traerDelOtro() {
   const otro = CFG.espejoUrl && CFG.espejoClave ? [CFG.espejoUrl, CFG.espejoClave] : CFG.laptopUrl ? [CFG.laptopUrl, CFG.laptopClave] : null;
   if (!otro) return 0;
@@ -581,5 +609,6 @@ export async function traerDelOtro() {
     const f = path.join(DIR_INV, x.archivo);
     fs.writeFileSync(f, JSON.stringify(j, null, 2)); fs.utimesSync(f, new Date(), new Date(x.mtime)); n++;
   }
+  try { await traerExtras(base, headers); } catch (e) { console.warn("  · Informes del otro equipo:", e.message); }
   return n;
 }

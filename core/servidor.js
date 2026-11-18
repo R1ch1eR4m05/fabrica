@@ -170,6 +170,7 @@ async function api(req, res, partes) {
       const b = await cuerpo(req).catch(() => ({}));
       try {
         if (b.accion === "crear") return json(res, 200, { hechos: await PD.crearDelPlan(b.fecha || undefined) });
+        if (!PD.informeReciente(b.nicho || "monarca")) await INV.traerDelOtro().catch(() => {}); // en la laptop los informes llegan del VPS
         return json(res, 200, await PD.armarPlanDia({ nicho: b.nicho || "monarca", forzar: !!b.forzar }));
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
@@ -219,6 +220,12 @@ async function api(req, res, partes) {
       const nichos = INV.listarNichos(), n = qn || INV.nichoActivo();
       const usadas = new Set(P.listarProyectos().map((x) => { try { const d = (x.desdeInvestigacion || P.leer(x.id, "proyecto.json")?.desdeInvestigacion); return d ? `${d.archivo}#${d.n}` : ""; } catch { return ""; } }).filter(Boolean));
       return json(res, 200, { nichos, activo: INV.nichoActivo(), nicho: n, config: nichos.some((x) => x.id === n) ? INV.leerConfig(n) : null, sugerencias: nichos.some((x) => x.id === n) ? INV.sugerencias(n, 30, usadas) : [] });
+    }
+    if (id === "extras" && m === "GET") return json(res, 200, { archivos: INV.archivosExtra() }); // informes convertidos y planes del día
+    if (id === "extra" && accion && m === "GET") {
+      const f = INV.rutaExtra(decodeURIComponent(accion));
+      if (!f || !fs.existsSync(f)) return json(res, 404, { error: "No existe." });
+      res.writeHead(200, { "content-type": f.endsWith(".json") ? "application/json; charset=utf-8" : "text/markdown; charset=utf-8" }); return res.end(fs.readFileSync(f));
     }
     if (id === "archivos" && m === "GET") { // para que laptop y VPS se pasen las investigaciones
       return json(res, 200, { archivos: INV.archivosInvestigacion() });
