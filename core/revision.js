@@ -114,7 +114,10 @@ export async function revisar(id, { avisar = () => {} } = {}) {
   r.celular = { archivo: "revision-celular.jpg", tiempos: await tiraCelular(archivo, dur, path.join(dir, "revision-celular.jpg")),
     msg: "Así se ve a tamaño de celular: revisa que el texto se lea sin acercarte." };
   r.formato.arreglo = r.formato.estado === "verde" ? null : { texto: "El video salió con otra medida. Dale otra vez a Render (arriba) con el formato correcto del proyecto." };
-  r.gancho.arreglo = r.gancho.estado === "verde" ? null : { texto: "Esto no se arregla con un botón porque depende de la escena 1: rehaz esa escena pidiendo movimiento desde el primer cuadro (en historias: Reanimar o Rehacer en Flow y escribe \"movimiento de cámara rápido al inicio\"; en frases: pon el texto con entrada animada). Después vuelve a darle Render." };
+  const ganchoEnPlantilla = ["reflexion-estatuas"].includes(p.estilo); // ahí el movimiento del gancho lo pone la plantilla, no Flow
+  r.gancho.arreglo = r.gancho.estado === "verde" ? null : ganchoEnPlantilla
+    ? { texto: "En este estilo el movimiento del gancho lo hace la plantilla (empujón de cámara, rayo de luz y texto que se enciende), no la imagen: Reanimar o Rehacer en Flow no lo cambian. Actualiza la fábrica y dale Render otra vez. Si sigue en amarillo, cambia la imagen de la escena 1 por una con más contraste (una estatua clara sobre fondo oscuro)." }
+    : { texto: "Esto no se arregla con un botón porque depende de la escena 1: rehaz esa escena pidiendo movimiento desde el primer cuadro (en historias: Reanimar o Rehacer en Flow y escribe \"movimiento de cámara rápido al inicio\"; en frases: pon el texto con entrada animada). Después vuelve a darle Render." };
   r.brillo.arreglo = r.brillo.estado === "verde" ? null : { auto: "brillo", texto: "Se puede subir la luz del video sin rehacer nada: el botón de abajo aplica el ajuste y vuelve a revisar." };
   r.volumen.arreglo = r.volumen.estado === "verde" ? null : { auto: "volumen", texto: "Se puede nivelar el volumen a -15 LUFS sin rehacer nada: el botón de abajo lo aplica y vuelve a revisar." };
   r.cortes.arreglo = r.cortes.estado === "verde" ? null : { texto: "Hay pantalla negra o imagen congelada: casi siempre es un clip faltante o una escena sin imagen. Revisa las escenas de esos segundos y dale Render otra vez." };
