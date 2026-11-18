@@ -644,9 +644,19 @@ export function arrancar() {
     console.error(`\n  ✗ El puerto ${CFG.puerto} ya lo usa otra fábrica abierta (la vieja sigue respondiendo con la configuración de antes).\n    Cierra todas las ventanas de la fábrica y ábrela de nuevo con "Abrir fábrica (Windows).cmd".\n`);
     process.exit(4);
   };
-  for (const h of hosts.slice(1)) http.createServer(srv.listeners("request")[0]).on("error", ocupado).listen(CFG.puerto, h);
-  srv.on("error", ocupado);
-  srv.listen(CFG.puerto, hosts[0], () => {
+  // una dirección que todavía no existe (p. ej. 172.17.0.1 de Docker cuando el VPS recién prende y la fábrica arranca antes que Docker)
+  // no tumba la fábrica: se reintenta cada 15 s hasta que aparezca. Antes fallaba y n8n ya no podía entregar los informes.
+  const escuchar = (server, h, alListo) => {
+    let avisado = false;
+    const intento = () => server.listen(CFG.puerto, h, () => { if (avisado) console.log(`  ✓ Ya escucho también en ${h}:${CFG.puerto}`); alListo?.(); });
+    server.on("error", (e) => {
+      if (e.code === "EADDRNOTAVAIL") { if (!avisado) console.warn(`  · ${h} todavía no existe (¿Docker no ha arrancado?); reintento cada 15 s…`); avisado = true; return setTimeout(intento, 15000); }
+      ocupado(e);
+    });
+    intento();
+  };
+  for (const h of hosts.slice(1)) escuchar(http.createServer(srv.listeners("request")[0]), h);
+  escuchar(srv, hosts[0], () => {
     const dir = hosts.map((h) => `http://${h === "0.0.0.0" ? "TU-IP" : h}:${CFG.puerto}/`).join("  ·  ");
     console.log(`\n  Fábrica lista → ${dir}\n  (deja esta ventana abierta mientras la usas)\n`);
     if (!CFG.anthropicKey && !CFG.geminiKey) console.log("  · Sin GEMINI_API_KEY ni ANTHROPIC_API_KEY: el guion lo escribe Claude Code o tú en el panel.");
