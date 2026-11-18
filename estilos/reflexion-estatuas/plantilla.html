@@ -10,7 +10,7 @@
 // En cada punto o signo de pregunta el texto se limpia. Sello del canal al centro, polvo flotando.
 const F = "../_comun/fuentes/";
 const TONOS = { turquesa: "#3fb2a3", ambar: "#d49a5a", plata: "#9a9a9a", rojo: "#b5473a" };
-let info = [], directas = [], cache = new Map(), actual = null, tono = TONOS.turquesa, conLogo = true, sello = "", oscuro = true;
+let info = [], directas = [], mascaras = [], capa = null, muestra = null, lugares = new Map(), cache = new Map(), actual = null, tono = TONOS.turquesa, conLogo = true, sello = "", oscuro = true;
 
 Motor.inicioVoz = 0.3;
 Motor.iniciar({
@@ -21,6 +21,11 @@ Motor.iniciar({
     oscuro = op.contraste !== "claro"; // nov 2026: a Monarca le fue mejor con los videos más oscuros y contrastados
     sello = op.logo === "canal" ? String(M.proyecto.canal || M.guion.canal || "").replace(/^@/, "").trim() || "M" : "M"; // Monarca
     try { const r = await fetch(`/proyectos/${encodeURIComponent(M.proyecto.id)}/clips/historia.json?v=${Date.now()}`); if (r.ok) info = await r.json(); } catch {}
+    // texto detrás de la estatua: máscara de cada escena (la hace prepararHistoria con core/recorte.js)
+    if (op.profundidad !== "encima") await Promise.all(info.map(async (x, i) => {
+      if (!x || !x.mascara) return;
+      try { const r = await fetch(`/proyectos/${encodeURIComponent(M.proyecto.id)}/clips/${x.n}/mascara.png`); if (r.ok) mascaras[i] = await createImageBitmap(await r.blob()); } catch {}
+    }));
     // vista previa en el panel: las imágenes que aún no se han preparado (recién salidas de Flow, del banco o subidas)
     // se cargan directo; al sacar el video se preparan bien (historia.json)
     try {
@@ -48,14 +53,7 @@ Motor.iniciar({
     // ---- la imagen, con acercamiento lento (cada escena hacia un lado) ----
     c.fillStyle = "#050807"; c.fillRect(0, 0, W, H);
     c.save();
-    const k = M.suave(M.clamp(p / d)), dir = i % 2 ? -1 : 1;
-    // el gancho (escena 1): empujón de cámara rápido en los primeros 2 s (+28 %, con un leve giro que se endereza) y luego sigue lento.
-    // Antes era un acercamiento suave de 3 s que en el celular se sentía como una foto quieta (revisión siempre en amarillo).
-    const g0 = 1 - Math.pow(1 - M.clamp(t / 2), 3);
-    const z = i === 0 ? 1.0 + 0.28 * g0 + 0.06 * k : 1.05 + 0.1 * k;
-    c.translate(W / 2 + dir * W * 0.015 * k, H / 2 - H * 0.012 * k - (i === 0 ? H * 0.03 * (1 - g0) : 0));
-    if (i === 0) c.rotate((1.2 * (1 - g0) * Math.PI) / 180);
-    c.scale(z, z); c.translate(-W / 2, -H / 2);
+    const z = camara(c, M, t, i, p, d);
     if (oscuro) c.filter = "brightness(0.74) contrast(1.38)"; // oscuro: medios abajo y sombras profundas; las luces de la estatua siguen brillando
     if (actual) cubrir(c, actual, W, H); else niebla(c, M, t, i);
     c.filter = "none";
@@ -79,7 +77,15 @@ Motor.iniciar({
     if (i > 0 && p < 0.25) { c.fillStyle = `rgba(0,0,0,${0.85 * (1 - p / 0.25)})`; c.fillRect(0, 0, W, H); } // corte con un respiro de negro
 
     if (conLogo && sello) logo(c, M);
-    texto(c, M, t, te);
+    // texto DETRÁS de la estatua: se guarda la estatua ya pintada (recortada con su máscara), va el texto y encima otra vez la estatua
+    const mk = mascaras[i] && (actual || directas[i]) ? mascaras[i] : null;
+    if (mk) {
+      if (!capa) { capa = document.createElement("canvas"); capa.width = W; capa.height = H; }
+      const x = capa.getContext("2d"); x.globalCompositeOperation = "source-over"; x.clearRect(0, 0, W, H); x.drawImage(c.canvas, 0, 0);
+      x.globalCompositeOperation = "destination-in"; x.save(); camara(x, M, t, i, p, d); cubrir(x, mk, W, H); x.restore(); x.globalCompositeOperation = "source-over";
+    }
+    texto(c, M, t, te, mk ? { z, mk, i, p, d } : null);
+    if (mk) { c.save(); c.globalAlpha = i > 0 && p < 0.25 ? p / 0.25 : 1; c.drawImage(capa, 0, 0); c.restore(); }
   },
 });
 
@@ -91,6 +97,32 @@ async function cuadro(M, n, k) {
   return pr;
 }
 function cubrir(c, img, W, H) { const s = Math.max(W / img.width, H / img.height), w = img.width * s, h = img.height * s; c.drawImage(img, (W - w) / 2, (H - h) / 2, w, h); }
+
+// movimiento de cámara de la imagen (lo usan la imagen y su máscara, para que calcen exacto)
+function camara(c, M, t, i, p, d) {
+  const W = M.W, H = M.H, k = M.suave(M.clamp(p / d)), dir = i % 2 ? -1 : 1;
+  // el gancho (escena 1): empujón de cámara rápido en los primeros 2 s (+28 %, con un leve giro que se endereza) y luego sigue lento.
+  // Antes era un acercamiento suave de 3 s que en el celular se sentía como una foto quieta (revisión siempre en amarillo).
+  const g0 = 1 - Math.pow(1 - M.clamp(t / 2), 3);
+  const z = i === 0 ? 1.0 + 0.28 * g0 + 0.06 * k : 1.05 + 0.1 * k;
+  c.translate(W / 2 + dir * W * 0.015 * k, H / 2 - H * 0.012 * k - (i === 0 ? H * 0.03 * (1 - g0) : 0));
+  if (i === 0) c.rotate((1.2 * (1 - g0) * Math.PI) / 180);
+  c.scale(z, z); c.translate(-W / 2, -H / 2);
+  return z;
+}
+// qué parte de un rectángulo tapa la estatua (0-1), con la cámara en el instante t
+function cobertura(M, prof, t, rect) {
+  const W = M.W, H = M.H, sw = 72, sh = Math.round((72 * H) / W);
+  if (!muestra) { muestra = document.createElement("canvas"); muestra.width = sw; muestra.height = sh; }
+  const x = muestra.getContext("2d", { willReadFrequently: true }); x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, sw, sh);
+  x.save(); x.scale(sw / W, sh / H); camara(x, M, t, prof.i, t - M.tiempos.escenas[prof.i].ini, prof.d); cubrir(x, prof.mk, W, H); x.restore();
+  const x0 = Math.max(0, Math.floor((rect.x / W) * sw)), x1 = Math.min(sw, Math.ceil(((rect.x + rect.w) / W) * sw));
+  const y0 = Math.max(0, Math.floor((rect.y / H) * sh)), y1 = Math.min(sh, Math.ceil(((rect.y + rect.h) / H) * sh));
+  if (x1 <= x0 || y1 <= y0) return 0;
+  const px = x.getImageData(x0, y0, x1 - x0, y1 - y0).data; let n = 0, tap = 0;
+  for (let k = 3; k < px.length; k += 4) { n++; if (px[k] > 140) tap++; } // alfa de la máscara
+  return n ? tap / n : 0;
+}
 
 // gancho: una franja de luz del tono cruza la estatua en diagonal (0.1-1.8 s), como un rayo que la descubre
 function barrido(c, W, H, t) {
@@ -175,7 +207,7 @@ function claves(pag, te, M) {
   for (const w of pag) { const l = limpia(w.w); if (VACIAS.has(l) || l.length < 4) continue; if (l.length > peso) { peso = l.length; mejor = w; } }
   return new Set(mejor ? [mejor.t0] : []);
 }
-function texto(c, M, t, te) {
+function texto(c, M, t, te, prof) {
   const W = M.W, H = M.H, u = M.u;
   const modo = (M.proyecto.opciones || {}).subtitulos === "frase" ? "frase" : "bloques";
   const esPrimera = te === M.tiempos.escenas[0];
@@ -195,7 +227,31 @@ function texto(c, M, t, te) {
   const esp = c.measureText(" ").width, lineas = []; let l = [], ancho = 0;
   for (const w of pag) { const s = w.w.toUpperCase(), pw = c.measureText(s).width; if (l.length && ancho + esp + pw > ANCHO) { lineas.push({ l, ancho }); l = []; ancho = 0; } ancho += (l.length ? esp : 0) + pw; l.push({ ...w, s, pw }); }
   if (l.length) lineas.push({ l, ancho });
-  const al = tam * 1.13, y0 = (M.vertical ? H * 0.3 : H * 0.32) - ((lineas.length - 1) * al) / 2;
+  const al = tam * 1.13, base = M.vertical ? 0.3 : 0.32;
+  // texto detrás: busca la altura donde la estatua tape un poco el texto (se ve la profundidad) sin que deje de leerse
+  let cy = H * base, detras = false;
+  if (prof) {
+    const llave = `${prof.i}|${pag[0].t0}`;
+    if (!lugares.has(llave)) {
+      const anchoMax = Math.max(...lineas.map((x) => x.ancho)), alto = lineas.length * al, tope = gancho ? 0.22 : 0.32, t0 = Math.max(te.ini, pag[0].t0);
+      let mejor = null;
+      for (const f of [base, base - 0.06, base + 0.06, base - 0.11, base + 0.12, base + 0.2]) {
+        const y = H * f, cov = cobertura(M, prof, t0, { x: (W - anchoMax) / 2, y: y - alto / 2, w: anchoMax, h: alto });
+        if (y - alto / 2 < H * 0.05 || y + alto / 2 > H * 0.8) continue;
+        const pts = cov > tope ? -1 : cov < 0.04 ? 0.1 - Math.abs(f - base) : 1 - Math.abs(cov - 0.16) * 2 - Math.abs(f - base);
+        if (!mejor || pts > mejor.pts) mejor = { f, cov, pts };
+      }
+      lugares.set(llave, mejor && mejor.pts >= 0 ? { f: mejor.f, detras: mejor.cov >= 0.04 } : { f: base, detras: false });
+    }
+    const L = lugares.get(llave); cy = H * L.f; detras = L.detras;
+    if (!detras) prof = null; // la estatua taparía demasiado: este bloque va encima
+  }
+  const y0 = cy - ((lineas.length - 1) * al) / 2;
+  // profundidad: el texto se mueve más lento que la estatua (parallax) y flota un poco; la estatua pasa por delante
+  if (prof) {
+    const zt = 1 + (prof.z - 1) * 0.35, fl = Math.sin((t - te.ini) * 1.3) * 5 * u;
+    c.save(); c.translate(W / 2, cy + fl); c.scale(zt, zt); c.translate(-W / 2, -cy);
+  }
   const acento = bloques ? ACENTOS[(M.proyecto.opciones || {}).tono] || ACENTOS.turquesa : null, cl = bloques ? claves(pag, te, M) : new Set();
   // el bloque entra suave (sube 14 px y aparece en 0.18 s); el gancho ya está desde el cuadro 0
   const entra = gancho ? 1 : M.clamp((t - pag[0].t0 + 0.05) / 0.18), sube = bloques ? (1 - M.suave(entra)) * 14 * u : 0;
@@ -222,6 +278,7 @@ function texto(c, M, t, te) {
     }
   });
   if (golpe !== 1) c.restore();
+  if (prof) c.restore();
   c.textAlign = "center";
 }
 function mezcla(a, b, k) { // de un rgb(...) a un #hex

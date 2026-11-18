@@ -22,6 +22,7 @@
   "preparar": "historia",
   "clipsFlow": "imagen",
   "banco": true,
+  "textoDetras": true,
   "inicioVoz": 0.3,
   "pausaEntreEscenas": 0.35,
   "colaFinal": 2.0,
@@ -42,6 +43,14 @@
       "valores": {
         "oscuro": "Oscuro (sombras profundas, como los primeros)",
         "claro": "Claro (sombras levantadas)"
+      }
+    },
+    {
+      "clave": "profundidad",
+      "nombre": "Texto y estatua",
+      "valores": {
+        "detras": "Texto detrás de la estatua, con profundidad",
+        "encima": "Texto encima de todo (como antes)"
       }
     },
     {

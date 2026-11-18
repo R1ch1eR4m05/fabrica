@@ -309,7 +309,14 @@ export async function prepararHistoria(id, avisar = () => {}, { formato } = {}) 
       info.push({ n, tipo: "video", fps: FPS, frames: fs.readdirSync(sal).length, credito, origen, archivo: path.relative(dirProyecto(id), fuente).startsWith("..") ? fuente : path.relative(dirProyecto(id), fuente) });
     } else {
       await ffmpeg(["-i", fuente, "-vf", filtro, "-frames:v", "1", "-q:v", "2", path.join(sal, "00001.jpg")]);
-      info.push({ n, tipo: "imagen", frames: 1, credito, origen, archivo: path.relative(dirProyecto(id), fuente).startsWith("..") ? fuente : path.relative(dirProyecto(id), fuente) });
+      // texto detrás del sujeto (Estatuas): máscara de la estatua; si no se puede, el texto va encima como antes
+      let conMascara = false;
+      if (est?.textoDetras && (p.opciones || {}).profundidad !== "encima") {
+        avisar({ paso: "render", msg: `Escena ${n}: recortando la estatua para poner el texto detrás…` });
+        try { const { mascara } = await import("./recorte.js"); conMascara = !!(await mascara(path.join(sal, "00001.jpg"), path.join(sal, "mascara.png"), { avisar })); }
+        catch (er) { console.warn("Recorte:", er.message); }
+      }
+      info.push({ n, tipo: "imagen", frames: 1, mascara: conMascara || undefined, credito, origen, archivo: path.relative(dirProyecto(id), fuente).startsWith("..") ? fuente : path.relative(dirProyecto(id), fuente) });
     }
   }
   guardar(id, path.join("clips", "historia.json"), info);

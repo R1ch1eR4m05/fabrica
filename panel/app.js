@@ -543,7 +543,7 @@ async function pintarGHL(p, leerForm, guardarAntes, forzar = false) {
     <div class="fila"><label class="estado">Cuándo</label><input type="datetime-local" id="ghlFecha" value="${local(manana)}" style="width:auto"><button class="btn peq" id="ghlSim" ${cs.length ? "" : "disabled"} title="Arma lo que se mandaría a GHL sin publicar nada (obligatorio antes de programar)">1 · Simular</button><button class="btn primario peq" id="ghlIr" ${cs.length ? "" : "disabled"}>2 · Programar en GHL</button></div>
     <div class="estado" id="ghlQA" style="margin-top:6px">${p.qa ? `QA: <b>${h(p.qa.estado)}</b>${p.qa.motivos?.length ? " · " + h(p.qa.motivos.join(" | ")) : ""}` : "QA: se revisa al simular (formato, códec, duración, audio, subtítulos, título, descripción y serie)."}</div>
     <div id="ghlPlan"></div>
-    <div class="fila" style="margin-top:10px"><span class="estado">Cola automática (L-V: Short 19:00, largo 1 por semana 13:00, hora CDMX):</span><button class="btn peq" id="colaSim">Simular cola</button><button class="btn peq" id="colaOk">Confirmar cola</button></div>
+    <div class="fila" style="margin-top:10px"><span class="estado">Cola automática (L-V: 2 Shorts al día, 13:00 y 19:00; largo 1 por semana a las 16:00; hora CDMX):</span><button class="btn peq" id="colaSim">Simular cola</button><button class="btn peq" id="colaOk">Confirmar cola</button></div>
     <div id="colaPlan"></div>`;
   let asignando = false;
   const pintarLista = () => {
