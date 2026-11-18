@@ -108,6 +108,7 @@ export async function revisar(id, { avisar = () => {} } = {}) {
   r.gancho = await gancho(archivo);
   avisar({ paso: "render", progreso: 0.35, msg: "Midiendo brillo y volumen…" });
   r.brillo = await brillo(archivo);
+  if (oscuroAPropósito(p) && r.brillo.estado !== "verde") { r.brillo.estado = "verde"; r.brillo.msg = `Oscuro a propósito (Contraste «oscuro»: a Monarca le fue mejor así). ${Math.round(r.brillo.oscuroPct)} % casi negro.`; }
   r.volumen = await volumen(archivo);
   r.cortes = await negrosYCongelados(archivo);
   r.celular = { archivo: "revision-celular.jpg", tiempos: await tiraCelular(archivo, dur, path.join(dir, "revision-celular.jpg")),
@@ -160,10 +161,14 @@ export async function mejorar(id, { brillo: subirLuz = false, volumen: nivelar =
   return await revisar(id, { avisar });
 }
 
+// Monarca con Contraste "oscuro" (por defecto desde nov 2026): lo oscuro es a propósito
+const oscuroAPropósito = (p) => p?.estilo === "reflexion-estatuas" && p?.opciones?.contraste !== "claro";
+
 // después de cada render: aplica lo que Richie dejó activado para todos los videos (ajustes.json) o para este video
 export async function mejoraAuto(id) {
   const p = leer(id, "proyecto.json") || {};
   const o = { ...(leerAjustes().mejoras || {}), ...(p.mejoras || {}) };
+  if (oscuroAPropósito(p) && !p.mejoras?.brillo) o.brillo = false; // Monarca oscuro: subir la luz deshace el contraste que se eligió
   if (!o.brillo && !o.volumen) return null;
   return await mejorar(id, { brillo: !!o.brillo, volumen: !!o.volumen, desdeRender: true });
 }

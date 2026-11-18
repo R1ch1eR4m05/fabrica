@@ -8,6 +8,7 @@ import { servirArchivo } from "./estatico.js";
 import { escribirGuion, pedidoParaCopiar, extraerJSON } from "./ia.js";
 import { hacerVoz } from "./voz.js";
 import { render, textoParaSubir } from "./render.js";
+import { renderConQA } from "./qa.js";
 import { EFECTOS } from "./audio.js";
 import fs from "node:fs";
 import path from "node:path";
@@ -138,6 +139,16 @@ async function api(req, res, partes) {
   if (recurso === "ghl" && id === "cuentas" && m === "GET") {
     try { return json(res, 200, await GHL.cuentas({ forzar: new URL(req.url, "http://x").searchParams.has("forzar") })); }
     catch (e) { return json(res, 502, { error: e.message }); }
+  }
+  // cola automática: GET = último plan simulado; POST { accion: "simular" | "confirmar" } (confirmar programa EXACTAMENTE lo simulado)
+  if (recurso === "cola" && id) {
+    const C = await import("./cola.js");
+    if (m === "GET") return json(res, 200, C.leerPlan(id) || {});
+    if (m === "POST") {
+      const b = await cuerpo(req).catch(() => ({}));
+      try { return json(res, 200, b.accion === "confirmar" ? { hechos: await C.confirmarCola(id) } : await C.simularCola(id, { dias: Number(b.dias) || 14, cuentas: b.cuentas })); }
+      catch (e) { return json(res, 502, { error: e.message }); }
+    }
   }
   if (recurso === "voces" && id === "comparar") {
     const f = path.join(DIR_LISTOS, "comparar-voces", "comparacion.json");
@@ -409,7 +420,7 @@ async function api(req, res, partes) {
     encolar(id, "voz", (av) => hacerVoz(id, av));
     // música a la medida con ElevenLabs (si la pidieron); si falla, el video sale con la música de la biblioteca
     if (b?.musica && CFG.elevenKey && est?.musicaIA) { fila.push({ id, paso: "musica", fn: (av) => musicaIA(id, av).catch((e) => { console.error("Música", e.message); emitir({ id, paso: "musica", estado: "error", msg: `No se pudo generar la música (${e.message}); sigue con la de la biblioteca.` }); }) }); P.marcar(id, "musica", "en-fila"); }
-    fila.push({ id, paso: "render", fn: (av) => render(id, av) }); P.marcar(id, "render", "en-fila");
+    fila.push({ id, paso: "render", fn: (av) => renderConQA(id, av, render) }); P.marcar(id, "render", "en-fila");
     return json(res, 200, { ok: true });
   }
   if (accion === "clips" && m === "POST") { // historia: genera en Flow los clips que faltan
@@ -463,7 +474,7 @@ async function api(req, res, partes) {
   if (accion === "musica-elegir" && m === "POST") { // usa una pista de la biblioteca (se ajusta sola al largo del video)
     const b = await cuerpo(req);
     try { BANCO.elegirMusica(id, b.ruta); } catch (e) { return json(res, 400, { error: e.message }); }
-    if (b.rehacer && P.leer(id, "tiempos.json")) { const esMot = leerEstilo(p.estilo)?.tipo === "motion"; encolar(id, "render", (av) => (esMot ? MOT.terminar(id) : render(id, av))); }
+    if (b.rehacer && P.leer(id, "tiempos.json")) { const esMot = leerEstilo(p.estilo)?.tipo === "motion"; encolar(id, "render", (av) => (esMot ? MOT.terminar(id) : renderConQA(id, av, render))); }
     return json(res, 200, P.detalle(id));
   }
   if (accion === "clip-banco" && m === "POST") {
@@ -491,14 +502,14 @@ async function api(req, res, partes) {
     if (!esMot && !P.leer(id, "tiempos.json")) return json(res, 400, { error: "Primero haz la voz: la música se hace del largo exacto del video." });
     if (esMot && !fs.existsSync(path.join(P.dirProyecto(id), "final.mp4"))) return json(res, 400, { error: "Primero renderiza el motion: la música se hace del largo exacto del video." });
     encolar(id, "musica", (av) => musicaIA(id, av, { prompt: (b.prompt || "").trim() || undefined, reusar: b.reusar, desdePanel: true }));
-    if (b.insertar) { fila.push({ id, paso: "render", fn: (av) => (esMot ? MOT.terminar(id) : render(id, av)) }); P.marcar(id, "render", "en-fila"); } // y se vuelve a sacar el video con la música nueva
+    if (b.insertar) { fila.push({ id, paso: "render", fn: (av) => (esMot ? MOT.terminar(id) : renderConQA(id, av, render)) }); P.marcar(id, "render", "en-fila"); } // y se vuelve a sacar el video con la música nueva
     return json(res, 200, { ok: true });
   }
   if (accion === "voz" && m === "POST") { encolar(id, "voz", (av) => (leerEstilo(p.estilo)?.anuncios && p.opciones?.plantilla === "avatar" ? ANU.prepararAvatar(id, av) : hacerVoz(id, av))); return json(res, 200, { ok: true }); }
   if (accion === "render" && m === "POST") {
     const esMotion = leerEstilo(p.estilo)?.tipo === "motion";
     if (leerEstilo(p.estilo)?.anuncios) { encolar(id, "render", (av) => (p.opciones?.tipo === "video" || p.opciones?.plantilla === "avatar" ? ANU.renderMedidas(id, av) : ANU.exportarImagenes(id, av))); return json(res, 200, { ok: true }); }
-    encolar(id, "render", (av) => (esMotion ? MOT.renderMotion(id, av) : render(id, av)));
+    encolar(id, "render", (av) => (esMotion ? MOT.renderMotion(id, av) : renderConQA(id, av, render)));
     return json(res, 200, { ok: true });
   }
   if (accion === "revisar") { // revisión antes de publicar
@@ -539,7 +550,7 @@ async function api(req, res, partes) {
   }
   if (accion === "ghl" && m === "POST") { // programar en el Social Planner de GHL
     const b = await cuerpo(req);
-    try { return json(res, 200, { ok: true, programados: await GHL.programar(id, { cuentasIds: b.cuentas || [], fecha: b.fecha }) }); }
+    try { return json(res, 200, { ok: true, simulado: !!b.simular, programados: await GHL.programar(id, { cuentasIds: b.cuentas || [], fecha: b.fecha, simular: !!b.simular }) }); }
     catch (e) { return json(res, 502, { error: e.message }); }
   }
   if (accion === "ghlimagenes" && m === "POST") { // programar las imágenes del feed (suelta / carrusel) en GHL

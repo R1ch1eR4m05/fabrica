@@ -10,7 +10,7 @@ Devuelve SOLO un objeto JSON válido (sin texto antes ni después, sin \`\`\`), 
   "titulo": "título corto del video",
   "escenas": [ { "tipo": "<tipo>", "texto": "lo que dice la voz y se ve en pantalla", "visual": "<visual>" } ],
   "fuentes": [ { "dato": "la cifra o hecho", "url": "https://..." } ],
-  "subir": { "titulo": "título para publicar", "descripcion": "2-3 líneas", "hashtags": ["#..."] }
+  "subir": { "titulo": "título para publicar", "titulos": ["3 opciones de título: [número o promesa concreta] + [problema real] + [autor si el guion habla de él]; nada genérico ni poético sin promesa"], "descripcion": "2-3 líneas", "hashtags": ["#..."] }
 }
 Agrega también los campos extra que pidan las instrucciones del estilo (en el guion o en cada escena), con esos mismos nombres.`;
 
@@ -85,6 +85,7 @@ export function sinEtiquetas(g) {
   for (const f of g.fuentes || []) if (f && typeof f.dato === "string") f.dato = quitarEtiquetas(f.dato);
   if (typeof g.fuente === "string") g.fuente = quitarEtiquetas(g.fuente);
   if (g.subir) for (const k of ["titulo", "descripcion"]) if (typeof g.subir[k] === "string") g.subir[k] = quitarEtiquetas(g.subir[k]);
+  if (Array.isArray(g.subir?.titulos)) g.subir.titulos = g.subir.titulos.map((x) => quitarEtiquetas(String(x)));
   return g;
 }
 
@@ -103,7 +104,7 @@ async function escribirLargo(proyecto, est, minutos, cambios) {
     `Nunca inventes una cifra, estudio, fecha ni cita. Si citas un texto clásico, que sea real y verificado con la búsqueda web.`,
   ].join("\n\n");
   const nCap = Math.max(3, Math.round(minutos / 5));
-  const ind = jsonDe((await pedir(base + `\n\nAhora solo el ÍNDICE. Devuelve SOLO JSON: { "titulo", "estiloVisual" (inglés), "capitulos": [ { "titulo", "idea" (3-4 líneas: qué se cuenta, qué escena cotidiana o parábola, qué enseñanza), "minutos" } ], "fuentes": [ { "dato", "url" } ], "subir": { "titulo", "descripcion", "hashtags" } }`,
+  const ind = jsonDe((await pedir(base + `\n\nAhora solo el ÍNDICE. Devuelve SOLO JSON: { "titulo", "estiloVisual" (inglés), "capitulos": [ { "titulo", "idea" (3-4 líneas: qué se cuenta, qué escena cotidiana o parábola, qué enseñanza), "minutos" } ], "fuentes": [ { "dato", "url" } ], "subir": { "titulo", "titulos" (3 opciones: [número o promesa concreta] + [problema real] + [autor]), "descripcion", "hashtags" } }`,
     `Tema o idea del video: ${proyecto.idea || proyecto.titulo}${cambios ? `\nIndicaciones extra: ${cambios}` : ""}\nDuración total: ${Math.round(minutos)} minutos de voz, en ${nCap} capítulos (el primero es la introducción con el gancho; el último, el cierre).`,
     { buscar: true })).texto);
   const escenas = [];

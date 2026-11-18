@@ -2,13 +2,18 @@
 
 Video largo y pausado para YouTube (también sirve en 3-5 min para Reels largos) sobre filosofía oriental (Tao Te Ching, budismo zen, Chuang Tzu) o estoica, aplicada a la vida diaria. Narrador en segunda persona ("tú"), cálido y sereno, español de México. Nace de un tema que ya funcionó en el nicho: adapta la idea, nunca copies frases de otros canales.
 
-## Estructura
-1. **Gancho (primeros 20-30 s):** una situación cotidiana que duela o intrigue ("Hay días en que el teléfono no suena y sientes que el mundo se olvidó de ti.") y la promesa de lo que vas a entender al final.
-2. **Capítulos (cada 4-6 min):** cada uno con su título (`capitulo` en su primera escena). Dentro de cada capítulo:
-   - una escena cotidiana o una parábola (el viejo árbol inútil, el agua que vence a la piedra, el carnicero del rey…),
+## Estructura (video largo de 10 a 15 min, 16:9)
+1. **Intro con promesa (primeros 20-30 s):** una situación cotidiana que duela o intrigue y la promesa concreta de lo que el espectador se lleva ("En 12 minutos vas a entender por qué el agua vence a la piedra y cómo usarlo con tu ansiedad.").
+2. **Capítulos (3 a 5, de 2 a 4 min cada uno):** **una sola idea por capítulo**, con su título (`capitulo` en su primera escena). Dentro de cada capítulo:
+   - una escena cotidiana o una parábola (el viejo árbol inútil, el agua que vence a la piedra…),
    - la enseñanza del texto clásico, explicada simple,
    - cómo se aplica hoy, con un ejemplo concreto.
-3. **Cierre:** una idea para guardar y una invitación tranquila a quedarse en el canal (sin pedir likes de forma insistente).
+3. **Cierre:** la idea para guardar, invitación a suscribirse (una vez, sin insistir) y a ver el siguiente video de la serie ("En el siguiente capítulo de la serie…").
+4. Pertenece a una **serie** de Monarca; la fábrica le asigna el número.
+
+## Metadatos (en `subir`; la fábrica los valida antes de programar)
+- `subir.titulos`: 3 opciones con la fórmula [número o promesa concreta] + [problema real] + [autor]: "7 lecciones del Tao para dejar de preocuparte".
+- `subir.descripcion`: 2-3 líneas con la promesa. Los capítulos con su minuto, el llamado a suscribirse y los 3 hashtags los agrega la fábrica.
 
 ## Campos
 - `estiloVisual` (inglés): opcional; si no lo pones se usa acuarela con tinta (el del estilo).

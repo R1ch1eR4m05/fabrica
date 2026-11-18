@@ -6,6 +6,30 @@ import { CFG, DIR_LISTOS } from "./config.js";
 import { dirProyecto, leer, guardar } from "./proyectos.js";
 import { leerCopys } from "./copy.js";
 import { dirImagenes } from "./imagenes-post.js";
+import crypto from "node:crypto";
+
+// ---- registro de programación (idempotente) · listos/programacion.jsonl ----
+// cada línea: { fecha (cuándo se pidió), publica (fecha/hora CDMX de publicación), plataforma, cuenta, titulo, id, archivoHash, guionHash, postId, estado }
+// estado: simulado (dry-run, no publica) | programado | duplicado (se saltó) | error
+const REGISTRO = path.join(DIR_LISTOS, "programacion.jsonl");
+export function leerRegistro() { try { return fs.readFileSync(REGISTRO, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l)); } catch { return []; } }
+const anotar = (x) => fs.appendFileSync(REGISTRO, JSON.stringify({ fecha: new Date().toISOString(), ...x }) + "\n");
+const hashArchivo = (f) => crypto.createHash("sha1").update(fs.readFileSync(f)).digest("hex").slice(0, 16);
+const normal = (t) => String(t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/#\w+/g, "").replace(/[^a-z0-9ñ ]/g, "").replace(/\s+/g, " ").trim();
+export const enCDMX = (d) => new Date(d).toLocaleString("es-MX", { timeZone: "America/Mexico_City", weekday: "short", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+function huellas(id) {
+  const g = leer(id, "guion.json") || {}, c = leerCopys(id);
+  return {
+    archivoHash: hashArchivo(path.join(dirProyecto(id), "final.mp4")),
+    guionHash: crypto.createHash("sha1").update(normal((g.escenas || []).map((e) => e.voz || e.texto || "").join(" "))).digest("hex").slice(0, 16),
+    titulo: String(c.youtube?.titulo || g.titulo || id).replace(/#\w+/g, "").trim(),
+  };
+}
+// ¿ya está programado esto (mismo archivo, mismo guion o mismo título) en esa red y cuenta?
+export function duplicado(h, plataforma, cuenta, reg = leerRegistro()) {
+  return reg.find((r) => r.estado === "programado" && r.plataforma === plataforma && r.cuenta === cuenta &&
+    (r.archivoHash === h.archivoHash || r.guionHash === h.guionHash || normal(r.titulo) === normal(h.titulo))) || null;
+}
 
 const API = "https://services.leadconnectorhq.com";
 export const ghlListo = () => !!(CFG.ghlToken && CFG.ghlLocation);
@@ -67,7 +91,7 @@ const paraYoutube = (t) => limpiarTexto(t).replace(/</g, "‹").replace(/>/g, "�
 const recortarBytes = (t, max) => { let s = t; while (Buffer.byteLength(s, "utf8") > max) s = s.slice(0, -1); return s; };
 const textoPara = (c, plataforma) => {
   if (/instagram/.test(plataforma)) return limpiarTexto(c.instagram);
-  if (/facebook/.test(plataforma)) return limpiarTexto(c.facebook);
+  if (/facebook/.test(plataforma)) return limpiarTexto(c.facebook).replace(/https?:\/\/(www\.)?(youtube\.com|youtu\.be)\/\S+/gi, "").replace(/\n{3,}/g, "\n\n").trim(); // Reel nativo, nunca el link de YouTube
   if (/tiktok/.test(plataforma)) return limpiarTexto(c.tiktok);
   if (/youtube/.test(plataforma)) return recortarBytes(paraYoutube([c.youtube?.titulo, c.youtube?.descripcion].filter(Boolean).join("\n\n")), 4900);
   return limpiarTexto(c.instagram || c.facebook);
@@ -101,18 +125,44 @@ function revisarFecha(fecha) {
 const aTiempo = (cuando) => (cuando.getTime() < Date.now() + MARGEN ? new Date(Date.now() + MARGEN) : cuando);
 
 // programa una publicación por red (mismo video, copy de esa red). fecha: ISO; si falta, en 10 minutos
-export async function programar(id, { cuentasIds = [], fecha } = {}, avisar = () => {}) {
+// simular = dry-run: arma exactamente lo que se mandaría a GHL (por red y cuenta), sin subir ni publicar nada.
+// Publicar de verdad exige una simulación previa del MISMO archivo en esas redes (últimas 72 h) y el QA aprobado.
+export async function programar(id, { cuentasIds = [], fecha, simular = false } = {}, avisar = () => {}) {
   if (!cuentasIds.length) throw new Error("Elige al menos una cuenta.");
   const todas = await cuentas(), elegidas = todas.filter((a) => cuentasIds.includes(a.id));
   if (!elegidas.length) throw new Error("Esas cuentas ya no están conectadas en GHL.");
   let cuando = revisarFecha(fecha);
+  // QA que bloquea: sin aprobado no se programa (ni se simula como "listo")
+  const QA = await import("./qa.js");
+  const q = QA.qaVigente(id) || (avisar({ progreso: 0.05, msg: "Pasando el QA antes de programar…" }), await QA.qaVideo(id));
+  if (!q.aprobado) throw new Error(`QA rechazado, no se programa: ${q.motivos.join(" | ")}`);
+  const h = huellas(id), reg = leerRegistro();
+  // idempotencia: cada cuenta que ya tiene este video (o este guion / título) se salta
+  // lo programado antes del registro (nov 2026) vive en proyecto.json → ghl.programados: también cuenta como ya hecho
+  const viejo = (leer(id, "proyecto.json")?.ghl?.programados || []).map((x) => ({ plataforma: x.plataforma, cuentas: x.cuentas || [], publica: x.fecha, postId: x.postId }));
+  const libres = elegidas.filter((a) => { const d = duplicado(h, a.plataforma, a.id, reg) || viejo.find((x) => x.plataforma === a.plataforma && x.cuentas.includes(a.id)); if (d) { anotar({ id, plataforma: a.plataforma, cuenta: a.id, titulo: h.titulo, ...h, publica: d.publica, postId: d.postId, estado: "duplicado" }); avisar({ progreso: 0.1, msg: `Ya estaba programado en ${a.plataforma} (${enCDMX(d.publica)}): no se repite.` }); } return !d; });
+  if (!libres.length) return [];
+  if (!simular) {
+    const sinSim = libres.filter((a) => !reg.some((r) => r.estado === "simulado" && r.id === id && r.archivoHash === h.archivoHash && r.cuenta === a.id && Date.now() - new Date(r.fecha).getTime() < 72 * 3600e3));
+    if (sinSim.length) throw new Error(`Primero haz la simulación (dry-run) de este video en: ${sinSim.map((a) => a.plataforma).join(", ")}. No se publica nada real sin simular antes.`);
+  }
+  const c = leerCopys(id);
+  if (simular) {
+    const plan = libres.map((a) => {
+      const esYoutube = /youtube/.test(a.plataforma);
+      const plan = { plataforma: a.plataforma, cuenta: a.id, nombre: a.nombre, publica: aTiempo(cuando).toISOString(), titulo: esYoutube ? paraYoutube(c.youtube?.titulo || h.titulo).slice(0, 100) : String(textoPara(c, a.plataforma) || "").split("\n")[0], texto: textoPara(c, a.plataforma) || "", tipo: /instagram|facebook/.test(a.plataforma) ? "reel" : "post" };
+      anotar({ id, plataforma: a.plataforma, cuenta: a.id, titulo: h.titulo, ...h, publica: plan.publica, postId: null, estado: "simulado" });
+      return plan;
+    });
+    avisar({ progreso: 1, msg: "Simulación lista: no se publicó nada." });
+    return plan.map((x) => ({ ...x, simulado: true }));
+  }
   avisar({ progreso: 0.1, msg: "Subiendo el video a GoHighLevel…" });
   const url = await subirVideo(id);
   const usuario = await usuarioGHL();
-  const miniatura = elegidas.some((a) => /youtube/.test(a.plataforma)) ? await subirMiniatura(id) : null;
-  const c = leerCopys(id);
+  const miniatura = libres.some((a) => /youtube/.test(a.plataforma)) ? await subirMiniatura(id) : null;
   const porRed = {};
-  for (const a of elegidas) (porRed[a.plataforma] ||= []).push(a.id);
+  for (const a of libres) (porRed[a.plataforma] ||= []).push(a.id);
   const hechos = [];
   for (const [plataforma, ids] of Object.entries(porRed)) {
     avisar({ progreso: 0.5, msg: `Programando en ${plataforma}…` });
@@ -122,8 +172,12 @@ export async function programar(id, { cuentasIds = [], fecha } = {}, avisar = ()
     const cuerpo = { accountIds: ids, summary: textoPara(c, plataforma) || "", media: [{ url, type: "video/mp4", ...(esYoutube && miniatura ? { thumbnail: miniatura } : {}) }], status: "scheduled", scheduleDate: cuando.toISOString(),
       type: /instagram|facebook/.test(plataforma) ? "reel" : "post", userId: usuario,
       ...(esYoutube ? { youtubePostDetails: { title: paraYoutube(c.youtube?.titulo || leer(id, "guion.json")?.titulo || id).slice(0, 100), privacyLevel: "public", type: "video" } } : {}) };
-    const j = await pedir("POST", `/social-media-posting/${CFG.ghlLocation}/posts`, cuerpo);
-    hechos.push({ plataforma, cuentas: ids, fecha: cuando.toISOString(), postId: j.results?.post?._id || j.results?.post?.id || j.post?._id || j.id || null });
+    let j;
+    try { j = await pedir("POST", `/social-media-posting/${CFG.ghlLocation}/posts`, cuerpo); }
+    catch (e) { for (const cu of ids) anotar({ id, plataforma, cuenta: cu, titulo: h.titulo, ...h, publica: cuando.toISOString(), postId: null, estado: "error", error: e.message.slice(0, 200) }); throw e; }
+    const postId = j.results?.post?._id || j.results?.post?.id || j.post?._id || j.id || null;
+    for (const cu of ids) anotar({ id, plataforma, cuenta: cu, titulo: h.titulo, ...h, publica: cuando.toISOString(), postId, estado: "programado" });
+    hechos.push({ plataforma, cuentas: ids, fecha: cuando.toISOString(), postId });
   }
   const p = leer(id, "proyecto.json");
   p.ghl = { ...(p.ghl || {}), programados: [...(p.ghl?.programados || []), ...hechos] }; guardar(id, "proyecto.json", p);

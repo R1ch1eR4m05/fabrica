@@ -27,6 +27,11 @@
 //   node fabrica.js imagenes <id>  imágenes 4:5 para el feed: la frase más fuerte + carrusel (sin gastar créditos)
 //   node fabrica.js capitulos <id> [--sin-reels]  video largo → un video por capítulo (+ Reel vertical de cada uno)
 //   node fabrica.js conectar-vps root@IP          (laptop, una vez) conecta laptop ⇄ VPS por SSH: investigaciones a la laptop y Flow desde el VPS
+//   node fabrica.js metadatos <id>                  3 títulos con puntaje, el elegido, descripción por red (YouTube/Facebook) y serie
+//   node fabrica.js qa <id>                         QA que bloquea: formato, códec, duración, audio, subtítulos, título, descripción, serie
+//   node fabrica.js serie <id> ["nombre"]           asigna serie y número (sin nombre: la primera serie de su marca)
+//   node fabrica.js relacionar <id> <url>           liga un Short con su video largo (sale en la descripción)
+//   node fabrica.js cola [marca] [--confirmar]      cola automática: sin --confirmar SIMULA (no publica); con --confirmar programa el plan simulado
 //   node fabrica.js comparar-voces ["texto"] [--estilo id]   mismo texto con cada modelo de voz → listos/comparar-voces/
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -77,6 +82,49 @@ async function main() {
       }
       return;
     }
+    case "metadatos": {
+      const M = await import("./core/metadatos.js");
+      const m = await M.generarMetadatos(libres[0], { conIA: !args.includes("--sin-ia") });
+      console.log(`\nCriterio: ${m.criterio}\n`);
+      for (const o of m.opciones) console.log(`${o.ok ? (o.texto === m.elegido ? "★" : "✓") : "✗"} ${o.puntos} · ${o.texto}\n    ${o.motivos.join(", ")}`);
+      console.log(`\nElegido: ${m.elegido || "(ninguno pasa: escribe 3 títulos en guion.json → subir.titulos)"}\nSerie: ${m.serie ? m.serie.nombre + " #" + m.serie.numero : "—"}\n\nYouTube:\n${m.youtube.titulo}\n${m.youtube.descripcion}\n\nFacebook:\n${m.facebook.texto}`);
+      return;
+    }
+    case "qa": {
+      const { qaVideo } = await import("./core/qa.js");
+      const q = await qaVideo(libres[0], { regenerarMetadatos: args.includes("--metadatos") });
+      console.log(`\nQA ${q.estado.toUpperCase()} · ${q.titulo || "(sin título)"} · ${q.duracion} s · ${q.resolucion}`);
+      for (const [k, x] of Object.entries(q.checks)) console.log(`  ${x.ok ? "✓" : "✗"} ${k}: ${x.msg}`);
+      console.log(`\nReporte: listos/${libres[0]}-qa.txt${q.cuadro ? " · cuadro: proyectos/" + libres[0] + "/" + q.cuadro : ""}`);
+      if (!q.aprobado) process.exitCode = 2;
+      return;
+    }
+    case "serie": {
+      const S = await import("./core/serie.js");
+      const r = S.asignarSerie(libres[0], libres[1]);
+      console.log(r ? `${libres[0]} → ${S.etiquetaSerie(r)}` : "Su marca no tiene series."); return;
+    }
+    case "relacionar": {
+      const q = P.leer(libres[0], "proyecto.json"); if (!q) throw new Error("No existe ese video.");
+      if (!/^https?:\/\//.test(libres[1] || "")) throw new Error("Uso: node fabrica.js relacionar <id-del-short> <url-del-video-largo>");
+      q.relacionado = { url: libres[1] }; P.guardar(libres[0], "proyecto.json", q);
+      const M = await import("./core/metadatos.js"); await M.generarMetadatos(libres[0], { conIA: false });
+      console.log(`${libres[0]} enlaza a ${libres[1]} (ya está en su descripción de YouTube).`); return;
+    }
+    case "cola": {
+      const C = await import("./core/cola.js"), marca = libres[0] || "monarca";
+      if (args.includes("--confirmar")) {
+        const r = await C.confirmarCola(marca, avisar);
+        for (const x of r) console.log(x.error ? `✗ ${x.id} · ${x.cuando}: ${x.error}` : `✓ ${x.id} · ${x.cuando} · ${x.programados.map((y) => y.plataforma).join(", ") || "ya estaba (no se repite)"}`);
+        return;
+      }
+      const r = await C.simularCola(marca, { dias: Number(opc("dias", 14)), max: Number(opc("max", 20)) }, avisar);
+      console.log(`\nSIMULACIÓN (no se publicó nada) · ${marca} · ${r.plan.length} video(s):`);
+      for (const x of r.plan) console.log(`  ${x.cuando} · ${x.tipo === "largo" ? "LARGO" : "Short"} · ${x.titulo}${x.serie ? " · " + x.serie : ""}\n      ${x.redes.join(" · ")}`);
+      if (r.rechazados.length) { console.log(`\nNo entran (QA rechazado):`); for (const x of r.rechazados) console.log(`  ${x.id}: ${x.motivos.join(" | ")}`); }
+      console.log(`\nSi está bien: node fabrica.js cola ${marca} --confirmar`);
+      return;
+    }
     case "conectar-vps": {
       const { conectarVps } = await import("./core/tunel.js");
       try { conectarVps(libres[0]); } catch (e) { console.error("\n  " + e.message + "\n"); process.exitCode = 1; }
@@ -125,8 +173,9 @@ async function main() {
       }
       if (orden === "todo") { const { hacerVoz } = await import("./core/voz.js"); await hacerVoz(id, avisar); P.marcar(id, "voz", "listo"); }
       const { render } = await import("./core/render.js");
-      const r = await render(id, avisar); P.marcar(id, "render", "listo");
-      console.log(`\nVideo listo en ${r.archivo} (${r.segundos} s)`); return;
+      const { renderConQA } = await import("./core/qa.js");
+      const r = await renderConQA(id, avisar, render); P.marcar(id, "render", "listo");
+      console.log(`\nVideo listo en ${r.archivo} (${r.segundos} s) · QA: ${r.qa?.estado}${r.qa?.motivos?.length ? "\n  " + r.qa.motivos.join("\n  ") : ""}`); return;
     }
     case "pendientes": { // todo lo que falta, para que Claude Code lo termine con una sola orden: "haz los pendientes"
       const MOT = await import("./core/motion.js");

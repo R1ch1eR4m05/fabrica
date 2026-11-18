@@ -7,8 +7,8 @@
     "16:9"
   ],
   "duraciones": {
-    "corto": "45 a 70 segundos (10 a 16 escenas)",
-    "largo": "90 a 120 segundos (18 a 26 escenas)"
+    "corto": "20 a 30 segundos (5 a 7 escenas, 55 a 80 palabras)",
+    "largo": "45 a 60 segundos (8 a 12 escenas)"
   },
   "tipos": [
     "escena",

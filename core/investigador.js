@@ -61,6 +61,7 @@ const PLANTILLAS = {
     marca: "Monarca: monólogos sobrios y directos, voz grave de hombre, estatuas y paisajes en un solo tono. Verdades incómodas y qué hacer hoy.",
     estilos: ["reflexion-estatuas"],
     opciones: { "reflexion-estatuas": { tono: "turquesa", logo: "monarca" } },
+    cierres: ["Envíale esto a alguien que necesita oírlo hoy."],
     reglas: "Tono sobrio, firme y respetuoso; nada de odio hacia nadie, nada de promesas de dinero o salud, nada de frases atribuidas a filósofos sin verificar.",
     adaptacion: "Las tendencias suelen nacer en cuentas en inglés (stoic, discipline, self-improvement). No traduzcas literal: adapta la idea a hispanos de México y EE. UU. (familia, trabajo, deudas, padres que envejecen, amigos que se van), en español natural de México.",
   },
@@ -80,7 +81,17 @@ function sembrar() {
   }
   if (!fs.existsSync(path.join(DIR_NICHOS, "monarca.json")) && !fs.existsSync(path.join(DIR_NICHOS, "monarca.borrado")))
     fs.writeFileSync(path.join(DIR_NICHOS, "monarca.json"), JSON.stringify({ ...COMUN, ...PLANTILLAS.monarca, id: "monarca" }, null, 2));
+  // nov 2026: Richie autorizó el cierre de envío privado para Monarca (una sola vez; si luego lo quita en el panel, no vuelve)
+  try {
+    const f = path.join(DIR_NICHOS, "monarca.json"), c = JSON.parse(fs.readFileSync(f, "utf8"));
+    if (!(c.migraciones || []).includes("cierre-envio")) {
+      c.cierres = [...new Set([CIERRE_ENVIO, ...(c.cierres || [])])];
+      c.migraciones = [...(c.migraciones || []), "cierre-envio"];
+      fs.writeFileSync(f, JSON.stringify(c, null, 2));
+    }
+  } catch {}
 }
+export const CIERRE_ENVIO = "Envíale esto a alguien que necesita oírlo hoy.";
 
 export function listarNichos() {
   sembrar();

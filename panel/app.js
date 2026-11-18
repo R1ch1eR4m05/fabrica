@@ -539,7 +539,11 @@ async function pintarGHL(p, leerForm, guardarAntes, forzar = false) {
     <div class="fila" style="margin:8px 0;align-items:center"><label class="estado">Marca</label><select id="ghlMarca" style="width:auto">${Object.entries(MARCAS).map(([k, n]) => `<option value="${k}" ${k === porDefecto ? "selected" : ""}>${n}</option>`).join("")}</select>
       <button class="mini" id="ghlAsignar" title="Cambia a qué marca pertenece cada cuenta">Asignar marcas</button></div>
     <div class="fila" id="ghlLista" style="margin:8px 0;flex-wrap:wrap"></div>
-    <div class="fila"><label class="estado">Cuándo</label><input type="datetime-local" id="ghlFecha" value="${local(manana)}" style="width:auto"><button class="btn primario peq" id="ghlIr" ${cs.length ? "" : "disabled"}>Programar en GHL</button></div>`;
+    <div class="fila"><label class="estado">Cuándo</label><input type="datetime-local" id="ghlFecha" value="${local(manana)}" style="width:auto"><button class="btn peq" id="ghlSim" ${cs.length ? "" : "disabled"} title="Arma lo que se mandaría a GHL sin publicar nada (obligatorio antes de programar)">1 · Simular</button><button class="btn primario peq" id="ghlIr" ${cs.length ? "" : "disabled"}>2 · Programar en GHL</button></div>
+    <div class="estado" id="ghlQA" style="margin-top:6px">${p.qa ? `QA: <b>${h(p.qa.estado)}</b>${p.qa.motivos?.length ? " · " + h(p.qa.motivos.join(" | ")) : ""}` : "QA: se revisa al simular (formato, códec, duración, audio, subtítulos, título, descripción y serie)."}</div>
+    <div id="ghlPlan"></div>
+    <div class="fila" style="margin-top:10px"><span class="estado">Cola automática (L-V: Short 19:00, largo 1 por semana 13:00, hora CDMX):</span><button class="btn peq" id="colaSim">Simular cola</button><button class="btn peq" id="colaOk">Confirmar cola</button></div>
+    <div id="colaPlan"></div>`;
   let asignando = false;
   const pintarLista = () => {
     const m = $("#ghlMarca").value, xs = asignando ? cs : cs.filter((a) => marcaDe(a) === m);
@@ -554,6 +558,35 @@ async function pintarGHL(p, leerForm, guardarAntes, forzar = false) {
   $("#ghlAsignar").onclick = () => { asignando = true; pintarLista(); };
   pintarLista();
   $("#ghlRecargar").onclick = () => pintarGHL(p, leerForm, guardarAntes, true);
+  const marcaCola = () => $("#ghlMarca").value || "monarca";
+  $("#colaSim").onclick = async () => {
+    $("#colaSim").disabled = true; $("#colaSim").textContent = "Revisando QA y simulando…";
+    try {
+      const r = await api(`/api/cola/${marcaCola()}`, "POST", { accion: "simular", cuentas: [...document.querySelectorAll("[data-ghlc]")].filter((x) => !x.disabled).map((x) => x.value) });
+      $("#colaPlan").innerHTML = `<div class="nota" style="margin-top:8px"><b>Simulación de la cola (no se publicó nada):</b><br>${r.plan.length ? r.plan.map((x) => `${h(x.cuando)} · ${x.tipo === "largo" ? "LARGO" : "Short"} · <i>${h(x.titulo)}</i>${x.serie ? " · " + h(x.serie) : ""}<br><span class="estado">${h(x.redes.join(" · "))}</span>`).join("<hr>") : "Nada que programar: no hay videos nuevos con QA aprobado."}${r.rechazados.length ? `<hr><b>No entran (QA rechazado):</b><br>${r.rechazados.map((x) => `${h(x.id)}: ${h(x.motivos.join(" | "))}`).join("<br>")}` : ""}<br>Si está bien, dale «Confirmar cola».</div>`;
+    } catch (e) { $("#colaPlan").innerHTML = `<div class="nota" style="color:#f88">${h(e.message)}</div>`; }
+    $("#colaSim").disabled = false; $("#colaSim").textContent = "Simular cola";
+  };
+  $("#colaOk").onclick = async () => {
+    const plan = await api(`/api/cola/${marcaCola()}`); if (!plan.plan?.length) return avisar("Primero simula la cola.", true);
+    if (!confirm(`Se programarán ${plan.plan.length} video(s) de ${marcaCola().toUpperCase()} en GHL tal como salieron en la simulación. ¿Seguir?`)) return;
+    $("#colaOk").disabled = true; $("#colaOk").textContent = "Programando…";
+    try { const r = await api(`/api/cola/${marcaCola()}`, "POST", { accion: "confirmar" }); $("#colaPlan").innerHTML = `<div class="nota">${r.hechos.map((x) => `${x.error ? "✗" : "✓"} ${h(x.id)} · ${h(x.cuando)}${x.error ? " · " + h(x.error) : ""}`).join("<br>")}</div>`; avisar("Cola programada. Revísala en el Social Planner de GHL."); }
+    catch (e) { avisar(e.message, true); }
+    $("#colaOk").disabled = false; $("#colaOk").textContent = "Confirmar cola";
+  };
+  $("#ghlSim").onclick = async () => {
+    const ids = [...document.querySelectorAll("[data-ghlc]:checked")].map((x) => x.value);
+    if (!ids.length) return avisar("Elige al menos una red.", true);
+    const f = new Date($("#ghlFecha").value); if (!(f > Date.now() + 60000)) return avisar("Esa hora ya pasó o es en menos de un minuto: elige una hora futura.", true);
+    $("#ghlSim").disabled = true; $("#ghlSim").textContent = "Revisando QA y simulando…";
+    try {
+      await guardarAntes(); const r = await api(`/api/proyectos/${p.id}/ghl`, "POST", { cuentas: ids, fecha: f.toISOString(), simular: true });
+      $("#ghlPlan").innerHTML = r.programados.length ? `<div class="nota" style="margin-top:8px"><b>Simulación (no se publicó nada):</b><br>${r.programados.map((x) => `${h(x.plataforma)} · ${h(x.nombre || "")} · ${new Date(x.publica).toLocaleString("es-MX", { timeZone: "America/Mexico_City", dateStyle: "medium", timeStyle: "short" })}<br><i>${h(x.titulo)}</i>`).join("<hr>")}<br>Si se ve bien, dale «2 · Programar en GHL».</div>` : `<div class="nota">Ya estaba programado en esas redes: no se repite.</div>`;
+      avisar("Simulación lista. QA aprobado.");
+    } catch (e) { $("#ghlPlan").innerHTML = `<div class="nota" style="color:#f88">${h(e.message)}</div>`; avisar(e.message, true); }
+    $("#ghlSim").disabled = false; $("#ghlSim").textContent = "1 · Simular";
+  };
   $("#ghlIr").onclick = async () => {
     const ids = [...document.querySelectorAll("[data-ghlc]:checked")].map((x) => x.value);
     if (!ids.length) return avisar("Elige al menos una red.", true);
@@ -562,7 +595,7 @@ async function pintarGHL(p, leerForm, guardarAntes, forzar = false) {
     if (!confirm(`Se programará este video de ${$("#ghlMarca").selectedOptions[0].text.toUpperCase()} en: ${redes}\nEl ${f.toLocaleString("es-MX", { dateStyle: "full", timeStyle: "short" })}\ncon el texto de cada red tal como está arriba. ¿Seguir?`)) return;
     $("#ghlIr").disabled = true; $("#ghlIr").textContent = "Subiendo y programando…";
     try { await guardarAntes(); const r = await api(`/api/proyectos/${p.id}/ghl`, "POST", { cuentas: ids, fecha: f.toISOString() }); avisar(`Listo: programado en ${r.programados.map((x) => x.plataforma).join(", ")}. Revísalo en el Social Planner de GHL.`); abrir(p.id, { mantener: true }); }
-    catch (e) { avisar(e.message, true); $("#ghlIr").disabled = false; $("#ghlIr").textContent = "Programar en GHL"; }
+    catch (e) { avisar(e.message, true); $("#ghlIr").disabled = false; $("#ghlIr").textContent = "2 · Programar en GHL"; }
   };
 }
 
