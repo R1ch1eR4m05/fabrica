@@ -5,6 +5,7 @@
 // 3. Claude mira las mejores (texto + portada, donde suele ir la frase) y saca los patrones.
 // 4. Propone frases nuevas con su prompt de Flow en 9:16, su búsqueda de Pexels y el texto para publicar.
 // Sin APIFY_TOKEN usa la búsqueda web de Claude (sin métricas reales: lo dice en el resultado).
+import * as ID from "./informe-diario.js";
 import fs from "node:fs";
 import path from "node:path";
 import { CFG, RAIZ } from "./config.js";
@@ -59,8 +60,8 @@ const PLANTILLAS = {
     hashtags: ["estoicismo", "disciplina", "reflexion", "mentalidadfuerte", "crecimientopersonal"],
     busquedas: ["reflexiones estoicas", "frases de disciplina"],
     marca: "Monarca: monólogos sobrios y directos, voz grave de hombre, estatuas y paisajes en un solo tono. Verdades incómodas y qué hacer hoy.",
-    estilos: ["reflexion-estatuas"],
-    opciones: { "reflexion-estatuas": { tono: "turquesa", logo: "monarca" } },
+    estilos: ["reflexion-estatuas", "filosofia-larga"],
+    opciones: { "reflexion-estatuas": { tono: "turquesa", logo: "monarca" }, "filosofia-larga": { subtitulos: "si" } },
     cierres: ["Envíale esto a alguien que necesita oírlo hoy."],
     reglas: "Tono sobrio, firme y respetuoso; nada de odio hacia nadie, nada de promesas de dinero o salud, nada de frases atribuidas a filósofos sin verificar.",
     adaptacion: "Las tendencias suelen nacer en cuentas en inglés (stoic, discipline, self-improvement). No traduzcas literal: adapta la idea a hispanos de México y EE. UU. (familia, trabajo, deudas, padres que envejecen, amigos que se van), en español natural de México.",
@@ -89,9 +90,30 @@ function sembrar() {
       c.migraciones = [...(c.migraciones || []), "cierre-envio"];
       fs.writeFileSync(f, JSON.stringify(c, null, 2));
     }
+    // nov 2026: Monarca también hace videos largos (Filosofía larga, acuarela y tinta) y sigue cuentas nuevas del informe del 17 nov
+    const c2 = JSON.parse(fs.readFileSync(f, "utf8"));
+    if (!(c2.migraciones || []).includes("largo-y-seguimiento")) {
+      c2.estilos = [...new Set([...(c2.estilos || []), "reflexion-estatuas", "filosofia-larga"])];
+      c2.opciones = { ...(c2.opciones || {}), "filosofia-larga": { subtitulos: "si", ...(c2.opciones?.["filosofia-larga"] || {}) } };
+      c2.seguimiento = agregarSeguimiento(c2.seguimiento, SEGUIMIENTO_MONARCA);
+      c2.migraciones = [...(c2.migraciones || []), "largo-y-seguimiento"];
+      fs.writeFileSync(f, JSON.stringify(c2, null, 2));
+    }
   } catch {}
 }
 export const CIERRE_ENVIO = "Envíale esto a alguien que necesita oírlo hoy.";
+// cuentas a seguir (las que no se replican van con riesgo: true y su motivo)
+const SEGUIMIENTO_MONARCA = [
+  { cuenta: "@placerfilosofico", red: "facebook", motivo: "taoísmo en Facebook" },
+  { cuenta: "@vivir_amable", red: "instagram", motivo: "filosofía cotidiana en español" },
+  { cuenta: "@prosa_y_poesia", red: "instagram", motivo: "citación rigurosa: buena fuente para guiones" },
+  { cuenta: "@menteestoicaof", red: "instagram", motivo: "solo por volumen; publica contenido partidista con comentarios polarizados: NO replicar", riesgo: true },
+];
+export function agregarSeguimiento(lista = [], nuevas = []) {
+  const m = new Map((lista || []).map((x) => [String(x.cuenta).toLowerCase(), x]));
+  for (const x of nuevas) { const k = String(x.cuenta).toLowerCase(); m.set(k, { ...(m.get(k) || {}), ...x, desde: m.get(k)?.desde || new Date().toISOString().slice(0, 10) }); }
+  return [...m.values()];
+}
 
 export function listarNichos() {
   sembrar();
@@ -140,10 +162,12 @@ export function sugerencias(nicho, max = 30, usadas = new Set()) {
     const pubs = new Map((inv.publicaciones || []).map((q) => [q.url, q.puntaje || 0]));
     const dias = Math.max(0, (Date.now() - new Date(x.fecha || 0).getTime()) / 864e5);
     for (const p of inv.propuestas || []) {
+      if (p.descartada) continue; // riesgo de marca: nunca se sugiere, aunque tenga pico alto
       const refs = p.inspiradaEn || [], viral = refs.length > 0, mejor = Math.max(0, ...refs.map((u) => pubs.get(u) || 0));
       const hecha = usadas.has(`${x.archivo}#${p.n}`);
-      let pts = (viral ? 40 : 0) + Math.min(20, mejor * 2) + (p.llegada === "aún no llega" ? 20 : p.llegada === "poco en español" ? 10 : 0) + (dias < 1 ? 15 : -5 * Math.floor(dias)) - (hecha ? 60 : 0);
-      const por = [viral ? (mejor ? `viral comprobada (${mejor.toFixed(1)} pts)` : "viral comprobada") : "hipótesis sin video de referencia",
+      let pts = p.prioridadInforme != null ? p.prioridadInforme + (dias < 1 ? 0 : -5 * Math.floor(dias)) - (hecha ? 60 : 0)
+        : (viral ? 40 : 0) + Math.min(20, mejor * 2) + (p.llegada === "aún no llega" ? 20 : p.llegada === "poco en español" ? 10 : 0) + (dias < 1 ? 15 : -5 * Math.floor(dias)) - (hecha ? 60 : 0);
+      const por = [p.porQueSeleccion || (viral ? (mejor ? `viral comprobada (${mejor.toFixed(1)} pts)` : "viral comprobada") : "hipótesis sin video de referencia"),
         p.llegada === "aún no llega" ? "aún no llega al español" : p.llegada === "poco en español" ? "poco en español" : "",
         dias < 1 ? "de hoy" : `hace ${Math.floor(dias)} día${Math.floor(dias) === 1 ? "" : "s"}`, hecha ? "ya hiciste video con esta" : ""].filter(Boolean).join(" · ");
       out.push({ archivo: x.archivo, fecha: x.fecha, n: p.n, estilo: p.estilo || "", frase: String(p.frase || "").replace(/\*/g, ""), idea: p.idea || "", tema: p.tema || "", viral, llegada: p.llegada || "", inspiradaEn: refs.slice(0, 3), prioridad: Math.max(0, Math.min(100, Math.round(pts))), porQue: por, hecha });
@@ -361,6 +385,8 @@ export async function convertirInforme(nombre, fuente = "informe", avisar = () =
   const ruta = path.join(DIR_INFORMES, nombre);
   if (!fs.existsSync(ruta)) throw new Error("Ese informe ya se convirtió.");
   const texto = fs.readFileSync(ruta, "utf8");
+  // el informe de la mañana ya trae PROPUESTAS_JSON: es la única fuente de decisiones del día y se convierte sin IA
+  if (/PROPUESTAS[_ ]JSON/i.test(texto) && ID.propuestasJSON(texto.slice(texto.search(/PROPUESTAS[_ ]JSON/i))).propuestas.length) return convertirDirecto(nombre, fuente, texto);
   if (!hayIA()) return { pendiente: true, informe: `investigacion/informes/${nombre}` };
   // candado: que nunca lo conviertan dos procesos a la vez (el panel y la orden de consola)
   const candado = ruta + ".lock";
@@ -376,6 +402,23 @@ async function convertirConCandado(nombre, fuente, avisar, fecha, texto) {
   const r = guardarResultado({ fecha, nicho: cfg.id, config: cfg, modo: "informe", fuente, informe: nombre, errores: [] }, j, texto);
   const f = path.join(DIR_INFORMES, nombre); if (fs.existsSync(f)) fs.renameSync(f, f.replace(/\.md$/, ".hecho.md"));
   return r;
+}
+
+// prioridad 0-100 a partir de la selección del informe (core/informe-diario.js): nivel primero, luego pico relativo
+export const prioridadDe = (x) => (x.riesgo ? 0 : x.nivel === 1 ? 90 + Math.min(9, Math.round((x.pico || 0) / 10)) : x.nivel === 2 ? 75 + Math.min(9, Math.round(x.pico || 0)) : x.nivel === 3 ? 60 : x.nivel === 5 ? 55 : 40);
+function convertirDirecto(nombre, fuente, texto) {
+  const cfg = leerConfig(texto.match(/^<!-- nicho: ([\w-]+) -->/)?.[1] || (/MONARCA/i.test(texto.slice(0, 400)) ? "monarca" : nichoActivo()));
+  const inf = ID.parsearInforme(texto), ev = ID.ordenar(ID.evaluar(inf));
+  const propuestas = ev.map((x) => ({ ...x, prioridadInforme: prioridadDe(x), descartada: !!x.riesgo, porQueSeleccion: x.motivo }));
+  const r = guardarResultado({ fecha: new Date().toISOString(), nicho: cfg.id, config: cfg, modo: "informe", fuente, informe: nombre, errores: [], seleccion: "informe-diario", loQueViene: inf.loQueViene, cuentasNuevas: inf.cuentasNuevas }, { patrones: inf.patrones, propuestas }, texto);
+  // CUENTAS NUEVAS del informe → seguimiento del nicho (las de riesgo quedan marcadas, nunca para replicar)
+  try {
+    const f = path.join(DIR_NICHOS, cfg.id + ".json"), c = JSON.parse(fs.readFileSync(f, "utf8"));
+    c.seguimiento = agregarSeguimiento(c.seguimiento, inf.cuentasNuevas.map((x) => ({ cuenta: x.cuenta, motivo: x.nota.slice(0, 160), ...(/riesgo|partidist|polariz|no replicar/i.test(x.nota) ? { riesgo: true } : {}) })));
+    fs.writeFileSync(f, JSON.stringify(c, null, 2));
+  } catch {}
+  const f = path.join(DIR_INFORMES, nombre); if (fs.existsSync(f)) fs.renameSync(f, f.replace(/\.md$/, ".hecho.md"));
+  return { ...r, directo: true };
 }
 
 export async function importarInforme(texto, fuente = "informe", avisar = () => {}, nicho) {

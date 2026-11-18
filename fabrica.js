@@ -32,6 +32,7 @@
 //   node fabrica.js serie <id> ["nombre"]           asigna serie y número (sin nombre: la primera serie de su marca)
 //   node fabrica.js relacionar <id> <url>           liga un Short con su video largo (sale en la descripción)
 //   node fabrica.js cola [marca] [--confirmar]      cola automática: sin --confirmar SIMULA (no publica); con --confirmar programa el plan simulado
+//   node fabrica.js plan-dia [informe.md] [--crear] [--forzar]   informe de la mañana → 5 videos (3 Shorts, 1 largo, 1 experimento) con horario; --crear los crea
 //   node fabrica.js comparar-voces ["texto"] [--estilo id]   mismo texto con cada modelo de voz → listos/comparar-voces/
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -110,6 +111,14 @@ async function main() {
       q.relacionado = { url: libres[1] }; P.guardar(libres[0], "proyecto.json", q);
       const M = await import("./core/metadatos.js"); await M.generarMetadatos(libres[0], { conIA: false });
       console.log(`${libres[0]} enlaza a ${libres[1]} (ya está en su descripción de YouTube).`); return;
+    }
+    case "plan-dia": {
+      const PD = await import("./core/plan-dia.js");
+      if (args.includes("--crear")) { const r = await PD.crearDelPlan(opc("fecha")); for (const x of r) console.log(x.id ? `${x.ya ? "ya existía" : "creado"}: ${x.id}${x.tipo ? " · " + x.tipo : ""}` : `pendiente (${x.tipo}): ${x.pendiente}`); return; }
+      const plan = await PD.armarPlanDia({ archivo: libres[0], forzar: args.includes("--forzar"), conIA: !args.includes("--sin-ia") });
+      console.log(PD.resumen(plan));
+      console.log(`\nPlan guardado en investigacion/${path.basename(PD.fPlan())} y listos/plan-*.md. ${plan.videos.some((v) => !v.guion) ? "Faltan guiones: en Claude Code di «escribe los guiones del plan»." : "Para crear los proyectos: node fabrica.js plan-dia --crear"}`);
+      return;
     }
     case "cola": {
       const C = await import("./core/cola.js"), marca = libres[0] || "monarca";

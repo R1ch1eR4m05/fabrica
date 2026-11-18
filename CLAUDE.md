@@ -140,6 +140,12 @@ Cuando Richie diga "investiga" o "dame frases virales":
 - Los informes llegan a `investigacion/informes/*.md` (pegados en el panel, soltados en `investigacion/entrada/` o enviados por n8n a `POST /api/investigacion/importar`).
 - Los que no terminan en `.hecho.md` están pendientes. Si Richie dice "convierte los informes pendientes": léelos, escribe la investigación en el formato de arriba (`"modo": "informe"`, `"fuente"`) y renombra el informe a `.hecho.md`.
 
+## Informe de la mañana → plan del día (nov 2026)
+- El informe de Muse trae PUBLICACIONES (top 15), PATRONES DE HOY, CUENTAS NUEVAS, LO QUE VIENE y PROPUESTAS_JSON. Es la única fuente de decisiones del día. Si trae PROPUESTAS_JSON, se convierte SIN IA (`convertirDirecto` en `core/investigador.js`) y las CUENTAS NUEVAS pasan a `seguimiento` del nicho.
+- Selección en `core/informe-diario.js` (pruebas: `node --test tests/*.test.mjs`): pico RELATIVO (likes / promedio de la cuenta; rango "28-110x" = el mínimo; otras publicaciones de la misma cuenta heredan su promedio), descarta riesgo de marca (partidista, polarizado, "no replicar"…) aunque tenga pico, prioridad 1) español + pico comprobado (≥ 3x) 2) inglés que aún no llega con adaptación clara 3) LO QUE VIENE. "?" = desconocido, nunca cero; YouTube en español sin cifras = "sin cifras verificables, no asumir viralidad". Sin picos claros: lo dice y repite el mejor formato de la semana.
+- `node fabrica.js plan-dia [informe.md]`: 5 videos (3 Shorts, 1 largo de Filosofía larga derivado del Short ganador, 1 experimento de LO QUE VIENE) con horario GHL propuesto (huecos libres de la cola; el largo a 3+ días). Deja `investigacion/plan-AAAA-MM-DD.json` y `listos/plan-AAAA-MM-DD.md`. Con IA escribe los guiones; sin IA:
+  **"Escribe los guiones del plan"**: abre el plan JSON, y en cada `videos[i]` escribe `guion` (formato de ESTILOS.md del estilo de ese video, con `subir.titulos` (3), `subir.descripcion`, `subir.hashtags`, `flowPrompt` por escena) siguiendo `videos[i].pedido`: toma la IDEA, no el guion del otro creador; gancho ≤ 2 s; cierre "Envíale esto a alguien que…". Luego `node fabrica.js plan-dia --crear` crea los proyectos (idempotente) con su serie, metadatos y `horarioPropuesto`.
+
 ## "Vuelve a proponer" desde Claude Code (sin Gemini)
 Lee la investigación más reciente de `investigacion/` (o la que diga Richie) y su informe en `investigacion/informes/*.hecho.md` si lo hay. Escribe una investigación NUEVA en el mismo formato y del mismo `nicho`, con `estilo` (solo de los permitidos en ese nicho), `porQueEstilo`, `idea` y los `cierres` de su nicho (tal cual, o vacío). Los estilos válidos salen de `node fabrica.js estilos` y de `estilos/motion/catalogo.json` (como `motion:<id>`).
 
@@ -154,7 +160,7 @@ Lee la investigación más reciente de `investigacion/` (o la que diga Richie) y
 
 ## Investigador y Flow
 - Un nicho por marca: `investigacion/nichos/<id>.json` (levania, monarca…), editables en el panel (selector "Nicho"). Cada uno con sus cuentas, hashtags, público, adaptación, reglas, cierres, canal, estilos permitidos y opciones por estilo. Cada investigación en `investigacion/<fecha>.json` con `"nicho"` (las viejas sin él son de Levania).
-- Monarca (página de reflexión estoica) solo usa `reflexion-estatuas`; Levania, los demás.
+- Monarca (página de reflexión estoica) usa `reflexion-estatuas` (Shorts) y `filosofia-larga` (videos largos); Levania, los demás. Monarca sigue cuentas en `seguimiento` de su nicho (las de riesgo van marcadas: nunca se replican).
 - Si Richie pide investigar desde Claude Code sin API: busca en la web, sigue el mismo formato de propuestas y guarda el archivo ahí; el panel lo muestra.
 - Si flow-mcp está conectado como MCP, puedes generar el clip de una propuesta con su `flowPrompt` (9:16) y copiarlo como `proyectos/<id>/fondo-propio.mp4`; luego en el panel "Buscar otro fondo" o rehacer la voz lo vuelve a preparar.
 - Frases de otras cuentas: solo como inspiración. Nunca copiarlas.

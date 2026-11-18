@@ -100,3 +100,25 @@ export async function confirmarCola(marca = "monarca", avisar = () => {}) {
   return hechos;
 }
 export const leerPlan = (marca = "monarca") => { try { return JSON.parse(fs.readFileSync(fPlan(marca), "utf8")); } catch { return null; } };
+
+// huecos libres del calendario (sin consultar GHL): para proponer horario a un plan antes de que exista el video.
+// ocupados = lo ya programado en el registro (cualquier cuenta) por tipo y día.
+export function huecosLibres({ short = 0, largo = 0 } = {}, { dias = 21, desde = Date.now() + 30 * 60000 } = {}) {
+  const cal = calendario(), reg = GHL.leerRegistro(), ocupado = { short: new Set(), largo: new Set() }, semanasLargo = new Map();
+  for (const r of reg.filter((x) => x.estado === "programado")) {
+    const p = leer(r.id, "proyecto.json"), t = p ? tipoDe(p) : "short", d = diaCDMX(new Date(r.publica));
+    ocupado[t].add(d); if (t === "largo") semanasLargo.set(semana(d), (semanasLargo.get(semana(d)) || 0) + 1);
+  }
+  const out = { short: [], largo: [] };
+  for (const tipo of ["short", "largo"]) {
+    const n = tipo === "short" ? short : largo;
+    for (let k = 0; k <= dias && out[tipo].length < n; k++) {
+      const dia = diaCDMX(new Date(Date.now() + k * 864e5));
+      if (!cal[tipo].dias.includes(diaSemana(dia)) || ocupado[tipo].has(dia)) continue;
+      const f = enHora(dia, cal[tipo].hora); if (f.getTime() <= desde) continue;
+      if (tipo === "largo") { if ((semanasLargo.get(semana(dia)) || 0) >= cal.largo.porSemana) continue; semanasLargo.set(semana(dia), (semanasLargo.get(semana(dia)) || 0) + 1); }
+      out[tipo].push({ fecha: f.toISOString(), cuando: GHL.enCDMX(f) });
+    }
+  }
+  return out;
+}
