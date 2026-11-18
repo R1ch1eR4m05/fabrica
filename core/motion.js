@@ -118,7 +118,8 @@ export async function terminar(id) {
   const deBib = !propia && musicaDeBiblioteca("motion", dir);
   const musica = propia || (deBib && path.relative(dir, deBib));
   const voz = p.motionVoz && fs.existsSync(path.join(dir, "voz.mp3")) ? path.join(dir, "voz.mp3") : null;
-  if (musica || voz) {
+  // huashu-motion y otros que exportan con su propia música (proyecto.audioPropio): se respeta tal cual
+  if (!p.audioPropio && (musica || voz)) {
     const D = await duracion(limpio), fade = `afade=t=out:st=${Math.max(0, D - 1.5).toFixed(2)}:d=1.5`;
     const ent = ["-i", limpio], fil = [];
     let k = 1;

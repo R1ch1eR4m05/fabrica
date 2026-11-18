@@ -54,6 +54,14 @@
       }
     },
     {
+      "clave": "efectos",
+      "nombre": "Efectos de sonido",
+      "valores": {
+        "si": "Golpe en el gancho, whoosh en los cortes y swell al cierre (earshot)",
+        "no": "Sin efectos, solo voz y música"
+      }
+    },
+    {
       "clave": "logo",
       "nombre": "Sello",
       "valores": {
@@ -75,7 +83,14 @@
     "ambiente": "oscuro",
     "volumenAmbiente": 0.12,
     "golpesEn": [],
-    "efectosPorTipo": {}
+    "efectosPorTipo": {},
+    "earshot": {
+      "gancho": "impact/deep",
+      "cambios": ["whoosh_big/deep", "whoosh_big/gust"],
+      "cierre": "reverse_swell/dark",
+      "volumen": 0.45,
+      "volumenCambio": 0.25
+    }
   },
   "musicaIA": {
     "prompt": "Dark, emotional cinematic underscore for a stoic motivational monologue: slow felt piano, low strings, soft swells, deep and reflective, sits under a deep male voice.",

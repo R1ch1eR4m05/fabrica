@@ -130,6 +130,8 @@ export async function analizarEstilo(id, { pedido = "", avisar = () => {} } = {}
   avisar({ progreso: 0.6, msg: "Claude está mirando el video…" });
   const contenido = [{ type: "text", text: `Mediciones del video de referencia:\n${JSON.stringify(medidas, null, 1)}\n\nPedido de Richie (lo que quiere cambiar o lograr): ${pedido || "ninguno, clona el estilo tal cual para usarlo con otros guiones"}\n\nCuadros clave en orden:` }];
   for (const c of medidas.cuadros) contenido.push({ type: "text", text: `Cuadro ${c.n} (t=${c.t}s)` }, { type: "image", source: { type: "base64", media_type: "image/jpeg", data: fs.readFileSync(path.join(dir, c.archivo)).toString("base64") } });
+  // el desarme de rea-video (toma por toma) ayuda a que el prompt maestro reproduzca cortes, cámara y cómo se hizo
+  if (medidas.rea?.videoMd) { try { contenido.push({ type: "text", text: `Desarme toma por toma de rea-video (VIDEO.md, en inglés):\n${fs.readFileSync(path.join(dir, medidas.rea.videoMd), "utf8").slice(0, 15000)}` }); } catch {} }
   contenido.push({ type: "text", text: "Responde el JSON." });
   const j = jsonDe((await claude(SISTEMA, contenido, { maxTokens: 8000 })).texto);
   return guardarEstilo(id, j, pedido);
@@ -149,6 +151,24 @@ export function guardarEstilo(id, j, pedido = "") {
     `- Evitar: ${(j.evitar || []).join("; ")}`, "", "## Cómo hacerlo en la fábrica", "", j.estiloFabrica || ""].join("\n");
   fs.writeFileSync(path.join(dir, "prompt-maestro.md"), md);
   return salida;
+}
+
+// ---------------- rea-video (JuneYaooo, Apache-2.0; ver core/extras.js) ----------------
+// Sin VLM por defecto (gratis, local). Si en el .env están REA_VLM_BASE_URL / REA_VLM_API_KEY / REA_VLM_MODEL, mira el video con ese modelo.
+async function desarmarConRea(video, salida, avisar) {
+  const { hayExtra, PY } = await import("./extras.js");
+  if (!(await hayExtra("rea-video"))) return null;
+  avisar({ progreso: 0.45, msg: "rea-video está desarmando el video toma por toma (1-3 min)…" });
+  const args = ["-m", "rea_video", "decompose", video, "-o", salida, "--lang", "en", "--no-ocr", "--no-stems", ...(process.env.REA_VLM_BASE_URL ? ["--vlm"] : ["--no-vlm"])];
+  const r = await new Promise((ok) => {
+    const p = spawn(PY(), args, { env: { ...process.env, PYTHONIOENCODING: "utf-8" } });
+    let o = ""; p.stdout.on("data", (d) => (o += d)); p.stderr.on("data", (d) => (o += d));
+    const t = setTimeout(() => { try { p.kill(); } catch {} }, 15 * 60e3);
+    p.on("error", (e) => { clearTimeout(t); ok({ c: -1, o: e.message }); }); p.on("close", (c) => { clearTimeout(t); ok({ c, o }); });
+  });
+  const md = path.join(salida, "VIDEO.md");
+  if (r.c !== 0 || !fs.existsSync(md)) { console.warn("  · rea-video:", r.o.trim().split("\n").slice(-2).join(" ")); return null; }
+  return { videoMd: path.relative(path.dirname(salida), md).replace(/\\/g, "/"), reporte: fs.existsSync(path.join(salida, "report.html")) ? "rea/report.html" : null };
 }
 
 // ---------------- todo junto ----------------
@@ -171,6 +191,9 @@ export async function sacarEstilo(origen, { nombre, pedido = "", avisar = () => 
     escenas: esc.length, duracionMediaEscena: +(base.duracion / esc.length).toFixed(2), cortesPorSegundo: +((esc.length - 1) / (base.duracion || 1)).toFixed(2),
     brillo: bm.brillo, energiaMovimiento: bm.movimiento, paleta: paleta(rgb), cortes: esc, cuadros,
   };
+  // rea-video (si está instalado): desarme toma por toma (filmado / IA / código, cámara, cómo rehacerlo) → rea/VIDEO.md
+  const rea = await desarmarConRea(video, path.join(dir, "rea"), avisar);
+  if (rea) medidas.rea = rea;
   fs.writeFileSync(path.join(dir, "medidas.json"), JSON.stringify(medidas, null, 2));
 
   if (!CFG.anthropicKey) {

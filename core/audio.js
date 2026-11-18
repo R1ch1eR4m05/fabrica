@@ -67,7 +67,7 @@ export function musicaDeBiblioteca(estiloId, dirProyecto, ambiente) {
   return null;
 }
 
-export async function mezclar({ estilo, guion, tiempos, voz, salida, tmp, dirProyecto, sugerida }) {
+export async function mezclar({ estilo, guion, tiempos, voz, salida, tmp, dirProyecto, sugerida, opciones = {} }) {
   fs.mkdirSync(tmp, { recursive: true });
   const s = estilo.sonido || {};
   const D = tiempos.duracion;
@@ -113,6 +113,19 @@ export async function mezclar({ estilo, guion, tiempos, voz, salida, tmp, dirPro
       filtros.push(`[${n}]volume=${s.volumenEfectos ?? 0.7},adelay=${ms}|${ms}[v${n}]`);
       etiquetas.push(`[v${n}]`); n++;
     }
+  }
+
+  // efectos del banco de earshot (si está instalado): golpe en el gancho, whoosh en los cortes, swell al cierre
+  if (s.earshot && opciones.efectos !== "no") {
+    try {
+      const { planEfectos } = await import("./sfx.js");
+      for (const fx of await planEfectos(s.earshot, tiempos)) {
+        entradas.push("-i", fx.archivo);
+        const ms = Math.max(0, Math.round(fx.inicio * 1000));
+        filtros.push(`[${n}]aresample=${SR},volume=${fx.volumen},adelay=${ms}|${ms}[v${n}]`);
+        etiquetas.push(`[v${n}]`); n++;
+      }
+    } catch (e) { console.warn("  · Efectos de earshot:", e.message); }
   }
 
   filtros.push(`${etiquetas.join("")}amix=inputs=${etiquetas.length}:normalize=0:duration=first,alimiter=limit=0.95[out]`);
