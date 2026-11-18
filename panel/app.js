@@ -162,7 +162,7 @@ function nuevo(estiloId, motionId = "") {
     $("#nMot").onchange = () => (motionElegido = $("#nMot").value);
   };
   // marca → sugerencias de las investigaciones de esa marca (lo viral primero); "Otra idea" → las ideas del estilo
-  let marca = null, sug = { sugerencias: [], config: null }, elegida = null;
+  let marca = null, sug = { sugerencias: [], config: null }, elegida = null, estiloAMano = false; // estiloAMano: Richie escogió el estilo; elegir una idea ya no lo cambia
   const nomEstilo = (id) => (id.startsWith("motion:") ? "Motion" : estiloDe(id)?.nombre || id);
   const ponerMarca = () => { // la marca elige sello/logo y canal si el estilo los tiene
     for (const sel of document.querySelectorAll("[data-op]")) if (/^(marca|logo)$/.test(sel.dataset.op) && marca) {
@@ -183,6 +183,7 @@ function nuevo(estiloId, motionId = "") {
       const x = ls[+el.dataset.sug]; elegida = x;
       $("#nIdea").value = [x.frase, x.idea].filter(Boolean).join("\n");
       const id = x.estilo.startsWith("motion:") ? "motion" : x.estilo;
+      if (estiloAMano && $("#nEstilo").value !== id) { avisar(`Se hará en ${nomEstilo($("#nEstilo").value)}, el estilo que escogiste (el investigador la propuso para ${nomEstilo(x.estilo)}).`); return; }
       if (id && $("#nEstilo").querySelector(`option[value="${id}"]`) && $("#nEstilo").value !== id) { $("#nEstilo").value = id; if (id === "motion") motionElegido = x.estilo.slice(7); ideas(); $("#nIdea").value = [x.frase, x.idea].filter(Boolean).join("\n"); elegida = x; }
     };
   };
@@ -195,7 +196,7 @@ function nuevo(estiloId, motionId = "") {
   };
   const seg = (sel, k) => { for (const b of document.querySelectorAll(`${sel} button`)) { b.classList.toggle("on", b.dataset.v === st[k]); b.onclick = () => { st[k] = b.dataset.v; seg(sel, k); }; } };
   seg("#nDur", "duracion"); ideas(); marcas();
-  $("#nEstilo").onchange = () => { elegida = null; ideas(); };
+  $("#nEstilo").onchange = () => { estiloAMano = true; ideas(); }; // la idea elegida se conserva (con su referencia viral) aunque cambies de estilo
   $("#nCancelar").onclick = inicio;
   $("#nCrear").onclick = async () => {
     const idea = $("#nIdea").value.trim();
@@ -205,10 +206,10 @@ function nuevo(estiloId, motionId = "") {
     const opciones = {}; for (const sel of document.querySelectorAll("[data-op]")) opciones[sel.dataset.op] = sel.value;
     const conVoz = !$("#nVoz") || $("#nVoz button.on").dataset.v === "si";
     // idea elegida de la investigación y sin cambiar de estilo: se crea desde la propuesta (trae gancho, ángulo y la referencia viral)
-    const estSel = $("#nEstilo").value, mismaProp = elegida && (elegida.estilo === estSel || (estSel === "motion" && elegida.estilo === `motion:${motionElegido}`));
+    const estSel = $("#nEstilo").value, mismaProp = elegida && (elegida.estilo === estSel || (estSel === "motion" && elegida.estilo === `motion:${motionElegido}`) || (estiloAMano && estSel !== "motion" && !elegida.estilo.startsWith("motion:")));
     if (mismaProp && $("#nIdea").value.trim() === [elegida.frase, elegida.idea].filter(Boolean).join("\n")) {
       try {
-        const q = await api(`/api/investigacion/${encodeURIComponent(elegida.archivo)}/crear`, "POST", { n: elegida.n, formato: st.formato, canal: $("#nCanal").value.trim(), opciones: esMotion ? undefined : opciones, conVoz });
+        const q = await api(`/api/investigacion/${encodeURIComponent(elegida.archivo)}/crear`, "POST", { n: elegida.n, formato: st.formato, duracion: st.duracion, segundos: Number($("#nSeg")?.value) || null, estilo: estSel, canal: $("#nCanal").value.trim(), opciones: esMotion ? undefined : opciones, conVoz });
         if (q.guionPendiente) avisar(`Creado sin guion (${q.aviso}). En Claude Code di: escribe el guion de ${q.id}`, true);
         S.proyectos = await api("/api/proyectos"); abrir(q.id); return;
       } catch (e) { return avisar(e.message, true); }

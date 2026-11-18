@@ -28,16 +28,22 @@ export async function crearDesdePropuesta(archivo, n, b = {}) {
         P.marcar(p.id, "guion", "listo");
         return P.detalle(p.id);
       }
-      const pedido = prop.estilo ? leerEstilo(prop.estilo) : null;
+      // si Richie eligió otro estilo en "Nuevo video" (p. ej. Filosofía larga para una idea que el investigador propuso en Estatuas), manda el suyo
+      const elegidoAMano = b.estilo && !String(b.estilo).startsWith("motion") ? leerEstilo(b.estilo) : null;
+      const pedido = elegidoAMano?.listo ? elegidoAMano : prop.estilo ? leerEstilo(prop.estilo) : null;
       const est = pedido?.listo && pedido.tipo !== "motion" ? pedido : leerEstilo("frases-desenfocado");
       const esFrases = est.id === "frases-desenfocado";
       const opciones = b.opciones || { ...(esFrases ? { tema: "noche", letra: "serif" } : Object.fromEntries((est.opciones || []).map((o) => [o.clave, Object.keys(o.valores)[0]]))), ...(cfg.opciones?.[est.id] || {}) };
-      const datos = { estilo: est.id, titulo: prop.tituloPost || prop.tema, idea: prop.idea || prop.frase, formato: b.formato || "9:16", duracion: "corto", conVoz: est.vozOpcional ? (b.conVoz ?? false) : true, opciones };
+      const datos = { estilo: est.id, titulo: prop.tituloPost || prop.tema, idea: prop.idea || prop.frase, formato: b.formato || "9:16", duracion: b.duracion === "largo" ? "largo" : "corto", segundos: Number(b.segundos) > 0 ? Number(b.segundos) : null, conVoz: est.vozOpcional ? (b.conVoz ?? false) : true, opciones };
       let guion;
       if (esFrases) guion = INV.guionDesdePropuesta(prop, cfg);
       else {
-        const idea = `${prop.idea || prop.frase}\nÁngulo: ${prop.tema || ""}. Gancho sugerido: "${prop.frase}".${(prop.beats || []).length ? ` Momentos: ${prop.beats.join(" | ")}.` : ""}${(prop.inspiradaEn || []).length ? ` Inspirado en (viral): ${prop.inspiradaEn.join(" ")}.` : ""}${prop.adaptacion ? ` Adaptación al público: ${prop.adaptacion}.` : ""}\nMarca: ${cfg.nombre}. Audiencia: ${cfg.descripcion} ${cfg.marca}\n${INV.cierreValido(prop.cierre, cfg) ? `Cierre (úsalo tal cual): ${INV.cierreValido(prop.cierre, cfg)}` : (cfg.cierres || []).length ? `Cierre: usa uno de estos tal cual: ${cfg.cierres.join(" / ")}` : "Sin cierre de 'comenta una palabra': no inventes ninguno."}`;
-        try { if (b.sinIA) throw new Error("Creado sin IA: el guion lo escribe Claude Code."); guion = await escribirGuion({ ...datos, idea }); }
+        const idea = `${prop.idea || prop.frase}\nÁngulo: ${prop.tema || ""}. Gancho sugerido: "${prop.frase}".${(prop.beats || []).length ? ` Momentos: ${prop.beats.join(" | ")}.` : ""}${(prop.inspiradaEn || []).length ? ` Inspirado en (viral): ${prop.inspiradaEn.join(" ")}.` : ""}${prop.adaptacion ? ` Adaptación al público: ${prop.adaptacion}.` : ""}\nMarca: ${cfg.nombre}. Audiencia: ${cfg.descripcion} ${(cfg.estilos || []).length && !(cfg.estilos || []).includes(est.id) ? "" : cfg.marca}\n${INV.cierreValido(prop.cierre, cfg) ? `Cierre (úsalo tal cual): ${INV.cierreValido(prop.cierre, cfg)}` : (cfg.cierres || []).length ? `Cierre: usa uno de estos tal cual: ${cfg.cierres.join(" / ")}` : "Sin cierre de 'comenta una palabra': no inventes ninguno."}`;
+        try {
+          if (b.sinIA) throw new Error("Creado sin IA: el guion lo escribe Claude Code."); guion = await escribirGuion({ ...datos, idea });
+          // cada estilo conserva su look: si la IA copió el de las estatuas de Monarca en otro estilo (Filosofía larga = acuarela y tinta), se corrige
+          if (est.id !== "reflexion-estatuas" && /marble|statue/i.test(guion?.estiloVisual || "")) guion.estiloVisual = est.estiloVisual || "";
+        }
         catch (e) { // sin IA (cuota, saturación): el proyecto se crea igual y el guion lo escribe Claude Code
           const p = P.crearProyecto({ ...datos, idea });
           p.flowPrompt = prop.flowPrompt; p.fondoBuscar = prop.pexels; p.desdeInvestigacion = { archivo, n: prop.n }; p.tema = prop.tema || ""; p.guionPendiente = e.message;
