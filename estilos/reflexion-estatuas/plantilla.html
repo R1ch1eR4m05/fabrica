@@ -233,15 +233,22 @@ function texto(c, M, t, te, prof) {
   if (prof) {
     const llave = `${prof.i}|${pag[0].t0}`;
     if (!lugares.has(llave)) {
-      const anchoMax = Math.max(...lineas.map((x) => x.ancho)), alto = lineas.length * al, tope = gancho ? 0.22 : 0.32, t0 = Math.max(te.ini, pag[0].t0);
+      // nov 2026: tapaba de más (el gancho no se leía). Ahora se mide renglón por renglón (un renglón tapado a la mitad ya no se lee),
+      // al empezar y al terminar el bloque (la cámara sigue acercándose) y se permite poco: gancho ≤ 6 %, resto ≤ 12 %, ideal ~7 %.
+      const alto = lineas.length * al, tope = gancho ? 0.06 : 0.12, ideal = gancho ? 0.03 : 0.07;
+      const t0 = Math.max(te.ini, pag[0].t0), t1 = Math.min(te.fin, pag[pag.length - 1].t1 + 0.9);
       let mejor = null;
-      for (const f of [base, base - 0.06, base + 0.06, base - 0.11, base + 0.12, base + 0.2]) {
-        const y = H * f, cov = cobertura(M, prof, t0, { x: (W - anchoMax) / 2, y: y - alto / 2, w: anchoMax, h: alto });
-        if (y - alto / 2 < H * 0.05 || y + alto / 2 > H * 0.8) continue;
-        const pts = cov > tope ? -1 : cov < 0.04 ? 0.1 - Math.abs(f - base) : 1 - Math.abs(cov - 0.16) * 2 - Math.abs(f - base);
+      for (const f of [base, base - 0.06, base + 0.06, base - 0.11, base + 0.12, base - 0.15, base + 0.2]) {
+        const y = H * f; if (y - alto / 2 < H * 0.05 || y + alto / 2 > H * 0.8) continue;
+        let cov = 0;
+        for (const tt of [t0, t1]) lineas.forEach((ln, k) => {
+          const ly = y - alto / 2 + k * al + al * 0.12;
+          cov = Math.max(cov, cobertura(M, prof, tt, { x: (W - ln.ancho) / 2, y: ly, w: ln.ancho, h: al * 0.76 }));
+        });
+        const pts = cov > tope ? -1 : cov < 0.02 ? 0.1 - Math.abs(f - base) : 1 - Math.abs(cov - ideal) * 4 - Math.abs(f - base);
         if (!mejor || pts > mejor.pts) mejor = { f, cov, pts };
       }
-      lugares.set(llave, mejor && mejor.pts >= 0 ? { f: mejor.f, detras: mejor.cov >= 0.04 } : { f: base, detras: false });
+      lugares.set(llave, mejor && mejor.pts >= 0 ? { f: mejor.f, detras: mejor.cov >= 0.02 } : { f: base, detras: false });
     }
     const L = lugares.get(llave); cy = H * L.f; detras = L.detras;
     if (!detras) prof = null; // la estatua taparía demasiado: este bloque va encima
