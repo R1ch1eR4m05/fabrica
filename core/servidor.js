@@ -616,6 +616,10 @@ async function api(req, res, partes) {
     encolar(id, "render", (av) => CAP.cortarCapitulos(id, av, { reels: b?.reels !== false }));
     return json(res, 200, { ok: true });
   }
+  if (accion === "horario" && m === "GET") { // hora sugerida para programarlo (siguiente hueco libre del calendario)
+    const C = await import("./cola.js");
+    return json(res, 200, C.siguienteHueco(id) || {});
+  }
   if (accion === "ghl" && m === "POST") { // programar en el Social Planner de GHL
     const b = await cuerpo(req);
     try { return json(res, 200, { ok: true, simulado: !!b.simular, programados: await GHL.programar(id, { cuentasIds: b.cuentas || [], fecha: b.fecha, simular: !!b.simular }) }); }

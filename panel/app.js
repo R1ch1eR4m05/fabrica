@@ -569,7 +569,9 @@ async function pintarGHL(p, leerForm, guardarAntes, forzar = false) {
   const asignadas = JSON.parse(localStorage.getItem("ghlMarcaDe") || "{}");
   const marcaDe = (a) => asignadas[a.id] || (/monarca/i.test(a.nombre) ? "monarca" : "levania");
   const porDefecto = p.estilo === "reflexion-estatuas" || /monarca/i.test(`${p.canal || ""} ${p.nicho || ""}`) ? "monarca" : "levania";
-  const manana = new Date(Date.now() + 864e5); manana.setHours(19, 0, 0, 0);
+  // hora sugerida: el siguiente hueco libre (Shorts 13:00 y 19:00, día tras día; el largo, su hueco semanal). Se puede cambiar.
+  let manana = new Date(Date.now() + 864e5); manana.setHours(19, 0, 0, 0);
+  try { const hz = await api(`/api/proyectos/${encodeURIComponent(p.id)}/horario`); if (hz?.fecha) manana = new Date(hz.fecha); } catch {}
   const local = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 16);
   caja.innerHTML = `<b>Programar en GoHighLevel</b> <span class="estado">un post por red, cada uno con su texto de arriba</span> <button class="mini" id="ghlRecargar" title="Vuelve a pedir a GHL las cuentas conectadas (si acabas de conectar una)">Actualizar cuentas</button>${hechos}
     <div class="fila" style="margin:8px 0;align-items:center"><label class="estado">Marca</label><select id="ghlMarca" style="width:auto">${Object.entries(MARCAS).map(([k, n]) => `<option value="${k}" ${k === porDefecto ? "selected" : ""}>${n}</option>`).join("")}</select>

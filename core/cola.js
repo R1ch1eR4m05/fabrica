@@ -129,8 +129,10 @@ export const leerPlan = (marca = "monarca") => { try { return JSON.parse(fs.read
 
 // huecos libres del calendario (sin consultar GHL): para proponer horario a un plan antes de que exista el video.
 // ocupados = lo ya programado en el registro (cualquier cuenta) por tipo y día.
-export function huecosLibres({ short = 0, largo = 0 } = {}, { dias = 21, desde = Date.now() + 30 * 60000 } = {}) {
-  const cal = calendario(), reg = GHL.leerRegistro().filter((x) => x.estado === "programado");
+export function huecosLibres({ short = 0, largo = 0 } = {}, { dias = 21, desde = Date.now() + 30 * 60000, marca = null } = {}) {
+  // con marca: solo cuenta lo programado de esa marca (Levania y Monarca no se quitan horarios entre sí)
+  const deMarca = (x) => { if (!marca) return true; const q = leer(x.id, "proyecto.json"); return !q || marcaDe(q) === marca; };
+  const cal = calendario(), reg = GHL.leerRegistro().filter((x) => x.estado === "programado" && deMarca(x));
   const { oc, semanasLargo } = ocupacion([...new Map(reg.map((x) => [`${x.id}|${x.publica}`, x])).values()]);
   const out = { short: [], largo: [] };
   for (const tipo of ["short", "largo"]) {
@@ -142,4 +144,13 @@ export function huecosLibres({ short = 0, largo = 0 } = {}, { dias = 21, desde =
     }
   }
   return out;
+}
+
+// hora sugerida para programar UN video a mano (panel): el siguiente hueco libre del calendario para su tipo,
+// contando lo que ya está programado en GHL. Shorts: 13:00 y 19:00 (si el de las 13:00 de hoy ya está, sigue el de
+// las 19:00; luego el de las 13:00 del siguiente día hábil). Nada se programa solo: esto solo llena el campo «Cuándo».
+export function siguienteHueco(id) {
+  const p = leer(id, "proyecto.json"); if (!p) return null;
+  const tipo = tipoDe(p), h = huecosLibres({ [tipo]: 1 }, { dias: 45, marca: marcaDe(p) })[tipo][0];
+  return h ? { tipo, ...h } : null;
 }
