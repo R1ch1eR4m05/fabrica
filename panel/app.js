@@ -1045,7 +1045,7 @@ async function guardarGuion() {
 function tarjetaPlan(plan) {
   const TIPO = { short: "Short", largo: "Largo 16:9", experimento: "Experimento" };
   if (!plan.videos?.length) return `<div class="card" style="margin-bottom:16px"><b>Plan del día</b><p class="estado">Todavía no hay plan. Se arma solo cuando llega el informe de la mañana de Muse (con PROPUESTAS_JSON).</p><div class="fila"><button class="btn peq" id="pdArmar">Armar con el último informe</button></div></div>`;
-  const conGuion = plan.videos.filter((v) => v.guion?.escenas?.length && !v.creado).length;
+  const conGuion = plan.videos.filter((v) => v.guion?.escenas?.length).length;
   const filas = plan.videos.map((v, i) => {
     const s = v.guion?.subir || {}, titulo = s.titulos?.[0] || v.base?.frase || v.base?.idea || "";
     const estado = v.creado ? `<a href="#${h(v.creado)}" data-abrir="${h(v.creado)}" style="color:var(--a)">creado ✓</a>` : v.guion?.escenas?.length ? "guion listo" : `<span style="color:var(--rojo,#e66)" title="${h(v.errorGuion || "")}">sin guion</span>`;
@@ -1057,7 +1057,7 @@ function tarjetaPlan(plan) {
     <table style="width:100%;border-collapse:collapse;margin-top:6px;font-size:14px"><tbody>${filas}</tbody></table>
     ${plan.videos.some((v) => !v.guion) ? `<p class="estado">${plan.videos.find((v) => v.errorGuion) ? `La IA no pudo escribir los guiones (${h(plan.videos.find((v) => v.errorGuion).errorGuion)}). ` : ""}Para los que no tienen guion, dile a Claude Code: <code>escribe los guiones del plan</code> y recarga.</p>` : ""}
     <p class="estado">Estos 5 se crean con el botón de aquí. «Crear y hacer todas», más abajo, hace las propuestas de la investigación que tengas elegida, no las del plan.</p>
-    <div class="fila" style="margin-top:8px">${conGuion ? `<button class="btn primario peq" id="pdCrear">Crear y hacer los ${conGuion} del plan con guion</button>` : ""}<button class="btn peq" id="pdArmar" title="Vuelve a leer el último informe (no pisa los guiones ya escritos)">Rehacer con el último informe</button></div></div>`;
+    <div class="fila" style="margin-top:8px">${conGuion ? `<button class="btn primario peq" id="pdCrear" title="Crea los que falten y manda a la fila los que aún no se han hecho (los terminados no se repiten)">Crear y hacer los ${conGuion} del plan</button>` : ""}<button class="btn peq" id="pdArmar" title="Vuelve a leer el último informe (no pisa los guiones ya escritos)">Rehacer con el último informe</button></div></div>`;
 }
 
 // ---------- investigador ----------
@@ -1149,7 +1149,7 @@ async function investigador(archivo) {
   $("#iCorrer").onclick = async () => { if (S.info.apify && !confirm("Esto trae publicaciones con Apify y GASTA de tu saldo (tope de unos $1.5 USD por investigación; tu plan gratis da $5 al mes). ¿Seguir?")) return; await $("#iGuardar").onclick(); api("/api/investigacion", "POST", { nicho: c.id }).catch((e) => avisar(e.message, true)); };
   for (const a of document.querySelectorAll("[data-abrir]")) a.onclick = (e) => { e.preventDefault(); abrir(a.dataset.abrir); };
   if ($("#pdArmar")) $("#pdArmar").onclick = async () => { avisar("Armando el plan con el último informe…"); try { await api("/api/plan-dia", "POST", { accion: "armar", nicho: "monarca" }); avisar("Plan del día listo."); investigador(archivo); } catch (e) { avisar(e.message, true); } };
-  if ($("#pdCrear")) $("#pdCrear").onclick = async () => { try { const r = await api("/api/plan-dia", "POST", { accion: "crear", fecha: plan.dia }); const nuevos = r.hechos.filter((x) => x.id && !x.ya), f = r.hechos.filter((x) => x.pendiente).length; let ok = 0; for (const x of nuevos) { try { if (await hacerTodo(x.id)) ok++; } catch {} } avisar(`${nuevos.length} videos del plan creados y ${ok} mandados a hacer (voz + imágenes + video)${f ? `; ${f} esperan guion` : ""}.`); S.proyectos = await api("/api/proyectos"); pintarLista(); investigador(archivo); } catch (e) { avisar(e.message, true); } };
+  if ($("#pdCrear")) $("#pdCrear").onclick = async () => { try { const r = await api("/api/plan-dia", "POST", { accion: "crear", fecha: plan.dia, musica: conMusica(), flow: conFlow() }); const nuevos = r.hechos.filter((x) => x.id && !x.ya).length, enFila = r.hechos.filter((x) => x.enFila === true).length, malos = r.hechos.filter((x) => x.error), f = r.hechos.filter((x) => x.pendiente).length; avisar(`${nuevos} videos del plan creados; ${enFila} en la fila de trabajo (imágenes de Flow → voz → video, uno tras otro)${f ? `; ${f} esperan guion` : ""}${malos.length ? `. No entraron: ${malos.map((x) => `${x.id} (${x.error})`).join(" | ")}` : ""}.`, !!malos.length); S.proyectos = await api("/api/proyectos"); pintarLista(); investigador(archivo); } catch (e) { avisar(e.message, true); } };
   $("#iPrompt").onclick = async () => navigator.clipboard.writeText(await api(`/api/investigacion/prompt?${nq}`)).then(() => avisar("Prompt copiado. Pégalo en Gemini con Deep Research."));
   $("#iImportar").onclick = async () => {
     const texto = $("#iInforme").value.trim(); if (texto.length < 80) return avisar("Pega el informe completo.", true);

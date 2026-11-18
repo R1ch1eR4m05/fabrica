@@ -53,6 +53,37 @@ function emitir(ev) {
   for (const r of oyentes) r.write(linea);
 }
 
+// voz + imágenes + video de un proyecto, todo en fila (lo usan el botón «todo», los lotes y el plan del día)
+async function hacerTodoProyecto(id, b = {}) {
+  const p = P.leer(id, "proyecto.json");
+  if (!p) throw new Error(`No existe el proyecto ${id}.`);
+    const est = leerEstilo(p.estilo);
+  if (est?.tipo === "motion") { // se construye en Claude Code; si ya está construido, se renderiza
+    if (!MOT.estadoMotion(id).construido) {
+      // primero la voz (si hay narración y llave), para que Claude Code anime al ritmo de la voz
+      const vozEnCamino = !!(p.motion?.narracion?.trim() && !p.motionVoz && CFG.elevenKey);
+      if (vozEnCamino) encolar(id, "voz", (av) => MOT.vozMotion(id, av));
+      return ({ ok: true, motionPendiente: true, vozEnCamino });
+    }
+    encolar(id, "render", (av) => MOT.renderMotion(id, av)); return ({ ok: true });
+  }
+  if (est?.anuncios) { hacerAnuncio(id, { maxImagenes: Number(b?.maxImagenes) || 8, musica: !!b?.musica }); return ({ ok: true }); }
+  // fondo con Google Flow antes de la voz (solo si lo pidieron, hay prompt y Flow está abierto; si falla, sigue con Pexels)
+  const prompt = (p.flowPrompt || P.leer(id, "guion.json")?.fondo?.flowPrompt || "").trim();
+  // Reflexión · Estatuas (clipsFlow "imagen"): las imágenes siempre salen de Flow si la skill está lista
+  if ((b?.flow || est?.clipsFlow === "imagen") && est?.preparar === "historia" && (await flowDisponible()))
+    encolar(id, "fondo", (av) => HIS.clipsDeFlow(id, (a) => av({ ...a, paso: "fondo" }), { maxCreditos: Number(b?.flow?.maxCreditos) || 25 })
+      .catch((e) => { console.error("Flow", e.message); emitir({ id, paso: "fondo", estado: "error", msg: `Flow falló (${e.message}); sigo con Pexels o dibujos.` }); }));
+  else if (b?.flow && est?.fondo && prompt && (await flowDisponible()))
+    encolar(id, "fondo", (av) => clipDeFlow(id, prompt, (a) => av({ ...a, paso: "fondo" }), { maxCreditos: Number(b.flow.maxCreditos) || 25 })
+      .catch((e) => { console.error("Flow", e.message); emitir({ id, paso: "fondo", estado: "error", msg: `Flow falló (${e.message}); sigo con Pexels.` }); }));
+  encolar(id, "voz", (av) => hacerVoz(id, av));
+  // música a la medida con ElevenLabs (si la pidieron); si falla, el video sale con la música de la biblioteca
+  if (b?.musica && CFG.elevenKey && est?.musicaIA) { fila.push({ id, paso: "musica", fn: (av) => musicaIA(id, av).catch((e) => { console.error("Música", e.message); emitir({ id, paso: "musica", estado: "error", msg: `No se pudo generar la música (${e.message}); sigue con la de la biblioteca.` }); }) }); P.marcar(id, "musica", "en-fila"); }
+  fila.push({ id, paso: "render", fn: (av) => renderConQA(id, av, render) }); P.marcar(id, "render", "en-fila");
+  return ({ ok: true });
+}
+
 // informe de la mañana convertido (Monarca) → arma solo el plan del día (5 videos con horario); con IA también escribe los guiones
 async function planDespuesDeInforme(r) {
   if (!r?.directo || r.nicho !== "monarca") return;
@@ -169,7 +200,18 @@ async function api(req, res, partes) {
     if (m === "POST") {
       const b = await cuerpo(req).catch(() => ({}));
       try {
-        if (b.accion === "crear") return json(res, 200, { hechos: await PD.crearDelPlan(b.fecha || undefined) });
+        if (b.accion === "crear") {
+          // crea los que tengan guion y los manda a hacer aquí mismo (no depende del navegador); los ya creados que no
+          // se han hecho también entran a la fila. Se forman uno tras otro: imágenes de Flow → voz → video.
+          const hechos = await PD.crearDelPlan(b.fecha || undefined);
+          for (const x of hechos.filter((h) => h.id)) {
+            const e = P.leer(x.id, "proyecto.json")?.estado || {};
+            if (e.render === "listo" || [e.voz, e.render, e.fondo].some((v) => v === "en-fila" || v === "trabajando")) { x.enFila = "ya estaba"; continue; }
+            try { await hacerTodoProyecto(x.id, { musica: !!b.musica, flow: b.flow || null }); x.enFila = true; }
+            catch (e2) { x.enFila = false; x.error = e2.message; }
+          }
+          return json(res, 200, { hechos });
+        }
         let porQue = "";
         if (!PD.informeReciente(b.nicho || "monarca")) { // en la laptop los informes llegan del VPS
           if (!CFG.espejoUrl && !CFG.laptopUrl) porQue = "Este equipo no tiene configurado el otro (falta ESPEJO_URL o VPS_SSH en el .env).";
@@ -435,31 +477,7 @@ async function api(req, res, partes) {
   }
   if (accion === "todo" && m === "POST") { // voz + video seguidos (para lotes)
     const b = await cuerpo(req).catch(() => ({}));
-    const est = leerEstilo(p.estilo);
-    if (est?.tipo === "motion") { // se construye en Claude Code; si ya está construido, se renderiza
-      if (!MOT.estadoMotion(id).construido) {
-        // primero la voz (si hay narración y llave), para que Claude Code anime al ritmo de la voz
-        const vozEnCamino = !!(p.motion?.narracion?.trim() && !p.motionVoz && CFG.elevenKey);
-        if (vozEnCamino) encolar(id, "voz", (av) => MOT.vozMotion(id, av));
-        return json(res, 200, { ok: true, motionPendiente: true, vozEnCamino });
-      }
-      encolar(id, "render", (av) => MOT.renderMotion(id, av)); return json(res, 200, { ok: true });
-    }
-    if (est?.anuncios) { hacerAnuncio(id, { maxImagenes: Number(b?.maxImagenes) || 8, musica: !!b?.musica }); return json(res, 200, { ok: true }); }
-    // fondo con Google Flow antes de la voz (solo si lo pidieron, hay prompt y Flow está abierto; si falla, sigue con Pexels)
-    const prompt = (p.flowPrompt || P.leer(id, "guion.json")?.fondo?.flowPrompt || "").trim();
-    // Reflexión · Estatuas (clipsFlow "imagen"): las imágenes siempre salen de Flow si la skill está lista
-    if ((b?.flow || est?.clipsFlow === "imagen") && est?.preparar === "historia" && (await flowDisponible()))
-      encolar(id, "fondo", (av) => HIS.clipsDeFlow(id, (a) => av({ ...a, paso: "fondo" }), { maxCreditos: Number(b?.flow?.maxCreditos) || 25 })
-        .catch((e) => { console.error("Flow", e.message); emitir({ id, paso: "fondo", estado: "error", msg: `Flow falló (${e.message}); sigo con Pexels o dibujos.` }); }));
-    else if (b?.flow && est?.fondo && prompt && (await flowDisponible()))
-      encolar(id, "fondo", (av) => clipDeFlow(id, prompt, (a) => av({ ...a, paso: "fondo" }), { maxCreditos: Number(b.flow.maxCreditos) || 25 })
-        .catch((e) => { console.error("Flow", e.message); emitir({ id, paso: "fondo", estado: "error", msg: `Flow falló (${e.message}); sigo con Pexels.` }); }));
-    encolar(id, "voz", (av) => hacerVoz(id, av));
-    // música a la medida con ElevenLabs (si la pidieron); si falla, el video sale con la música de la biblioteca
-    if (b?.musica && CFG.elevenKey && est?.musicaIA) { fila.push({ id, paso: "musica", fn: (av) => musicaIA(id, av).catch((e) => { console.error("Música", e.message); emitir({ id, paso: "musica", estado: "error", msg: `No se pudo generar la música (${e.message}); sigue con la de la biblioteca.` }); }) }); P.marcar(id, "musica", "en-fila"); }
-    fila.push({ id, paso: "render", fn: (av) => renderConQA(id, av, render) }); P.marcar(id, "render", "en-fila");
-    return json(res, 200, { ok: true });
+    return json(res, 200, await hacerTodoProyecto(id, b));
   }
   if (accion === "clips" && m === "POST") { // historia: genera en Flow los clips que faltan
     const b = await cuerpo(req);
