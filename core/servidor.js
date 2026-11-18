@@ -174,7 +174,7 @@ async function api(req, res, partes) {
         if (!PD.informeReciente(b.nicho || "monarca")) { // en la laptop los informes llegan del VPS
           if (!CFG.espejoUrl && !CFG.laptopUrl) porQue = "Este equipo no tiene configurado el otro (falta ESPEJO_URL o VPS_SSH en el .env).";
           else await INV.traerDelOtro().catch((e) => { porQue = `No pude hablar con el otro equipo (${CFG.espejoUrl || CFG.laptopUrl}): ${e.message}.`; });
-          if (!porQue && !PD.informeReciente(b.nicho || "monarca")) porQue = "El otro equipo respondió pero no mandó informes: actualízalo también (Actualizar en el VPS) y vuelve a intentar.";
+          if (!porQue && !PD.informeReciente(b.nicho || "monarca")) porQue = INV.ultimoExtras?.sinActualizar ? "El otro equipo respondió pero todavía no sabe mandar informes: dale Actualizar en el VPS y vuelve a intentar." : `El otro equipo está actualizado pero no tiene informes de Muse convertidos (tiene ${INV.ultimoExtras?.informes ?? 0}). Revisa que n8n le esté mandando el informe.`;
         }
         try { return json(res, 200, await PD.armarPlanDia({ nicho: b.nicho || "monarca", forzar: !!b.forzar })); }
         catch (e) { throw new Error(porQue ? `${e.message} ${porQue}` : e.message); }

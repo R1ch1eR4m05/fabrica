@@ -578,11 +578,14 @@ export function rutaExtra(nombre) {
   if (EXTRA_PLAN.test(nombre)) return path.join(DIR_INV, nombre);
   return null;
 }
+export let ultimoExtras = null;
 async function traerExtras(base, headers) {
   const r = await fetch(`${base}/api/investigacion/extras`, { headers, signal: AbortSignal.timeout(15000) });
-  if (!r.ok) return 0; // el otro equipo aún no está actualizado
+  if (!r.ok) { ultimoExtras = { sinActualizar: true }; return 0; } // el otro equipo aún no está actualizado
   let n = 0;
-  for (const x of (await r.json()).archivos || []) {
+  const lista = (await r.json()).archivos || [];
+  ultimoExtras = { informes: lista.filter((x) => x.tipo === "informe").length, planes: lista.filter((x) => x.tipo === "plan").length };
+  for (const x of lista) {
     const f = rutaExtra(x.archivo); if (!f) continue;
     // un informe que aquí sigue pendiente (mismo nombre sin .hecho) no se duplica
     if (x.tipo === "informe" && fs.existsSync(f.replace(/\.hecho\.md$/, ".md"))) continue;
