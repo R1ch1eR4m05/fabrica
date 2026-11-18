@@ -557,7 +557,7 @@ async function pintarGHL(p, leerForm, guardarAntes, forzar = false) {
   $("#ghlIr").onclick = async () => {
     const ids = [...document.querySelectorAll("[data-ghlc]:checked")].map((x) => x.value);
     if (!ids.length) return avisar("Elige al menos una red.", true);
-    const f = new Date($("#ghlFecha").value);
+    const f = new Date($("#ghlFecha").value); if (!(f > Date.now() + 60000)) return avisar("Esa hora ya pasó o es en menos de un minuto: elige una hora futura.", true);
     const redes = cs.filter((a) => ids.includes(a.id)).map((a) => `${a.plataforma} (${a.nombre})`).join(", ");
     if (!confirm(`Se programará este video de ${$("#ghlMarca").selectedOptions[0].text.toUpperCase()} en: ${redes}\nEl ${f.toLocaleString("es-MX", { dateStyle: "full", timeStyle: "short" })}\ncon el texto de cada red tal como está arriba. ¿Seguir?`)) return;
     $("#ghlIr").disabled = true; $("#ghlIr").textContent = "Subiendo y programando…";
@@ -602,7 +602,7 @@ async function pintarGHLImagenes(p) {
     const sel = marcadas(), ids = [...document.querySelectorAll("[data-gimc]:checked")].map((x) => x.value);
     if (!sel.length) return avisar("Marca al menos una imagen.", true);
     if (!ids.length) return avisar("Elige al menos una red.", true);
-    const f = new Date($("#gimFecha").value), sep = $("#gimModo").value === "separadas";
+    const f = new Date($("#gimFecha").value), sep = $("#gimModo").value === "separadas"; if (!(f > Date.now() + 60000)) return avisar("Esa hora ya pasó o es en menos de un minuto: elige una hora futura.", true);
     const posts = sep ? sel.map((a) => ({ archivos: [a], texto: [desc(a), tags].filter(Boolean).join("\n\n") })) : [{ archivos: sel, texto: $("#gimTexto").value.trim() }];
     if (posts.some((x) => !x.texto)) return avisar("Falta la descripción de alguna publicación.", true);
     const redes = cs.filter((a) => ids.includes(a.id)).map((a) => `${a.plataforma} (${a.nombre})`).join(", ");

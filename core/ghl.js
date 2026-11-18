@@ -88,22 +88,36 @@ async function usuarioGHL() {
   return cacheUsuario;
 }
 
+// GHL rechaza (422) cualquier fecha a menos de 1 min de "ahora". Subir el video tarda, así que se revisa ANTES de subir
+// (una hora ya pasada da un error claro sin gastar la subida) y, justo antes de mandar cada red, si la hora quedó
+// demasiado cerca, se recorre a 3 min desde ahora y se avisa.
+const MARGEN = 3 * 60000;
+function revisarFecha(fecha) {
+  const cuando = fecha ? new Date(fecha) : new Date(Date.now() + 10 * 60000);
+  if (isNaN(cuando)) throw new Error("La fecha no es válida.");
+  if (cuando < Date.now() - 60000) throw new Error(`Esa hora ya pasó (${cuando.toLocaleString("es-MX", { timeZone: "America/Mexico_City", dateStyle: "short", timeStyle: "short" })}). Elige una hora futura; si recargas el panel la fecha de mañana se actualiza.`);
+  return cuando;
+}
+const aTiempo = (cuando) => (cuando.getTime() < Date.now() + MARGEN ? new Date(Date.now() + MARGEN) : cuando);
+
 // programa una publicación por red (mismo video, copy de esa red). fecha: ISO; si falta, en 10 minutos
 export async function programar(id, { cuentasIds = [], fecha } = {}, avisar = () => {}) {
   if (!cuentasIds.length) throw new Error("Elige al menos una cuenta.");
   const todas = await cuentas(), elegidas = todas.filter((a) => cuentasIds.includes(a.id));
   if (!elegidas.length) throw new Error("Esas cuentas ya no están conectadas en GHL.");
+  let cuando = revisarFecha(fecha);
   avisar({ progreso: 0.1, msg: "Subiendo el video a GoHighLevel…" });
   const url = await subirVideo(id);
   const usuario = await usuarioGHL();
   const miniatura = elegidas.some((a) => /youtube/.test(a.plataforma)) ? await subirMiniatura(id) : null;
-  const c = leerCopys(id), cuando = fecha ? new Date(fecha) : new Date(Date.now() + 10 * 60000);
-  if (isNaN(cuando) || cuando < Date.now() - 60000) throw new Error("La fecha ya pasó.");
+  const c = leerCopys(id);
   const porRed = {};
   for (const a of elegidas) (porRed[a.plataforma] ||= []).push(a.id);
   const hechos = [];
   for (const [plataforma, ids] of Object.entries(porRed)) {
     avisar({ progreso: 0.5, msg: `Programando en ${plataforma}…` });
+    const antes = cuando; cuando = aTiempo(cuando);
+    if (cuando !== antes) avisar({ progreso: 0.5, msg: `La hora quedó muy cerca; se programa para las ${cuando.toLocaleTimeString("es-MX", { timeZone: "America/Mexico_City", hour: "2-digit", minute: "2-digit" })}` });
     const esYoutube = /youtube/.test(plataforma);
     const cuerpo = { accountIds: ids, summary: textoPara(c, plataforma) || "", media: [{ url, type: "video/mp4", ...(esYoutube && miniatura ? { thumbnail: miniatura } : {}) }], status: "scheduled", scheduleDate: cuando.toISOString(),
       type: /instagram|facebook/.test(plataforma) ? "reel" : "post", userId: usuario,
@@ -140,8 +154,7 @@ export async function programarImagenes(id, { cuentasIds = [], fecha, posts = []
   if (!posts.length) throw new Error("Elige al menos una imagen.");
   const todas = await cuentas(), elegidas = todas.filter((a) => cuentasIds.includes(a.id) && !/youtube/.test(a.plataforma));
   if (!elegidas.length) throw new Error("Elige una red que acepte imágenes (Instagram, Facebook…). YouTube no.");
-  const base = fecha ? new Date(fecha) : new Date(Date.now() + 10 * 60000);
-  if (isNaN(base) || base < Date.now() - 60000) throw new Error("La fecha ya pasó.");
+  const base = revisarFecha(fecha);
   for (const x of posts) {
     if (!x.archivos?.length || x.archivos.some((a) => !/^(frase|carrusel-\d+)\.jpg$/.test(a))) throw new Error("Imagen no válida.");
     if (!String(x.texto || "").trim()) throw new Error("Cada publicación necesita su descripción.");
@@ -153,7 +166,7 @@ export async function programarImagenes(id, { cuentasIds = [], fecha, posts = []
   for (const [i, x] of posts.entries()) {
     avisar({ progreso: (i + 0.2) / posts.length, msg: `Subiendo imágenes de la publicación ${i + 1} de ${posts.length}…` });
     const urls = []; for (const a of x.archivos) urls.push(await subirImagen(id, a));
-    const cuando = new Date(base.getTime() + i * 864e5);
+    const cuando = aTiempo(new Date(base.getTime() + i * 864e5));
     for (const [plataforma, ids] of Object.entries(porRed)) {
       const cuerpo = { accountIds: ids, summary: String(x.texto), media: urls.map((u) => ({ url: u, type: "image/jpeg" })), status: "scheduled", scheduleDate: cuando.toISOString(), type: "post", userId: usuario };
       const j = await pedir("POST", `/social-media-posting/${CFG.ghlLocation}/posts`, cuerpo);
