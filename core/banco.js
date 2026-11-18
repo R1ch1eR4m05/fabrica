@@ -68,7 +68,7 @@ export async function guardarDeProyecto(id) {
     const archivo = `${slug(e.buscar || e.flowPrompt || "imagen").slice(0, 40) || "imagen"}-${hash}${path.extname(f).toLowerCase()}`;
     fs.mkdirSync(dirEstilo(est.id), { recursive: true });
     fs.copyFileSync(src, path.join(dirEstilo(est.id), archivo));
-    const item = { archivo, hash, etiquetas: etiquetas(e.buscar || "", e.flowPrompt || ""), prompt: e.flowPrompt || "", buscar: e.buscar || "", nicho, de: id, fecha: new Date().toISOString() };
+    const item = { archivo, hash, escena: Number(m[1]), etiquetas: etiquetas(e.buscar || "", e.flowPrompt || ""), prompt: e.flowPrompt || "", buscar: e.buscar || "", nicho, de: id, fecha: new Date().toISOString() };
     lista.push(item); hashes.add(hash); nuevos++;
     espejo(path.join(dirEstilo(est.id), archivo), { tipo: "banco", estilo: est.id, item });
   }
@@ -76,21 +76,50 @@ export async function guardarDeProyecto(id) {
   return nuevos;
 }
 
-// la mejor imagen del banco para una escena (sin repetir dentro del mismo video)
-export function delBanco(estilo, e, usados = new Set(), { minimo = 2, nicho } = {}) {
+// en qué otros videos del estilo ya salió cada imagen del banco, y cuáles ya abrieron un video
+// (la primera imagen es la portada del video: repetirla hace que un video "empiece igual" que otro)
+export function usosBanco(estilo, excepto) {
+  const veces = new Map(), aperturas = new Set(), hashApertura = new Set();
+  for (const p of listarProyectos()) {
+    if (p.estilo !== estilo || p.id === excepto) continue;
+    const info = leer(p.id, path.join("clips", "historia.json"));
+    for (const x of Array.isArray(info) ? info : []) {
+      if (x.origen !== "banco" || !x.archivo) continue;
+      const a = path.basename(x.archivo);
+      veces.set(a, (veces.get(a) || 0) + 1);
+      if (x.n === 1) aperturas.add(a);
+    }
+    // la imagen propia (Flow/subida) con que abrió ese video: entró al banco con su hash
+    const d = path.join(dirProyecto(p.id), "clips");
+    try {
+      const f = fs.readdirSync(d).find((y) => /^escena-1\.\w+$/.test(y));
+      if (f) hashApertura.add(md5(path.join(d, f)));
+    } catch { /* sin clips */ }
+  }
+  for (const x of listarBanco(estilo)) if (hashApertura.has(x.hash) || (x.escena === 1 && x.de !== excepto)) aperturas.add(x.archivo);
+  return { veces, aperturas };
+}
+
+// la mejor imagen del banco para una escena (sin repetir dentro del mismo video; las ya vistas en otros videos pierden puntos
+// y la de apertura nunca es la que abrió otro video)
+export function delBanco(estilo, e, usados = new Set(), { minimo = 2, nicho, usos, apertura = false } = {}) {
   const quiero = etiquetas(e.buscar || "", e.flowPrompt || "");
-  const cands = listarBanco(estilo).filter((x) => !usados.has(x.archivo)).map((x) => {
+  const cands = listarBanco(estilo).filter((x) => !usados.has(x.archivo) && !(apertura && usos?.aperturas.has(x.archivo))).map((x) => {
     const tags = new Set(x.etiquetas || []); let s = 0;
     for (const w of quiero) if (tags.has(w)) s += (e.buscar || "").toLowerCase().includes(w) ? 2 : 1;
     if (nicho && x.nicho === nicho) s += 0.5;
-    return { ...x, puntos: s };
-  }).sort((a, b) => b.puntos - a.puntos);
-  const mejor = cands[0];
-  return mejor && mejor.puntos >= minimo ? mejor : null;
+    const visto = usos?.veces.get(x.archivo) || 0;
+    return { ...x, puntos: s, ajustado: s - 0.75 * visto };
+  }).filter((x) => x.puntos >= minimo).sort((a, b) => b.ajustado - a.ajustado);
+  return cands[0] || null;
 }
-export function cualquieraDelBanco(estilo, usados = new Set(), semilla = 0) {
-  const libres = listarBanco(estilo).filter((x) => !usados.has(x.archivo));
-  return libres.length ? libres[semilla % libres.length] : null;
+export function cualquieraDelBanco(estilo, usados = new Set(), semilla = 0, { usos, apertura = false } = {}) {
+  const libres = listarBanco(estilo).filter((x) => !usados.has(x.archivo) && !(apertura && usos?.aperturas.has(x.archivo)));
+  if (!libres.length) return null;
+  // primero las menos usadas en otros videos
+  const min = Math.min(...libres.map((x) => usos?.veces.get(x.archivo) || 0));
+  const pocas = libres.filter((x) => (usos?.veces.get(x.archivo) || 0) === min);
+  return pocas[semilla % pocas.length];
 }
 export const archivoBanco = (estilo, archivo) => path.join(dirEstilo(estilo), path.basename(archivo));
 

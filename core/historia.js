@@ -283,6 +283,7 @@ export async function prepararHistoria(id, avisar = () => {}, { formato } = {}) 
   let ultima = null;
   if (B) { await B.guardarDeProyecto(id).catch(() => {}); }
   const nicho = B ? await B.nichoDeProyecto(p) : null;
+  const usos = B ? B.usosBanco(est.id, id) : null;
   for (const [k, e] of g.escenas.entries()) {
     const n = k + 1, te = t.escenas[k], D = Math.max(1, te.fin - te.ini + 0.4);
     const sal = path.join(dirClips(id), String(n)); fs.rmSync(sal, { recursive: true, force: true }); fs.mkdirSync(sal, { recursive: true });
@@ -290,7 +291,7 @@ export async function prepararHistoria(id, avisar = () => {}, { formato } = {}) 
     // "misma": true → la escena sigue con la imagen de la anterior (otro movimiento de cámara); ahorra imágenes en videos largos
     if (!fuente && e.misma && ultima) { fuente = ultima.fuente; origen = ultima.origen; credito = ultima.credito; }
     // banco de imágenes de videos anteriores: si hay una que se parezca, va antes que Pexels
-    if (!fuente && B) { const x = B.delBanco(est.id, e, usados, { nicho }); if (x) { fuente = B.archivoBanco(est.id, x.archivo); usados.add(x.archivo); origen = "banco"; } }
+    if (!fuente && B) { const x = B.delBanco(est.id, e, usados, { nicho, usos, apertura: n === 1 }); if (x) { fuente = B.archivoBanco(est.id, x.archivo); usados.add(x.archivo); origen = "banco"; } }
     if (!fuente && e.buscar && (CFG.pexelsKey || CFG.pixabayKey)) {
       avisar({ paso: "render", msg: `Escena ${n}: buscando "${e.buscar}"…` });
       try {
@@ -300,7 +301,7 @@ export async function prepararHistoria(id, avisar = () => {}, { formato } = {}) 
       } catch (er) { console.warn("Pexels:", er.message); }
     }
     // Pexels no dio nada: cualquier imagen del banco que no se haya usado en este video
-    if (!fuente && B) { const x = B.cualquieraDelBanco(est.id, usados, n * 7 + id.length); if (x) { fuente = B.archivoBanco(est.id, x.archivo); usados.add(x.archivo); origen = "banco"; } }
+    if (!fuente && B) { const x = B.cualquieraDelBanco(est.id, usados, n * 7 + id.length, { usos, apertura: n === 1 }); if (x) { fuente = B.archivoBanco(est.id, x.archivo); usados.add(x.archivo); origen = "banco"; } }
     if (!fuente) { info.push({ n, tipo: "ninguno" }); continue; }
     ultima = { fuente, origen, credito };
     avisar({ paso: "render", msg: `Preparando el clip de la escena ${n}…` });

@@ -15,9 +15,13 @@ Si Google vuelve a cambiar la página, aquí están todos los selectores del Flo
 import re
 
 SEL_PANEL_AGENTE = "flow-agent-panel"
-SEL_AJUSTES_AGENTE = 'flow-agent-panel button[aria-label="Configuración"]'
+# Google le da a cada cuenta textos distintos (nov 2026: "Configuración" en unas, "Ajustes" en otras, en español de España):
+# se busca por etiqueta Y por el icono "tune" de la caja del agente, que es el mismo en todas.
+SEL_AJUSTES_AGENTE = ('flow-agent-panel button[aria-label="Configuración"], flow-agent-panel button[aria-label="Ajustes"], '
+                      'flow-agent-panel button[aria-label="Settings"], '
+                      'flow-agent-panel flow-creative-agent-prompt-box button.agent-action-button:has(mat-icon:text-is("tune"))')
 SEL_VISTA_AJUSTES = "flow-settings-view"
-SEL_GUARDAR = "flow-agent-panel button.settings-save-button"
+SEL_GUARDAR = "flow-agent-panel button.settings-save-button"  # por clase: el texto ("Guardar"/"Save") cambia
 SEL_LISTO = ('flow-agent-panel div.ProseMirror[contenteditable="true"]:visible, '
              'button[aria-label="Botón de configuración"]:visible, button[aria-label="Activador de ajustes"]:visible')
 TOGGLES = {
@@ -33,7 +37,9 @@ TOGGLES = {
     },
 }
 
-SEL_AGREGAR = 'flow-agent-panel button[aria-label="Agregar ingredientes al cuadro de instrucción"]'
+SEL_AGREGAR = ('flow-agent-panel button[aria-label="Agregar ingredientes al cuadro de instrucción"], '
+               'flow-agent-panel button[aria-label="Añadir ingredientes a ventana para peticiones"], '
+               'flow-agent-panel flow-creative-agent-prompt-box button.add-menu-trigger')
 SEL_POPOVER = "flow-add-menu-popover-content"
 # solo lo adjunto en la caja de abajo (antes contaba también los chips del historial del chat y fallaba al azar)
 SEL_CHIP = 'flow-agent-panel flow-creative-agent-prompt-box img, flow-agent-panel flow-creative-agent-prompt-box flow-image-ingredient-chip'
@@ -73,10 +79,25 @@ async def esperar_listo(page, timeout=45_000) -> None:
     await page.locator(SEL_LISTO).first.wait_for(state="visible", timeout=timeout)
 
 
+# orden de los controles en "Configuración de agentes" (si cambian las etiquetas, se usan por posición)
+ORDEN = {"imagen": {"ratio": 0, "cantidad": 1, "modelo": 0}, "video": {"ratio": 2, "cantidad": 3, "modelo": 1}}
+
+
+async def _grupo(vista, modo, clave):
+    sel = TOGGLES[modo][clave]
+    if await vista.locator(sel).count() > 0:
+        return sel
+    n = ORDEN[modo][clave]
+    if clave == "modelo":
+        return f"button.mat-mdc-menu-trigger >> nth={n}"
+    return f"flow-toggles >> nth={n}"
+
+
 async def _clic_toggle(vista, grupo, texto):
-    btn = vista.locator(f"{grupo} button").filter(has_text=re.compile(r"(^|\s)" + re.escape(texto) + r"\s*$")).first
+    botones = vista.locator(grupo).locator("button")
+    btn = botones.filter(has_text=re.compile(r"(^|\s)" + re.escape(texto) + r"\s*$")).first
     if await btn.count() == 0:
-        btn = vista.locator(f"{grupo} button").filter(has_text=texto).first
+        btn = botones.filter(has_text=texto).first
     if await btn.count() > 0:
         if (await btn.get_attribute("aria-pressed")) != "true":
             await btn.click()
@@ -101,14 +122,15 @@ async def configurar(page, modo, aspect_ratio="9:16", count=1, model=None) -> No
     await vista.wait_for(state="visible", timeout=10_000)
     # "Confirmar antes de generar: Nunca" (si no, el agente pregunta y nunca genera)
     nunca = vista.locator("mat-radio-button").filter(has_text=re.compile(r"Nunca|Never", re.I)).first
+    if await nunca.count() == 0:
+        nunca = vista.locator("mat-radio-button").nth(1)  # el segundo es "Nunca" en todas las versiones vistas
     if await nunca.count() > 0:
         await nunca.click()
         await page.wait_for_timeout(200)
-    t = TOGGLES[modo]
-    await _clic_toggle(vista, t["ratio"], aspect_ratio)
-    await _clic_toggle(vista, t["cantidad"], f"x{count}")
+    await _clic_toggle(vista, await _grupo(vista, modo, "ratio"), aspect_ratio)
+    await _clic_toggle(vista, await _grupo(vista, modo, "cantidad"), f"x{count}")
     if model:
-        boton = vista.locator(t["modelo"]).first
+        boton = vista.locator(await _grupo(vista, modo, "modelo")).first
         if await boton.count() > 0:
             actual = (await boton.inner_text()).replace("arrow_drop_down", "").replace("🍌", "").strip().casefold()
             if actual != model.casefold():
