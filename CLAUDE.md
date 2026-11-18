@@ -54,6 +54,9 @@ La skill maneja la página de Flow con selectores; cuando Google la rediseña, f
 4. Sube los cambios y pídele a Richie que actualice y vuelva a dar "Generar en Flow".
 Estado: noviembre 2026, Flow genera desde el panel del agente ("Configuración de agentes": Confirmar = Nunca, 9:16, x1, modelo). Imágenes y video de texto adaptados; video desde fotogramas/ingredientes aún no. Desde el 17 nov 2026 la barrita "Descargar" de la lista ya no dispara la descarga: las imágenes se bajan directo por el enlace de su miniatura con `=s0` (`descargar_imagen_directa` en `agente.py`); si eso falla se intenta el menú.
 
+### Varias cuentas de Google en Flow
+Hasta 3 cuentas (Pro), cada una con su perfil de Chrome en la skill: cuenta 1 = `session/flowbot-profile`, cuenta N = `session/flowbot-profile-N` (la fábrica pasa `FLOW_CHROME_PROFILE`). En el panel, el chip de Flow (arriba) dice la cuenta en uso; clic → elegir, ponerles nombre e «Iniciar sesión» (abre Chrome con `flow.py login`; se cierra solo al detectar la sesión y deja `.sesion-fabrica`). Se guarda en `ajustes.json` → `flowCuenta` / `flowCuentas`. El proyecto del reparto (personajes) vive en una cuenta (`reparto/<marca>.json` → `flowCuenta`, 1 por defecto): si está elegida otra, Historia avisa en vez de fallar.
+
 ## Historia con Flow (`historia-flow`)
 - Guion según `estilos/historia-flow/GUION.md`: `estiloVisual` y `personajes` (inglés, iguales para todas las escenas) y en cada escena `voz`, `texto` opcional, `flowPrompt` (inglés) y `buscar`.
 - Clips: `proyectos/<id>/clips/escena-N.mp4` (el panel los sube o los genera en Flow con "Generar en Flow los que faltan"). Si flow-mcp está conectado como MCP y Richie lo autoriza, puedes generarlos tú y guardarlos ahí con ese nombre. Sin clip, la escena usa Pexels (`buscar`) o un dibujo animado.

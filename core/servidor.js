@@ -232,6 +232,18 @@ async function api(req, res, partes) {
       catch (e) { return json(res, 500, { error: e.message }); }
     }
   }
+  // cuentas de Google para Flow (cada una con su perfil de Chrome en la skill)
+  if (recurso === "flow" && id === "cuentas") {
+    const FS = await import("./flowskill.js");
+    if (m === "GET" && !accion) return json(res, 200, FS.cuentasFlow());
+    if (m === "PUT" && !accion) { try { return json(res, 200, FS.cambiarCuenta(await cuerpo(req))); } catch (e) { return json(res, 400, { error: e.message }); } }
+    if (m === "POST" && accion) {
+      try {
+        FS.loginCuenta(Number(accion), (r) => emitir({ id: "_flow", paso: "fondo", estado: r.ok ? "listo" : "error", msg: r.ok ? `Sesión guardada en la cuenta ${accion} de Flow.` : `No se detectó la sesión en la cuenta ${accion}: ${r.salida}` }));
+        return json(res, 200, { ok: true });
+      } catch (e) { return json(res, 400, { error: e.message }); }
+    }
+  }
   if (recurso === "ajustes") {
     if (m === "GET") return json(res, 200, { ...leerAjustes(), modelosVoz: MODELOS_VOZ, modeloVozEnv: CFG.elevenModelo, modelosFlowVideo: MODELOS_VIDEO, modelosFlowImagen: MODELOS_IMAGEN });
     if (m === "PUT") return json(res, 200, guardarAjustes(await cuerpo(req)));
@@ -344,7 +356,7 @@ async function api(req, res, partes) {
   }
 
   if (recurso === "info") return json(res, 200, {
-    flow: await flowDisponible(), flowSkill: flowSkillListo(), laptop: BANCO.hayLaptop(), laptopFlow: BANCO.laptopEstado(), espejo: BANCO.hayEspejo(), apify: !!CFG.apifyToken, ghl: GHL.ghlListo(),
+    flow: await flowDisponible(), flowSkill: flowSkillListo(), flowCuenta: flowSkillListo() ? (await import("./flowskill.js")).cuentasFlow() : null, laptop: BANCO.hayLaptop(), laptopFlow: BANCO.laptopEstado(), espejo: BANCO.hayEspejo(), apify: !!CFG.apifyToken, ghl: GHL.ghlListo(),
     estilos: listarEstilos(), formatos: FORMATOS, efectos: EFECTOS,
     ia: INV.hayIA(), motorIA: CFG.anthropicKey ? "Claude" : CFG.geminiKey ? "Gemini" : null, voz: !!(CFG.elevenKey || CFG.googleTtsKey), pexels: !!(CFG.pexelsKey || CFG.pixabayKey), gemini: !!CFG.geminiKey, apimart: !!CFG.apimartKey, trabajando: actual ? { id: actual.id, paso: actual.paso } : null,
   });

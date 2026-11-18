@@ -8,12 +8,53 @@ import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 import { CFG } from "./config.js";
 import { dirProyecto } from "./proyectos.js";
-import { leerAjustes } from "./ajustes.js";
+import { leerAjustes, guardarAjustes } from "./ajustes.js";
 
 export const MODELOS_VIDEO = ["Veo 3.1 - Lite", "Veo 3.1 - Fast", "Veo 3.1 - Quality", "Omni 1.1 Flash"];
 export const MODELOS_IMAGEN = ["Nano Banana 2 Lite", "Nano Banana 2", "Nano Banana Pro", "Imagen 4"];
 
 export const flowSkillListo = () => !!(CFG.flowSkillDir && fs.existsSync(path.join(CFG.flowSkillDir, "flow.py")));
+// ---- varias cuentas de Google (Flow Pro): cada una con su propio perfil de Chrome dentro de la skill ----
+// Cuenta 1 = session/flowbot-profile (la de siempre); cuenta N = session/flowbot-profile-N. La skill lee FLOW_CHROME_PROFILE.
+// ajustes.json → "flowCuenta": 2, "flowCuentas": { "1": "Principal", "2": "Créditos", "3": "…" }
+export const NUM_CUENTAS = 3;
+const PY = () => CFG.python || (process.platform === "win32" ? "python" : "python3");
+export const perfilDe = (n) => path.join(CFG.flowSkillDir || ".", "session", Number(n) > 1 ? `flowbot-profile-${Number(n)}` : "flowbot-profile");
+export const cuentaActual = () => { const n = Number(leerAjustes().flowCuenta) || 1; return n >= 1 && n <= NUM_CUENTAS ? n : 1; };
+// sesión = la skill confirmó el login (marca .sesion-fabrica); la cuenta 1 ya venía logueada de antes, basta con que exista su perfil
+const MARCA = ".sesion-fabrica";
+const conSesion = (n) => { try { const d = perfilDe(n); if (fs.existsSync(path.join(d, MARCA))) return true; return Number(n) === 1 && fs.existsSync(d) && fs.readdirSync(d).length > 0; } catch { return false; } };
+let loginActivo = null;
+export function cuentasFlow() {
+  const nombres = leerAjustes().flowCuentas || {};
+  return { actual: cuentaActual(), iniciando: loginActivo?.n || null,
+    cuentas: Array.from({ length: NUM_CUENTAS }, (_, i) => ({ n: i + 1, nombre: nombres[i + 1] || `Cuenta ${i + 1}`, sesion: conSesion(i + 1) })) };
+}
+export function cambiarCuenta({ actual, nombres } = {}) {
+  const a = leerAjustes(), cambios = {};
+  if (actual != null) { const n = Number(actual); if (!(n >= 1 && n <= NUM_CUENTAS)) throw new Error("Esa cuenta no existe."); cambios.flowCuenta = n; }
+  if (nombres && typeof nombres === "object") cambios.flowCuentas = { ...(a.flowCuentas || {}), ...Object.fromEntries(Object.entries(nombres).map(([k, v]) => [k, String(v).slice(0, 40)])) };
+  guardarAjustes(cambios);
+  return cuentasFlow();
+}
+// abre Chrome con el perfil de esa cuenta para iniciar sesión en Google (una sola vez por cuenta); termina solo al detectar la sesión
+export function loginCuenta(n, alTerminar = () => {}) {
+  if (!flowSkillListo()) throw new Error("No encuentro Google Flow Skill (FLOW_SKILL_DIR en el .env).");
+  if (loginActivo) throw new Error(`Ya hay una ventana de inicio de sesión abierta (cuenta ${loginActivo.n}). Termínala primero.`);
+  if (flowActivo) throw new Error("Flow está generando ahorita. Espera a que termine para iniciar sesión en otra cuenta.");
+  const perfil = perfilDe(n); fs.mkdirSync(perfil, { recursive: true });
+  const p = spawn(PY(), ["flow.py", "login"], { cwd: CFG.flowSkillDir, env: { ...process.env, PYTHONIOENCODING: "utf-8", FLOW_CHROME_PROFILE: perfil } });
+  loginActivo = { n: Number(n), p };
+  let salida = ""; p.stdout.on("data", (d) => (salida += d)); p.stderr.on("data", (d) => (salida += d));
+  p.on("close", (c) => {
+    loginActivo = null;
+    const ok = c === 0 && !/AVISO: no se detecto login/i.test(salida);
+    if (ok) try { fs.writeFileSync(path.join(perfil, MARCA), new Date().toISOString()); } catch {}
+    alTerminar({ ok, salida: salida.slice(-400) });
+  });
+  p.on("error", (e) => { loginActivo = null; alTerminar({ ok: false, salida: e.message }); });
+}
+
 export const modelos = () => { const a = leerAjustes(); return { video: a.flowVideo || "Veo 3.1 - Lite", imagen: a.flowImagen || "Nano Banana 2 Lite" }; };
 
 // Arreglos a la skill (MIT) para el Flow nuevo (noviembre 2026: se genera desde el panel del agente).
@@ -234,7 +275,11 @@ export function lote(id, nombre, jobs, avisar = () => {}, { minutos = 60, ratio 
     fs.mkdirSync(dir, { recursive: true });
     const archivo = path.join(dir, `${nombre}.json`);
     fs.writeFileSync(archivo, JSON.stringify({ project: nombre, ...(proyecto ? { project_uuid: proyecto } : {}), defaults: { ratio, image_model: m.imagen, video_model: m.video, video_duration: "8s" }, jobs }, null, 2));
-    const p = spawn(CFG.python || (process.platform === "win32" ? "python" : "python3"), ["flow.py", "batch", archivo, "--out", dir], { cwd: CFG.flowSkillDir, env: { ...process.env, PYTHONIOENCODING: "utf-8" } });
+    const cuenta = cuentaActual();
+    if (!conSesion(cuenta)) return mal(new Error(`La cuenta ${cuenta} de Flow no tiene sesión. En el panel: chip de Flow → «Iniciar sesión» en esa cuenta (o cambia a otra).`));
+    if (loginActivo) return mal(new Error("Termina primero de iniciar sesión en la ventana de Chrome que está abierta."));
+    avisar({ msg: `Flow con ${cuentasFlow().cuentas[cuenta - 1].nombre}…` });
+    const p = spawn(PY(), ["flow.py", "batch", archivo, "--out", dir], { cwd: CFG.flowSkillDir, env: { ...process.env, PYTHONIOENCODING: "utf-8", FLOW_CHROME_PROFILE: perfilDe(cuenta) } });
     flowActivo = p;
     let salida = "", hechos = 0, bloqueo = false;
     const t0 = Date.now();

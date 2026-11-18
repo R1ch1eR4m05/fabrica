@@ -31,8 +31,43 @@ async function cargar() {
       : `<span class="chip ${S.info.laptopFlow.ok ? "ok" : ""}" title="${h(S.info.laptopFlow.ok ? "Flow corre en tu laptop: usa «Generar en la laptop (Flow)»" : S.info.laptopFlow.motivo)}">${S.info.laptopFlow.ok ? "Flow en la laptop ✓" : "Flow: laptop desconectada"}</span>`,
     `<span id="chipAct"></span>`,
   ].join("");
+  // con la skill: el chip de Flow dice qué cuenta de Google se usa y al darle clic se cambia
+  if (S.info.flowSkill && S.info.flowCuenta) {
+    const ch = [...document.querySelectorAll("#chips .chip")].find((x) => /Flow/.test(x.textContent));
+    const fc = S.info.flowCuenta, act = fc.cuentas[fc.actual - 1];
+    if (ch) { ch.textContent = `Flow: ${act.nombre}${act.sesion ? " ✓" : " (sin sesión)"} ▾`; ch.style.cursor = "pointer"; ch.title = "Cambiar de cuenta de Google en Flow"; ch.onclick = ventanaCuentasFlow; if (!act.sesion) ch.classList.remove("ok"); }
+  }
   pintarLista();
   revisarActualizacion();
+}
+
+// cuentas de Google para Flow: elegir cuál se usa, ponerles nombre e iniciar sesión (una vez por cuenta)
+async function ventanaCuentasFlow() {
+  const fc = await api("/api/flow/cuentas");
+  let v = $("#vFlow"); if (!v) { v = document.createElement("div"); v.id = "vFlow"; document.body.appendChild(v); }
+  v.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:50";
+  v.innerHTML = `<div class="card" style="min-width:420px;max-width:560px">
+    <b>Cuenta de Google para Flow</b>
+    <p class="estado">Cada cuenta tiene su propio Chrome con su sesión. Lo siguiente que se genere en Flow usa la cuenta elegida (lo que ya está generándose sigue en la suya).</p>
+    ${fc.cuentas.map((c) => `<div class="fila" style="margin:8px 0;align-items:center">
+      <input type="radio" name="fcta" value="${c.n}" ${c.n === fc.actual ? "checked" : ""} style="width:auto">
+      <input data-fnom="${c.n}" value="${h(c.nombre)}" style="max-width:170px" title="Nombre (p. ej. el correo o «la de créditos»)">
+      <span class="estado" style="min-width:90px">${c.sesion ? "con sesión ✓" : "sin sesión"}</span>
+      <button class="btn peq" data-flogin="${c.n}" ${fc.iniciando ? "disabled" : ""}>${c.sesion ? "Volver a iniciar sesión" : "Iniciar sesión"}</button></div>`).join("")}
+    ${fc.iniciando ? `<p class="nota">Hay una ventana de Chrome abierta para iniciar sesión en la cuenta ${fc.iniciando}. Entra con tu cuenta de Google en Flow; se cierra sola al detectar la sesión.</p>` : ""}
+    <div class="fila" style="margin-top:12px;justify-content:flex-end"><button class="btn peq" id="fCerrar">Cerrar</button><button class="btn primario peq" id="fUsar">Guardar y usar la elegida</button></div></div>`;
+  $("#fCerrar").onclick = () => v.remove();
+  v.onclick = (e) => { if (e.target === v) v.remove(); };
+  const nombres = () => Object.fromEntries([...v.querySelectorAll("[data-fnom]")].map((i) => [i.dataset.fnom, i.value.trim() || `Cuenta ${i.dataset.fnom}`]));
+  $("#fUsar").onclick = async () => {
+    const n = Number(v.querySelector("input[name=fcta]:checked")?.value || 1), c = fc.cuentas[n - 1];
+    if (!c.sesion && !confirm(`La ${c.nombre} todavía no tiene sesión: lo que mandes a Flow va a fallar hasta que inicies sesión. ¿Usarla de todos modos?`)) return;
+    try { await api("/api/flow/cuentas", "PUT", { actual: n, nombres: nombres() }); avisar(`Flow va a usar: ${nombres()[n]}.`); v.remove(); cargar(); } catch (e) { avisar(e.message, true); }
+  };
+  for (const b of v.querySelectorAll("[data-flogin]")) b.onclick = async () => {
+    try { await api("/api/flow/cuentas", "PUT", { nombres: nombres() }); await api(`/api/flow/cuentas/${b.dataset.flogin}`, "POST"); avisar("Se abrió Chrome: inicia sesión en Google y entra a Flow. Se cierra solo cuando detecta la sesión."); ventanaCuentasFlow(); }
+    catch (e) { avisar(e.message, true); }
+  };
 }
 
 // botón de actualizar: aparece solo cuando hay versión nueva en GitHub
@@ -1255,6 +1290,7 @@ function escuchar() {
   const es = new EventSource("/api/eventos");
   es.onmessage = async (m) => {
     const ev = JSON.parse(m.data);
+    if (ev.id === "_flow") { avisar(ev.msg, ev.estado === "error"); cargar(); if ($("#vFlow")) ventanaCuentasFlow(); return; }
     if (ev.id === "_investigador") {
       if (S.vista === "inv") { mostrarProgreso("investigar", ev); if (ev.estado === "listo") { avisar(ev.msg); investigador(ev.resultado?.archivo); } if (ev.estado === "error") { avisar(ev.msg, true); investigador(); } }
       return;

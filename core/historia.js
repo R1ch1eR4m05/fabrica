@@ -142,6 +142,8 @@ async function clipsConSkill(id, avisar, { soloFaltantes = true, conCuadros = tr
     for (const x of porHacer) jobs.push(...trabajos(x, todos[`cuadro-${x.n}`]));
     avisar({ paso: "fondo", progreso: 0.02, msg: `Flow: ${jobs.length} trabajos (${porHacer.length} escenas${ronda > 1 ? `, vuelta ${ronda}` : ""})…` });
     let r;
+    // el proyecto del reparto (con los personajes) vive en una sola cuenta de Flow (reparto/<marca>.json → "flowCuenta", 1 si no dice)
+    if (rep?.flowProyecto) { const { cuentaActual } = await import("./flowskill.js"); if (cuentaActual() !== (Number(rep.flowCuenta) || 1)) throw new Error(`Los personajes de esta marca viven en la cuenta ${Number(rep.flowCuenta) || 1} de Flow y ahorita está elegida la cuenta ${cuentaActual()}. Cámbiala en el chip de Flow (arriba) y vuelve a darle.`); }
     try { r = await lote(id, `historia-${Date.now()}`, jobs, (a) => avisar({ ...a, paso: "fondo" }), { ratio, minutos: Math.max(60, jobs.length * 4), proyecto: rep?.flowProyecto }); }
     catch (err) { if (/actividad inusual/.test(err.message) || !Object.keys(todos).some((k) => k.startsWith("escena-"))) throw err; break; }
     Object.assign(todos, r.archivos);
