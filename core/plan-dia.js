@@ -43,7 +43,7 @@ Cierre de voz: "${cierre}" (puedes precisar el final, pero empieza con "Envíale
 
 export async function armarPlanDia({ archivo, nicho = "monarca", forzar = false, conIA = true, notas = {} } = {}) {
   archivo = archivo || informeReciente(nicho);
-  if (!archivo || !fs.existsSync(archivo)) throw new Error("No hay ningún informe de Muse en este equipo (ni lo pude traer del otro). Los informes llegan al VPS: ábrelo ahí o revisa la conexión laptop ⇄ VPS.");
+  if (!archivo || !fs.existsSync(archivo)) throw new Error("No hay ningún informe de Muse en este equipo.");
   const md = fs.readFileSync(archivo, "utf8"), cfg = INV.leerConfig(nicho);
   const mejor = INV.sugerencias(nicho, 1)[0] || null; // por si hoy no hay picos claros
   const ahora = Date.now();

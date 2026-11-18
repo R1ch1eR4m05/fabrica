@@ -597,8 +597,9 @@ export async function traerDelOtro() {
   const otro = CFG.espejoUrl && CFG.espejoClave ? [CFG.espejoUrl, CFG.espejoClave] : CFG.laptopUrl ? [CFG.laptopUrl, CFG.laptopClave] : null;
   if (!otro) return 0;
   const base = otro[0].replace(/\/+$/, ""), headers = { authorization: "Basic " + Buffer.from("fabrica:" + (otro[1] || "")).toString("base64") };
-  const r = await fetch(`${base}/api/investigacion/archivos`, { headers, signal: AbortSignal.timeout(15000) });
-  if (!r.ok) throw new Error(`respondió ${r.status}`);
+  const r = await fetch(`${base}/api/investigacion/archivos`, { headers, signal: AbortSignal.timeout(15000) })
+    .catch((e) => { throw new Error(/127\.0\.0\.1:487[12]/.test(base) ? "no responde: el túnel SSH al VPS está cerrado (cierra la fábrica y ábrela con «Abrir fábrica»; en la ventana negra debe decir que el túnel conectó)" : `no responde (${e.cause?.code || e.message})`); });
+  if (!r.ok) throw new Error(r.status === 401 ? "la clave no coincide (ESPEJO_CLAVE de aquí ≠ PANEL_CLAVE del otro)" : `respondió ${r.status}`);
   const mios = new Map(archivosInvestigacion().map((x) => [x.archivo, x.mtime]));
   let n = 0;
   for (const x of (await r.json()).archivos || []) {
