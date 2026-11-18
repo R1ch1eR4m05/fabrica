@@ -37,6 +37,14 @@
       }
     },
     {
+      "clave": "contraste",
+      "nombre": "Contraste",
+      "valores": {
+        "oscuro": "Oscuro (sombras profundas, como los primeros)",
+        "claro": "Claro (sombras levantadas)"
+      }
+    },
+    {
       "clave": "logo",
       "nombre": "Sello",
       "valores": {

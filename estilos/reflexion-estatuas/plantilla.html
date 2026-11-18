@@ -10,7 +10,7 @@
 // En cada punto o signo de pregunta el texto se limpia. Sello del canal al centro, polvo flotando.
 const F = "../_comun/fuentes/";
 const TONOS = { turquesa: "#3fb2a3", ambar: "#d49a5a", plata: "#9a9a9a", rojo: "#b5473a" };
-let info = [], directas = [], cache = new Map(), actual = null, tono = TONOS.turquesa, conLogo = true, sello = "";
+let info = [], directas = [], cache = new Map(), actual = null, tono = TONOS.turquesa, conLogo = true, sello = "", oscuro = true;
 
 Motor.inicioVoz = 0.3;
 Motor.iniciar({
@@ -18,6 +18,7 @@ Motor.iniciar({
   async preparar(M) {
     const op = M.proyecto.opciones || {};
     tono = TONOS[op.tono] || TONOS.turquesa; conLogo = op.logo !== "no";
+    oscuro = op.contraste !== "claro"; // nov 2026: a Monarca le fue mejor con los videos más oscuros y contrastados
     sello = op.logo === "canal" ? String(M.proyecto.canal || M.guion.canal || "").replace(/^@/, "").trim() || "M" : "M"; // Monarca
     try { const r = await fetch(`/proyectos/${encodeURIComponent(M.proyecto.id)}/clips/historia.json?v=${Date.now()}`); if (r.ok) info = await r.json(); } catch {}
     // vista previa en el panel: las imágenes que aún no se han preparado (recién salidas de Flow, del banco o subidas)
@@ -51,19 +52,22 @@ Motor.iniciar({
     // la primera escena arranca con un acercamiento claro desde el primer fotograma (en el feed una imagen quieta se ignora)
     const z = i === 0 ? 1.0 + 0.16 * (1 - Math.pow(1 - M.clamp(t / 3), 2)) : 1.05 + 0.1 * k;
     c.translate(W / 2 + dir * W * 0.015 * k, H / 2 - H * 0.012 * k); c.scale(z, z); c.translate(-W / 2, -H / 2);
+    if (oscuro) c.filter = "brightness(0.74) contrast(1.38)"; // oscuro: medios abajo y sombras profundas; las luces de la estatua siguen brillando
     if (actual) cubrir(c, actual, W, H); else niebla(c, M, t, i);
+    c.filter = "none";
     c.restore();
 
     // ---- un solo tono: sin color, teñido y con contraste ----
     c.save();
     c.globalCompositeOperation = "saturation"; c.fillStyle = "#808080"; c.fillRect(0, 0, W, H);
     c.globalCompositeOperation = "color"; c.fillStyle = tono; c.fillRect(0, 0, W, H);
-    c.globalCompositeOperation = "soft-light"; c.fillStyle = "#5a5a5a"; c.fillRect(0, 0, W, H);
-    c.globalCompositeOperation = "screen"; c.globalAlpha = 0.14; c.fillStyle = tono; c.fillRect(0, 0, W, H); c.globalAlpha = 1; // levanta las sombras: en el feed lo muy oscuro se ve chico y apagado
+    // oscuro: sombras profundas y más contraste (luces altas intactas); claro: levanta las sombras para que se vea más en el feed
+    c.globalCompositeOperation = "soft-light"; c.fillStyle = oscuro ? "#404040" : "#5a5a5a"; c.fillRect(0, 0, W, H);
+    if (!oscuro) { c.globalCompositeOperation = "screen"; c.globalAlpha = 0.14; c.fillStyle = tono; c.fillRect(0, 0, W, H); c.globalAlpha = 1; }
     c.restore();
-    const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, "rgba(0,0,0,0.22)"); g.addColorStop(0.45, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.35)");
+    const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, `rgba(0,0,0,${oscuro ? 0.4 : 0.22})`); g.addColorStop(0.45, "rgba(0,0,0,0)"); g.addColorStop(1, `rgba(0,0,0,${oscuro ? 0.6 : 0.35})`);
     c.fillStyle = g; c.fillRect(0, 0, W, H);
-    const v = c.createRadialGradient(W / 2, H * 0.45, H * 0.25, W / 2, H * 0.45, H * 0.8); v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,0.35)");
+    const v = c.createRadialGradient(W / 2, H * 0.45, H * 0.22, W / 2, H * 0.45, H * 0.8); v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, `rgba(0,0,0,${oscuro ? 0.62 : 0.35})`);
     c.fillStyle = v; c.fillRect(0, 0, W, H);
 
     polvo(c, M, t);
