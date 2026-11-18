@@ -53,7 +53,7 @@ export async function armarPlanDia({ archivo, nicho = "monarca", forzar = false,
   // lo que ya se escribió o creó en un plan anterior del mismo día no se pisa
   let previo = null; try { previo = JSON.parse(fs.readFileSync(fPlan(), "utf8")); } catch {}
   for (const [i, v] of plan.videos.entries()) {
-    const viejo = !forzar && previo?.videos?.[i]?.base?.n === v.base.n && previo.videos[i].tipo === v.tipo ? previo.videos[i] : null;
+    const pv = previo?.videos?.[i], viejo = !forzar && pv && pv.base?.n != null && pv.base.n === v.base?.n && pv.tipo === v.tipo ? pv : null;
     if (viejo) Object.assign(v, { guion: viejo.guion, creado: viejo.creado });
     v.base.notaAdaptacion = notas[v.base.n] || v.base.notaAdaptacion || "";
     v.inspiracion = (v.base.inspiradaEn || []).concat(v.base.publicacion?.link || []).filter((x, k, a) => x && a.indexOf(x) === k);

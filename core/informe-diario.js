@@ -13,7 +13,7 @@
 
 export const PICO_CLARO = 3; // veces su normal para considerar "pico comprobado"
 export const SIN_CIFRAS = "sin cifras verificables, no asumir viralidad";
-const RIESGO = /(partidist|pol[ií]tic[oa]s?\b|elecci[oó]n|polariz|odio|racis|xen[oó]fob|machis|homof[oó]b|violen|\barmas?\b|desinformaci|conspira|antivacun|no replicar|riesgo de marca|riesgo reputacional|religi[oó]n contra|insult|ataque a|misogin)/i;
+const RIESGO = /(partidist|pol[ií]tic[oa]s?\b|elecci[oó]n|polariz|(?<!\bsin\s)\bodio\b|racis|xen[oó]fob|machis|homof[oó]b|violen|\barmas?\b|desinformaci|conspira|antivacun|no replicar|riesgo de marca|riesgo reputacional|religi[oó]n contra|insult|ataque a|misogin)/i;
 
 // ---------- números ----------
 // "83,053" · "83.053" · "13.6K" · "1,2 M" · "?" → número o null (desconocido)
@@ -37,13 +37,33 @@ export function multiplicador(t) {
   return m ? { min: Number(m[1].replace(",", ".")), max: Number(m[1].replace(",", ".")) } : null;
 }
 
+// ---------- texto ----------
+// correos que pasan por n8n a veces llegan con la codificación rota ("espaÃ±ol", "â" en vez de "—"): se repara
+export function arreglarCodificacion(t) {
+  const s = String(t ?? "");
+  if (!/[ÃÂâ][\u0080-\u00BF]/.test(s)) return s;
+  return s.replace(/[\u00C2-\u00F4][\u0080-\u00BF]{1,3}/g, (m) => { const d = Buffer.from(m, "latin1").toString("utf8"); return d.includes("\uFFFD") ? m : d; });
+}
+// el objeto JSON que empieza en el primer "{" (respeta comillas), con los saltos de línea del correo convertidos en espacios
+function objetoJSON(s) {
+  const i = s.indexOf("{"); if (i < 0) return null;
+  let prof = 0, enCad = false, esc = false;
+  for (let k = i; k < s.length; k++) {
+    const c = s[k];
+    if (enCad) { if (esc) esc = false; else if (c === "\\") esc = true; else if (c === '"') enCad = false; continue; }
+    if (c === '"') enCad = true; else if (c === "{") prof++; else if (c === "}" && --prof === 0) return s.slice(i, k + 1);
+  }
+  return s.slice(i);
+}
+
 // ---------- secciones del informe ----------
 const SECCIONES = [["publicaciones", /PUBLICACIONES/i], ["patrones", /PATRONES/i], ["cuentas", /CUENTAS NUEVAS/i], ["viene", /LO QUE VIENE/i], ["json", /PROPUESTAS[_ ]JSON/i]];
 export function secciones(md) {
   const lineas = String(md).replace(/\r/g, "").split("\n"), out = {}; let actual = null;
   for (const l of lineas) {
     const t = l.replace(/[#*_=>\s]+/g, " ").trim();
-    const cab = /^(#{1,6}\s|\*\*|[A-ZÁÉÍÓÚÑ_ ]{6,}$)/.test(l.trim()) || /^#/.test(l.trim());
+    // encabezado: markdown (#, **) o una línea que empieza en MAYÚSCULAS ("PUBLICACIONES — las 15 mejores", "CUENTAS NUEVAS QUE VALE…")
+    const cab = /^(#{1,6}\s|\*\*|[A-ZÁÉÍÓÚÑ_ ]{6,}$)/.test(l.trim()) || /^#/.test(l.trim()) || /^[A-ZÁÉÍÓÚÑ_]{5,}(\s+[A-ZÁÉÍÓÚÑ_]+)*\s*([—–:\-].*)?$/.test(l.trim());
     const s = cab && t.length < 80 ? SECCIONES.find(([, re]) => re.test(t)) : null;
     if (s) { actual = s[0]; out[actual] = []; continue; }
     if (actual) out[actual].push(l);
@@ -109,12 +129,18 @@ export function calcularPicos(pubs) {
 }
 
 export function propuestasJSON(txt) {
-  const s = String(txt || ""), m = s.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, s.slice(s.indexOf("{"), s.lastIndexOf("}") + 1)];
-  try { const j = JSON.parse(m[1]); return { patrones: j.patrones || [], propuestas: (j.propuestas || []).map((p, i) => ({ n: p.n || i + 1, ...p })) }; } catch { return { patrones: [], propuestas: [] }; }
+  const s = arreglarCodificacion(txt || ""), m = s.match(/```(?:json)?\s*([\s\S]*?)```/), crudo = m ? m[1] : objetoJSON(s);
+  if (!crudo) return { patrones: [], propuestas: [] };
+  // el correo corta las líneas largas a ~75 caracteres, incluso dentro de las cadenas: los saltos se vuelven espacios
+  for (const intento of [crudo, crudo.replace(/\r?\n/g, " ")]) {
+    try { const j = JSON.parse(intento); return { patrones: j.patrones || [], propuestas: (j.propuestas || []).map((p, i) => ({ n: p.n || i + 1, ...p })) }; } catch {}
+  }
+  return { patrones: [], propuestas: [], error: "PROPUESTAS_JSON no se pudo leer" };
 }
 const lista = (txt) => String(txt || "").split("\n").map((l) => l.replace(/^\s*(?:[-*•]|\d{1,2}[.)])\s*/, "").trim()).filter((l) => l && !/^#/.test(l));
 
 export function parsearInforme(md) {
+  md = arreglarCodificacion(md);
   const s = secciones(md), j = propuestasJSON(s.json || md);
   const pubs = calcularPicos(parsearPublicaciones(s.publicaciones));
   return {

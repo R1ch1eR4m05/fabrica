@@ -57,3 +57,19 @@ test("sin picos claros: se dice y se repite el mejor formato de la semana", () =
   assert.ok(plan.avisos.some((a) => /no hay picos claros/.test(a)));
   assert.equal(plan.videos[0].base.n, 99);
 });
+
+test("formato real del correo: codificación rota, encabezados con guion y JSON cortado en líneas", async () => {
+  const fs = await import("node:fs");
+  const ID = await import("../core/informe-diario.js");
+  const limpio = fs.readFileSync(new URL("./fixtures/informe-correo.md", import.meta.url), "utf8");
+  const roto = (t) => Buffer.from(t, "utf8").toString("latin1"); // así llega cuando n8n lo lee mal ("espaÃ±ol")
+  assert.equal(ID.arreglarCodificacion(roto("español — listo")), "español — listo");
+  const md = roto(limpio);
+  const inf = ID.parsearInforme(md);
+  assert.equal(inf.publicaciones.length, 2);
+  assert.equal(inf.propuestas.length, 2);
+  assert.match(inf.propuestas[0].frase, /disparas tú/);
+  const ev = ID.ordenar(ID.evaluar(inf));
+  assert.ok(ev.every((x) => !x.riesgo), "«sin odio» no es riesgo de marca");
+  assert.equal(ev[0].pico, 32);
+});

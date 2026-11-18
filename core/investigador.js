@@ -372,7 +372,7 @@ Cita las fuentes. No inventes métricas: si no hay datos, dilo.`;
 
 // guarda el informe y, si hay IA configurada, lo convierte en propuestas
 export function guardarInforme(texto, fuente = "informe", nicho = nichoActivo()) {
-  texto = String(texto || "").trim();
+  texto = ID.arreglarCodificacion(String(texto || "")).trim(); // n8n a veces lo entrega con la codificación rota (espaÃ±ol)
   if (texto.length < 80) throw new Error("El informe está vacío o es demasiado corto.");
   const fecha = new Date().toISOString();
   const nombre = `${fecha.slice(0, 19).replace(/[:T]/g, "-")}-${(fuente || "informe").replace(/[^\w-]+/g, "-").slice(0, 30)}.md`;
