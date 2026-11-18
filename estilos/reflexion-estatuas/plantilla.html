@@ -10,7 +10,7 @@
 // En cada punto o signo de pregunta el texto se limpia. Sello del canal al centro, polvo flotando.
 const F = "../_comun/fuentes/";
 const TONOS = { turquesa: "#3fb2a3", ambar: "#d49a5a", plata: "#9a9a9a", rojo: "#b5473a" };
-let info = [], directas = [], mascaras = [], capa = null, muestra = null, lugares = new Map(), cache = new Map(), actual = null, tono = TONOS.turquesa, conLogo = true, sello = "", oscuro = true;
+let info = [], directas = [], mascaras = [], capa = null, muestra = null, lugares = new Map(), escenasVistas = new Set(), escenasEncima = new Set(), cache = new Map(), actual = null, tono = TONOS.turquesa, conLogo = true, sello = "", oscuro = true;
 
 Motor.inicioVoz = 0.3;
 Motor.iniciar({
@@ -85,7 +85,9 @@ Motor.iniciar({
       x.globalCompositeOperation = "destination-in"; x.save(); camara(x, M, t, i, p, d); cubrir(x, mk, W, H); x.restore(); x.globalCompositeOperation = "source-over";
     }
     const atras = texto(c, M, t, te, mk ? { z, mk, i, p, d } : null);
-    if (mk && atras) { c.save(); c.globalAlpha = i > 0 && p < 0.25 ? p / 0.25 : 1; c.drawImage(capa, 0, 0); c.restore(); }
+    // la estatua se repinta entera desde el primer cuadro (ya trae el «respiro de negro» del corte): si se desvanecía,
+    // en el primer cuarto de segundo el texto se veía pasar de adelante hacia atrás
+    if (mk && atras) c.drawImage(capa, 0, 0);
   },
 });
 
@@ -207,16 +209,19 @@ function claves(pag, te, M) {
   for (const w of pag) { const l = limpia(w.w); if (VACIAS.has(l) || l.length < 4) continue; if (l.length > peso) { peso = l.length; mejor = w; } }
   return new Set(mejor ? [mejor.t0] : []);
 }
-function texto(c, M, t, te, prof) {
+function texto(c, M, t, te, prof, op = {}) {
   const W = M.W, H = M.H, u = M.u;
   const modo = (M.proyecto.opciones || {}).subtitulos === "frase" ? "frase" : "bloques";
   const esPrimera = te === M.tiempos.escenas[0];
   const ps = paginas(te.palabras, modo, esPrimera); let pag = null;
-  for (const p of ps) if (t >= p[0].t0 - 0.05) pag = p;
-  if (!pag && esPrimera) pag = ps[0];
-  if (!pag) return;
+  // una escena entera va detrás o entera encima: si algún bloque no cabe detrás, ninguno va detrás
+  // (si no, el texto se veía brincar de atrás hacia adelante de la estatua entre un bloque y otro)
+  if (prof && !op.seco && !escenasVistas.has(prof.i)) { escenasVistas.add(prof.i); ps.forEach((_, k) => texto(c, M, t, te, prof, { k, seco: true })); }
+  if (op.k != null) pag = ps[op.k];
+  else { for (const p of ps) if (t >= p[0].t0 - 0.05) pag = p; if (!pag && esPrimera) pag = ps[0]; }
+  if (!pag) return false;
   const fin = pag[pag.length - 1].t1, siguiente = ps[ps.indexOf(pag) + 1];
-  if (!siguiente && t > Math.max(fin + 0.9, te.finVoz + 0.6)) return; // al final de la escena se va
+  if (!op.seco && !siguiente && t > Math.max(fin + 0.9, te.finVoz + 0.6)) return false; // al final de la escena se va
   const gancho = esPrimera && pag === ps[0]; // el gancho sale COMPLETO desde el fotograma 0 (quien no te conoce decide en 1 segundo)
   const ANCHO = W * (M.vertical ? 0.88 : 0.8);
   const bloques = modo === "bloques";
@@ -274,6 +279,9 @@ function texto(c, M, t, te, prof) {
         : vertical && menosTapado ? { modo: menosTapado.modo, f: menosTapado.f, tam: menosTapado.tam, detras: false } : { ...diseno, detras: false });
     }
     diseno = lugares.get(llave);
+    if (!diseno.detras) escenasEncima.add(prof.i);
+    if (op.seco) return diseno.detras;
+    if (escenasEncima.has(prof.i)) diseno = { ...diseno, detras: false };
     if (!diseno.detras) prof = null; // la estatua taparía demasiado en todos lados: este bloque va encima (y la estatua no se repinta)
   }
   const { lineas, esp } = armar(diseno.tam, diseno.modo === "centro" ? ANCHO : COL);
