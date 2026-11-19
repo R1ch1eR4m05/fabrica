@@ -23,9 +23,12 @@ function huellas(id) {
     archivoHash: hashArchivo(path.join(dirProyecto(id), "final.mp4")),
     guionHash: crypto.createHash("sha1").update(normal((g.escenas || []).map((e) => e.voz || e.texto || "").join(" "))).digest("hex").slice(0, 16),
     titulo: String(c.youtube?.titulo || g.titulo || id).replace(/#\w+/g, "").trim(),
+    formato: leer(id, "proyecto.json")?.formato || "9:16",
   };
 }
 // ¿ya está programado esto (mismo archivo, mismo guion o mismo título) en esa red y cuenta?
+// el mismo título en un Short (9:16) y en su video largo (16:9) es normal: son dos videos distintos
+const mismoFormato = (r, h) => { const f = r.formato || leer(r.id, "proyecto.json")?.formato; return !f || !h.formato || f === h.formato; };
 // estado "cancelado": Richie borró ese post en GHL y le pidió a la fábrica olvidarlo (ya no bloquea volver a programar)
 const cancelados = (reg) => new Set(reg.filter((r) => r.estado === "cancelado").map((r) => `${r.postId}|${r.cuenta}`));
 // lo programado que sigue vivo (sin los que Richie borró y mandó olvidar)
@@ -33,7 +36,7 @@ export const vigentes = (reg = leerRegistro()) => { const fuera = cancelados(reg
 export function duplicado(h, plataforma, cuenta, reg = leerRegistro()) {
   const fuera = cancelados(reg);
   return reg.find((r) => r.estado === "programado" && !fuera.has(`${r.postId}|${r.cuenta}`) && r.plataforma === plataforma && r.cuenta === cuenta &&
-    (r.archivoHash === h.archivoHash || r.guionHash === h.guionHash || normal(r.titulo) === normal(h.titulo))) || null;
+    (r.archivoHash === h.archivoHash || r.guionHash === h.guionHash || (normal(r.titulo) === normal(h.titulo) && mismoFormato(r, h)))) || null;
 }
 
 // lo que hoy bloquea programar este video (mismo archivo, guion o título ya programado, de este u otro proyecto)
