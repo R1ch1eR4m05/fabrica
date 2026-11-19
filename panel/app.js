@@ -580,6 +580,7 @@ async function pintarGHL(p, leerForm, guardarAntes, forzar = false) {
     <div class="fila"><label class="estado">Cuándo</label><input type="datetime-local" id="ghlFecha" value="${local(manana)}" style="width:auto"><button class="btn peq" id="ghlSim" ${cs.length ? "" : "disabled"} title="Arma lo que se mandaría a GHL sin publicar nada (obligatorio antes de programar)">1 · Simular</button><button class="btn primario peq" id="ghlIr" ${cs.length ? "" : "disabled"}>2 · Programar en GHL</button></div>
     <div class="estado" id="ghlQA" style="margin-top:6px">${p.qa ? `QA: <b>${h(p.qa.estado)}</b>${p.qa.motivos?.length ? " · " + h(p.qa.motivos.join(" | ")) : ""}` : "QA: se revisa al simular (formato, códec, duración, audio, subtítulos, título, descripción y serie)."}</div>
     <div id="ghlPlan"></div>
+    <div id="ghlBloqueos"></div>
     <div class="fila" style="margin-top:10px"><span class="estado">Cola automática (L-V: 2 Shorts al día, 13:00 y 19:00; largo 1 por semana a las 16:00; hora CDMX):</span><button class="btn peq" id="colaSim">Simular cola</button><button class="btn peq" id="colaOk">Confirmar cola</button></div>
     <div id="colaPlan"></div>`;
   let asignando = false;
@@ -596,6 +597,16 @@ async function pintarGHL(p, leerForm, guardarAntes, forzar = false) {
   $("#ghlAsignar").onclick = () => { asignando = true; pintarLista(); };
   pintarLista();
   $("#ghlRecargar").onclick = () => pintarGHL(p, leerForm, guardarAntes, true);
+  // ¿ya hay algo programado con este mismo archivo, guion o título (p. ej. una versión anterior del video)? Si lo borraste en GHL, se puede olvidar aquí
+  api(`/api/proyectos/${encodeURIComponent(p.id)}/ghl-bloqueos`).then((r) => {
+    const b = r.bloqueos || []; if (!b.length || !$("#ghlBloqueos")) return;
+    const otros = [...new Set(b.map((x) => x.id))].filter((x) => x !== p.id);
+    $("#ghlBloqueos").innerHTML = `<div class="aviso" style="margin-top:8px">Ya está programado ${otros.length ? `otro video con el mismo título o guion (<b>${h(otros.join(", "))}</b>)` : "este video"}: ${b.map((x) => `${h(x.plataforma)} · ${h(x.cuando)}`).join(" | ")}. Por eso no se repite.
+      <div class="estado" style="margin-top:4px">Si quieres publicar esta versión en su lugar: primero borra esos posts en el Social Planner de GHL y luego dale aquí (la fábrica no borra nada en GHL).</div>
+      <button class="btn peq" id="ghlOlvidar" style="margin-top:6px">Ya los borré en GHL: olvidarlos</button></div>`;
+    $("#ghlOlvidar").onclick = () => { if (!confirm(`¿Ya borraste en GHL esos ${b.length} posts? Si siguen ahí, se publicaría dos veces.`)) return;
+      api(`/api/proyectos/${encodeURIComponent(p.id)}/ghl-olvidar`, "POST", {}).then((r2) => { avisar(`Listo: olvidé ${r2.olvidados.length} posts. Ya puedes simular y programar esta versión.`); $("#ghlBloqueos").innerHTML = ""; }).catch((e) => avisar(e.message, true)); };
+  }).catch(() => {});
   const marcaCola = () => $("#ghlMarca").value || "monarca";
   $("#colaSim").onclick = async () => {
     $("#colaSim").disabled = true; $("#colaSim").textContent = "Revisando QA y simulando…";

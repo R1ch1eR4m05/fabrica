@@ -68,10 +68,10 @@ export async function armarPlan(marca = "monarca", { dias = 14, max = 20 } = {})
   const cal = calendario(), reg = GHL.leerRegistro();
   const cuentasMarca = new Set((await cuentasDe(marca)).map((a) => a.id));
   // huecos ya ocupados por lo programado de esta marca (por día, hora y tipo); una publicación = un video (no una por cuenta)
-  const regMarca = reg.filter((x) => x.estado === "programado" && cuentasMarca.has(x.cuenta));
+  const regMarca = GHL.vigentes(reg).filter((x) => cuentasMarca.has(x.cuenta));
   const { oc, semanasLargo } = ocupacion([...new Map(regMarca.map((x) => [`${x.id}|${x.publica}`, x])).values()]);
   // candidatos: de la marca, con video, QA aprobado y sin programar (por id o por archivo)
-  const yaProgramados = new Set(reg.filter((x) => x.estado === "programado").map((x) => x.id));
+  const yaProgramados = new Set(GHL.vigentes(reg).map((x) => x.id));
   for (const p of listarProyectos()) if (p.ghl?.programados?.length) yaProgramados.add(p.id); // programados antes del registro
   const cand = [];
   for (const p of listarProyectos()) {
@@ -132,7 +132,7 @@ export const leerPlan = (marca = "monarca") => { try { return JSON.parse(fs.read
 export function huecosLibres({ short = 0, largo = 0 } = {}, { dias = 21, desde = Date.now() + 30 * 60000, marca = null } = {}) {
   // con marca: solo cuenta lo programado de esa marca (Levania y Monarca no se quitan horarios entre sí)
   const deMarca = (x) => { if (!marca) return true; const q = leer(x.id, "proyecto.json"); return !q || marcaDe(q) === marca; };
-  const cal = calendario(), reg = GHL.leerRegistro().filter((x) => x.estado === "programado" && deMarca(x));
+  const cal = calendario(), reg = GHL.vigentes().filter((x) => deMarca(x));
   const { oc, semanasLargo } = ocupacion([...new Map(reg.map((x) => [`${x.id}|${x.publica}`, x])).values()]);
   const out = { short: [], largo: [] };
   for (const tipo of ["short", "largo"]) {

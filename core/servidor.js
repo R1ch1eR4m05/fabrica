@@ -628,6 +628,8 @@ async function api(req, res, partes) {
     const C = await import("./cola.js");
     return json(res, 200, C.siguienteHueco(id) || {});
   }
+  if (accion === "ghl-bloqueos" && m === "GET") { const G = await import("./ghl.js"); return json(res, 200, { bloqueos: G.bloqueos(id).map((r) => ({ id: r.id, plataforma: r.plataforma, publica: r.publica, cuando: G.enCDMX(r.publica) })) }); }
+  if (accion === "ghl-olvidar" && m === "POST") { const G = await import("./ghl.js"); return json(res, 200, { olvidados: G.olvidarProgramados(id) }); }
   if (accion === "ghl" && m === "POST") { // programar en el Social Planner de GHL
     const b = await cuerpo(req);
     try { return json(res, 200, { ok: true, simulado: !!b.simular, programados: await GHL.programar(id, { cuentasIds: b.cuentas || [], fecha: b.fecha, simular: !!b.simular }) }); }

@@ -26,9 +26,30 @@ function huellas(id) {
   };
 }
 // ¿ya está programado esto (mismo archivo, mismo guion o mismo título) en esa red y cuenta?
+// estado "cancelado": Richie borró ese post en GHL y le pidió a la fábrica olvidarlo (ya no bloquea volver a programar)
+const cancelados = (reg) => new Set(reg.filter((r) => r.estado === "cancelado").map((r) => `${r.postId}|${r.cuenta}`));
+// lo programado que sigue vivo (sin los que Richie borró y mandó olvidar)
+export const vigentes = (reg = leerRegistro()) => { const fuera = cancelados(reg); return reg.filter((r) => r.estado === "programado" && !fuera.has(`${r.postId}|${r.cuenta}`)); };
 export function duplicado(h, plataforma, cuenta, reg = leerRegistro()) {
-  return reg.find((r) => r.estado === "programado" && r.plataforma === plataforma && r.cuenta === cuenta &&
+  const fuera = cancelados(reg);
+  return reg.find((r) => r.estado === "programado" && !fuera.has(`${r.postId}|${r.cuenta}`) && r.plataforma === plataforma && r.cuenta === cuenta &&
     (r.archivoHash === h.archivoHash || r.guionHash === h.guionHash || normal(r.titulo) === normal(h.titulo))) || null;
+}
+
+// lo que hoy bloquea programar este video (mismo archivo, guion o título ya programado, de este u otro proyecto)
+export function bloqueos(id, reg = leerRegistro()) {
+  const h = huellas(id), fuera = cancelados(reg), vistos = new Map();
+  for (const r of reg) if (r.estado === "programado" && !fuera.has(`${r.postId}|${r.cuenta}`) && duplicado(h, r.plataforma, r.cuenta, [r])) vistos.set(`${r.postId}|${r.cuenta}`, r);
+  return [...vistos.values()];
+}
+// "ya lo borré en GHL": anota esos posts como cancelados para poder programar la versión nueva. No toca GHL.
+export function olvidarProgramados(id) {
+  const b = bloqueos(id);
+  for (const r of b) anotar({ id: r.id, plataforma: r.plataforma, cuenta: r.cuenta, titulo: r.titulo, archivoHash: r.archivoHash, guionHash: r.guionHash, publica: r.publica, postId: r.postId, estado: "cancelado", por: id });
+  // si estaban guardados en el propio proyecto (registro viejo), también se olvidan ahí
+  const p = leer(id, "proyecto.json");
+  if (p?.ghl?.programados?.length) { p.ghl.programados = []; guardar(id, "proyecto.json", p); }
+  return b.map((r) => ({ id: r.id, plataforma: r.plataforma, publica: r.publica }));
 }
 
 const API = "https://services.leadconnectorhq.com";
