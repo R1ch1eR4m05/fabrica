@@ -77,6 +77,8 @@ Hasta 3 cuentas (Pro), cada una con su perfil de Chrome en la skill: cuenta 1 = 
 - Guion según `estilos/filosofia-larga/GUION.md`: por escena `voz` (15-22 palabras), `flowPrompt`, `buscar`, opcional `misma: true` (reusa la imagen anterior), `camara` y `capitulo`. Con la API, los largos se escriben por capítulos (`guionPorPartes`).
 - Render con ffmpeg (`"render": "ffmpeg"` → `core/render-ffmpeg.js`), sin navegador: ~1/3 del tiempo real con 2 núcleos. La plantilla.html es solo la vista previa (mismos movimientos).
 - Imágenes: Flow (16:9), APIMart o banco. Cada imagen de Flow/APIMart gasta: no las generes desde Claude Code sin que Richie lo pida.
+- **Nunca Pexels** (`"sinPexels": true`): las fotos y videos reales no se mezclan con la acuarela. Sin imagen de Flow: banco (la que más se parezca → la menos usada) → la imagen de la escena anterior.
+- Animaciones (humo, agua, niebla…): con «Hacer todo», después de las imágenes de Flow se marcan solas 1 de cada 3 escenas (`elegirAnimadas`, la 1 siempre) y se animan en Flow (`animarEscenas` → `clips/anim-N.mp4`, 8 s). Solo se animan escenas con imagen propia de Flow: si Flow falla, no hay animaciones.
 - "Cortar por capítulos" (panel, debajo del video) o `node fabrica.js capitulos <id> [--sin-reels]`: de `final.mp4` saca un video por capítulo (título al inicio, cierre suave; para Facebook) y un Reel 9:16 de 45-60 s de cada uno (empieza en el capítulo o en la escena con `"reel": true`). Quedan en `proyectos/<id>/capitulos/` y en `listos/`, con portada y texto.
 
 ### Miniatura de YouTube (Filosofía larga)

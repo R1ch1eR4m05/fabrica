@@ -31,6 +31,7 @@
   "render": "ffmpeg",
   "clipsFlow": "imagen",
   "banco": true,
+  "sinPexels": true,
   "fps": 24,
   "colorFondo": "#EDE6D8",
   "estiloVisual": "Traditional East Asian watercolor and ink wash illustration, loose expressive black ink linework, soft muted washes of slate blue, warm ochre and sage green, misty atmosphere, visible paper texture, calm contemplative mood, cinematic composition",

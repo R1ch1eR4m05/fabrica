@@ -72,8 +72,16 @@ async function hacerTodoProyecto(id, b = {}) {
   const prompt = (p.flowPrompt || P.leer(id, "guion.json")?.fondo?.flowPrompt || "").trim();
   // Reflexión · Estatuas (clipsFlow "imagen"): las imágenes siempre salen de Flow si la skill está lista
   if ((b?.flow || est?.clipsFlow === "imagen") && est?.preparar === "historia" && (await flowDisponible()))
-    encolar(id, "fondo", (av) => HIS.clipsDeFlow(id, (a) => av({ ...a, paso: "fondo" }), { maxCreditos: Number(b?.flow?.maxCreditos) || 25 })
-      .catch((e) => { console.error("Flow", e.message); emitir({ id, paso: "fondo", estado: "error", msg: `Flow falló (${e.message}); sigo con Pexels o dibujos.` }); }));
+    encolar(id, "fondo", async (av) => {
+      const avF = (a) => av({ ...a, paso: "fondo" });
+      try { await HIS.clipsDeFlow(id, avF, { maxCreditos: Number(b?.flow?.maxCreditos) || 25 }); }
+      catch (e) { console.error("Flow", e.message); emitir({ id, paso: "fondo", estado: "error", msg: `Flow falló (${e.message}); ${est?.sinPexels ? "sigo con el banco de imágenes (sin Pexels)" : "sigo con Pexels o dibujos"}.` }); }
+      // estilos con animaciones (Filosofía larga): 1 de cada 3 escenas, las de agua, humo, niebla…, se animan en Flow desde su imagen
+      if (est?.animar && b?.animar !== false) {
+        try { HIS.elegirAnimadas(id); await HIS.animarEscenas(id, avF); }
+        catch (e) { console.error("Animar", e.message); emitir({ id, paso: "fondo", estado: "error", msg: `No salieron las animaciones de Flow (${e.message}); esas escenas van con movimiento de cámara.` }); }
+      }
+    });
   else if (b?.flow && est?.fondo && prompt && (await flowDisponible()))
     encolar(id, "fondo", (av) => clipDeFlow(id, prompt, (a) => av({ ...a, paso: "fondo" }), { maxCreditos: Number(b.flow.maxCreditos) || 25 })
       .catch((e) => { console.error("Flow", e.message); emitir({ id, paso: "fondo", estado: "error", msg: `Flow falló (${e.message}); sigo con Pexels.` }); }));

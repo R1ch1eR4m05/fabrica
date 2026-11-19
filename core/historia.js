@@ -292,7 +292,7 @@ export async function prepararHistoria(id, avisar = () => {}, { formato } = {}) 
     if (!fuente && e.misma && ultima) { fuente = ultima.fuente; origen = ultima.origen; credito = ultima.credito; }
     // banco de imágenes de videos anteriores: si hay una que se parezca, va antes que Pexels
     if (!fuente && B) { const x = B.delBanco(est.id, e, usados, { nicho, usos, apertura: n === 1 }); if (x) { fuente = B.archivoBanco(est.id, x.archivo); usados.add(x.archivo); origen = "banco"; } }
-    if (!fuente && e.buscar && (CFG.pexelsKey || CFG.pixabayKey)) {
+    if (!fuente && e.buscar && !est?.sinPexels && (CFG.pexelsKey || CFG.pixabayKey)) {
       avisar({ paso: "render", msg: `Escena ${n}: buscando "${e.buscar}"…` });
       try {
         let r = CFG.pexelsKey ? await pexels(e.buscar, vertical).catch(() => null) : null;
@@ -302,6 +302,8 @@ export async function prepararHistoria(id, avisar = () => {}, { formato } = {}) 
     }
     // Pexels no dio nada: cualquier imagen del banco que no se haya usado en este video
     if (!fuente && B) { const x = B.cualquieraDelBanco(est.id, usados, n * 7 + id.length, { usos, apertura: n === 1 }); if (x) { fuente = B.archivoBanco(est.id, x.archivo); usados.add(x.archivo); origen = "banco"; } }
+    // estilos pintados (Filosofía larga): sin Pexels, que no se mezcla con la acuarela; si el banco ya no tiene, sigue la imagen anterior
+    if (!fuente && est?.sinPexels && ultima) { fuente = ultima.fuente; origen = ultima.origen; credito = ultima.credito; }
     if (!fuente) { info.push({ n, tipo: "ninguno" }); continue; }
     ultima = { fuente, origen, credito };
     avisar({ paso: "render", msg: `Preparando el clip de la escena ${n}…` });
