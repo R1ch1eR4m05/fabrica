@@ -21,7 +21,7 @@ const b64 = (f) => fs.readFileSync(f).toString("base64");
 const palabras = (t) => String(t).split(/\s+/).filter(Boolean).length;
 const oraciones = (t) => (String(t).match(/[^.!?…]+[.!?…]+["»”]?|[^.!?…]+$/g) || []).map((s) => s.trim()).filter(Boolean);
 
-function html({ fondo, texto, tono, sello, canal, n, total }) {
+export function html({ fondo, texto, tono, sello, canal, n, total, autor = "" }) {
   const cinzel = b64(path.join(FUENTES, "cinzel-latin-800-normal.woff2"));
   const tinte = tono ? `<div class="capa" style="background:${tono};mix-blend-mode:color"></div>` : "";
   const filtro = tono ? "grayscale(1) contrast(1.15) brightness(1.02)" : "contrast(1.05) brightness(.95)";
@@ -29,7 +29,7 @@ function html({ fondo, texto, tono, sello, canal, n, total }) {
 @font-face{font-family:C;font-weight:800;src:url(data:font/woff2;base64,${cinzel}) format("woff2")}
 *{margin:0;box-sizing:border-box}html,body{width:${W}px;height:${H}px;overflow:hidden;background:#06090a}
 .capa{position:absolute;inset:0}
-#bg{position:absolute;inset:0;background:${fondo ? `url(data:image/jpeg;base64,${b64(fondo)})` : "#0d1517"} center/cover;filter:${filtro};transform:scale(1.04)}
+#bg{position:absolute;inset:0;background:${fondo ? `url(data:image/${/\.png$/i.test(fondo) ? "png" : /\.webp$/i.test(fondo) ? "webp" : "jpeg"};base64,${b64(fondo)})` : "#0d1517"} center/cover;filter:${filtro};transform:scale(1.04)}
 #sombra{background:radial-gradient(ellipse at 50% 42%,rgba(0,0,0,.34) 0%,rgba(0,0,0,.1) 50%,rgba(0,0,0,.4) 100%)}
 #t{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);width:${Math.round(W * 0.86)}px;text-align:center;
   font:800 88px/1.14 C,serif;color:#f4f4f2;text-transform:uppercase;letter-spacing:.01em;
@@ -40,7 +40,7 @@ function html({ fondo, texto, tono, sello, canal, n, total }) {
 #canal{position:absolute;left:0;right:0;bottom:66px;text-align:center;font:800 26px C,serif;color:rgba(242,242,242,.8);letter-spacing:.08em}
 #n{position:absolute;right:46px;top:44px;font:800 26px C,serif;color:rgba(242,242,242,.75);letter-spacing:.08em}
 </style><div id="bg" class="capa"></div>${tinte}<div id="sombra" class="capa"></div>
-<div id="t">${oraciones(texto).map((o) => `<div style="margin-bottom:.32em">${esc(o)}</div>`).join("")}</div>${sello ? `<div id="sello">${esc(sello)}</div>` : ""}${canal ? `<div id="canal">@${esc(canal)}</div>` : ""}${total > 1 ? `<div id="n">${n}/${total}</div>` : ""}
+<div id="t">${oraciones(texto).map((o) => `<div style="margin-bottom:.32em">${esc(o)}</div>`).join("")}${autor ? `<div style="font-size:.42em;letter-spacing:.12em;margin-top:.6em;opacity:.85">— ${esc(autor)}</div>` : ""}</div>${sello ? `<div id="sello">${esc(sello)}</div>` : ""}${canal ? `<div id="canal">@${esc(canal)}</div>` : ""}${total > 1 ? `<div id="n">${n}/${total}</div>` : ""}
 <script>document.fonts.load("800 88px C").then(()=>{const t=document.getElementById("t");let s=96;t.style.fontSize=s+"px";
 while((t.scrollHeight>${Math.round(H * 0.56)}||t.scrollWidth>t.clientWidth+2)&&s>44){s-=3;t.style.fontSize=s+"px"}document.body.dataset.listo="1"})</script>`;
 }

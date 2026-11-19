@@ -100,6 +100,8 @@ async function planDespuesDeInforme(r) {
     emitir({ id: "_investigador", paso: "investigar", estado: "trabajando", msg: "Armando el plan del día con el informe…" });
     const plan = await PD.armarPlanDia({ archivo: r.informeHecho, nicho: "monarca" });
     const sinGuion = plan.videos.filter((v) => !v.guion).length;
+    try { const D = await import("./imagenes-dia.js"); const d = await D.armarDia({ archivo: r.informeHecho, nicho: "monarca" }); emitir({ id: "_investigador", paso: "investigar", estado: "listo", msg: `Imágenes del día: ${d.imagenes.length ? `${d.imagenes.length} escritas; dale «Generar en Flow» en el Investigador` : "sin escribir (pídele a Claude Code «escribe las imágenes del día»)"}.` }); }
+    catch (e2) { console.error("Imágenes del día:", e2.message); }
     emitir({ id: "_investigador", paso: "investigar", estado: "listo", plan: true, msg: `Plan del día listo: ${plan.videos.length} videos${sinGuion ? ` (${sinGuion} sin guion: pídele a Claude Code «escribe los guiones del plan»)` : ""}` });
   } catch (e) { console.error("Plan del día:", e.message); emitir({ id: "_investigador", paso: "investigar", estado: "error", msg: `Llegó el informe pero no pude armar el plan del día: ${e.message}` }); }
 }
@@ -202,6 +204,32 @@ async function api(req, res, partes) {
     }
   }
   // plan del día (informe de la mañana → 5 videos): GET = el más reciente; POST { accion: "armar" | "crear" }
+  // imágenes del día (Monarca): GET ?fecha= (o la más reciente); POST { accion: armar | escritas | editar | flow | componer | simular | programar }
+  if (recurso === "imagenes-dia") {
+    const D = await import("./imagenes-dia.js"), url = new URL(req.url, "http://x");
+    if (m === "GET") { const d = url.searchParams.get("fecha") ? D.leerDia(url.searchParams.get("fecha")) : D.diaReciente(); return json(res, 200, d ? { ...d, config: D.config() } : { config: D.config() }); }
+    if (m === "POST") {
+      const b = await cuerpo(req).catch(() => ({})), fecha = b.fecha || D.hoyCDMX();
+      try {
+        if (b.accion === "armar") {
+          if (!(await import("./plan-dia.js")).informeReciente("monarca")) await INV.traerDelOtro().catch(() => {}); // en la laptop el informe llega del VPS
+          return json(res, 200, await D.armarDia({ fecha, forzar: !!b.forzar }));
+        }
+        if (b.accion === "escritas") return json(res, 200, D.guardarEscritas(fecha, b.imagenes || []));
+        if (b.accion === "editar") return json(res, 200, D.editarImagen(fecha, b.n, b.cambios || {}));
+        if (b.accion === "componer") { encolar("_imagenes", "render", (av) => D.componer(fecha, av)); return json(res, 200, { ok: true }); }
+        if (b.accion === "flow") { // fondos que falten (gasta Flow) y luego compone; va en la misma fila que los videos (un Flow a la vez)
+          encolar("_imagenes", "fondo", async (av) => { const r = await D.generarEnFlow(fecha, av); await D.componer(fecha, av); return { ...r, fallos: r.faltan.map((n) => `imagen ${n}`), motivo: r.fallos[0] || "" }; });
+          return json(res, 200, { ok: true });
+        }
+        if (b.accion === "simular" || b.accion === "programar") {
+          if (Array.isArray(b.cuentas) && b.cuentas.length) { const a = leerAjustes(); guardarAjustes({ ...a, ghlImagenes: { ...(a.ghlImagenes || {}), monarca: b.cuentas } }); }
+          return json(res, 200, await GHL.programarDia(fecha, { cuentasIds: b.cuentas || [], simular: b.accion === "simular" }));
+        }
+        return json(res, 400, { error: "Acción no válida." });
+      } catch (e) { return json(res, 400, { error: e.message }); }
+    }
+  }
   if (recurso === "plan-dia") {
     const PD = await import("./plan-dia.js");
     if (m === "GET") return json(res, 200, PD.planReciente() || {});

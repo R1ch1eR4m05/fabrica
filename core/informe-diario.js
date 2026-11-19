@@ -40,9 +40,26 @@ export function multiplicador(t) {
 // ---------- texto ----------
 // correos que pasan por n8n a veces llegan con la codificación rota ("espaÃ±ol", "â" en vez de "—"): se repara
 export function arreglarCodificacion(t) {
-  const s = String(t ?? "");
-  if (!/[ÃÂâ][\u0080-\u00BF]/.test(s)) return s;
-  return s.replace(/[\u00C2-\u00F4][\u0080-\u00BF]{1,3}/g, (m) => { const d = Buffer.from(m, "latin1").toString("utf8"); return d.includes("\uFFFD") ? m : d; });
+  let s = arreglar7bits(String(t ?? ""));
+  // a veces llega codificado dos veces ("Ã\u0083Âº"): se repara hasta que ya no cambie
+  for (let i = 0; i < 3 && /[ÃÂâ][\u0080-¿]/.test(s); i++) {
+    const r = s.replace(/[Â-ô][\u0080-¿]{1,3}/g, (m) => { const d = Buffer.from(m, "latin1").toString("utf8"); return d.includes("�") ? m : d; });
+    if (r === s) break; s = r;
+  }
+  return s;
+}
+// correos reenviados que pierden el bit alto de cada byte ("miC)rcoles" = miércoles, "b\0\x14" = "—"): cada byte de un
+// carácter acentuado quedó con el bit 8 apagado y se puede volver a encender. Solo se toca si el texto trae la huella (NUL o
+// controles raros), para no cambiar un "C)" legítimo de un informe sano.
+export function arreglar7bits(s) {
+  if (!/[\x00-\x08\x0e-\x1f]|[a-z]C[)!:1][a-z]/.test(s) || /[\u0080-￿]/.test(s)) return s;
+  const prender = (cad) => Buffer.from([...cad].map((c) => c.charCodeAt(0) | 0x80)).toString("utf8");
+  const ok = (d) => !d.includes("�");
+  return s
+    .replace(/p\x1f[\x00-\x3f]{2}/g, (m) => { const d = prender(m); return ok(d) ? d : m; })                 // emojis (F0 9F …)
+    .replace(/b[\x00-\x08\x0b\x0c\x0e-\x1f][\x00-\x3f]/g, (m) => { const d = prender(m); return ok(d) ? d : m; }) // — “ ” … → (E2 …)
+    .replace(/C[\x00-\x1f!)\-3:1<]/g, (m) => { const d = prender(m); return ok(d) ? d : m; })                 // á é í ó ú ñ ü Á É Í Ó Ú Ñ
+    .replace(/B[!?+;]/g, (m) => { const d = prender(m); return ok(d) ? d : m; });                            // ¡ ¿ « »
 }
 // el objeto JSON que empieza en el primer "{" (respeta comillas), con los saltos de línea del correo convertidos en espacios
 function objetoJSON(s) {
@@ -63,7 +80,7 @@ export function secciones(md) {
   for (const l of lineas) {
     const t = l.replace(/[#*_=>\s]+/g, " ").trim();
     // encabezado: markdown (#, **) o una línea que empieza en MAYÚSCULAS ("PUBLICACIONES — las 15 mejores", "CUENTAS NUEVAS QUE VALE…")
-    const cab = /^(#{1,6}\s|\*\*|[A-ZÁÉÍÓÚÑ_ ]{6,}$)/.test(l.trim()) || /^#/.test(l.trim()) || /^[A-ZÁÉÍÓÚÑ_]{5,}(\s+[A-ZÁÉÍÓÚÑ_]+)*\s*([—–:\-].*)?$/.test(l.trim());
+    const cab = /^(#{1,6}\s|\*\*|[A-ZÁÉÍÓÚÑ_ ]{6,}$)/.test(l.trim()) || /^#/.test(l.trim()) || /^[A-ZÁÉÍÓÚÑ_]{5,}(\s+[A-ZÁÉÍÓÚÑ_]+)*\s*([—–:\-(].*)?$/.test(l.trim());
     const s = cab && t.length < 80 ? SECCIONES.find(([, re]) => re.test(t)) : null;
     if (s) { actual = s[0]; out[actual] = []; continue; }
     if (actual) out[actual].push(l);

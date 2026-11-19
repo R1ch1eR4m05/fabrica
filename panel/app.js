@@ -1108,6 +1108,66 @@ function tarjetaPlan(plan) {
     <div class="fila" style="margin-top:8px">${conGuion ? `<button class="btn primario peq" id="pdCrear" title="Crea los que falten y manda a la fila los que aún no se han hecho (los terminados no se repiten)">Crear y hacer los ${conGuion} del plan</button>` : ""}<button class="btn peq" id="pdArmar" title="Vuelve a leer el último informe (no pisa los guiones ya escritos)">Rehacer con el último informe</button></div></div>`;
 }
 
+// ---------- imágenes del día (Monarca) ----------
+function tarjetaImagenes(d) {
+  const im = d.imagenes || [], hechas = im.filter((x) => x.archivo).length, conFondo = im.filter((x) => x.fondo).length;
+  const cab = `<div class="fila" style="justify-content:space-between"><b>Imágenes del día${d.fecha ? ` · ${h(d.fecha)}` : ""}</b><span class="estado">${h(d.informe || "")}</span></div>`;
+  if (!d.fecha) return `<div class="card" style="margin-bottom:16px">${cab}<p class="estado">10 imágenes de frase con fondo de Flow, copy y hora, para la página de Facebook, grupos e Instagram. Se arman solas cuando llega el informe de Muse.</p><div class="fila"><button class="btn peq" id="imArmar">Armar con el último informe</button></div></div>`;
+  if (!im.length) return `<div class="card" style="margin-bottom:16px">${cab}<p class="estado">${d.errorIA ? `La IA no pudo escribirlas (${h(d.errorIA)}). ` : ""}Faltan las frases: dile a Claude Code <code>escribe las imágenes del día</code> y recarga.</p><div class="fila"><button class="btn peq" id="imArmar">Volver a leer el último informe</button></div></div>`;
+  const red = (x) => ["Página", x.instagram ? "Instagram" : "", x.grupos ? "Grupos" : ""].filter(Boolean).join(" + ");
+  const tarjetas = im.map((x) => `<div style="width:190px;flex:0 0 auto">
+      ${x.archivo ? `<img src="/imagenes-dia/${h(d.fecha)}/${h(x.archivo)}?v=${h(x.hash || "")}" style="width:190px;border-radius:8px;display:block">` : `<div style="width:190px;height:237px;border-radius:8px;background:var(--b);display:flex;align-items:center;justify-content:center;text-align:center;padding:10px;font-size:13px">${x.fondo ? "falta componer" : "sin fondo de Flow"}<br><br>${h(x.frase)}</div>`}
+      <div class="estado" style="margin-top:4px"><b>${x.n}. ${h(x.hora)}</b> · ${h(red(x))}${x.sinReferencia ? ` · <span style="color:var(--rojo,#e66)">sin referencia</span>` : ""}${x.inspiradaEn?.[0] ? ` · <a href="${h(x.inspiradaEn[0])}" target="_blank" rel="noopener" style="color:var(--a)">inspiración</a>` : ""}</div>
+      <details><summary class="estado" style="cursor:pointer">copy y editar</summary>
+        <textarea data-imf="${x.n}" style="min-height:60px;font-size:12px" title="Frase de la imagen">${h(x.frase)}</textarea>
+        <input data-ima="${x.n}" value="${h(x.autor || "")}" placeholder="Autor (solo cita real)" style="font-size:12px">
+        <textarea data-imc="${x.n}" style="min-height:120px;font-size:12px" title="Copy">${h(x.copy)}</textarea>
+        <input data-imh="${x.n}" value="${h((x.hashtags || []).join(" "))}" style="font-size:12px" title="Hashtags (los grupos van sin ellos)">
+        <div class="fila" style="gap:6px;font-size:12px"><input data-imhora="${x.n}" value="${h(x.hora)}" style="width:70px;font-size:12px"><label><input type="checkbox" data-imig="${x.n}" ${x.instagram ? "checked" : ""}> IG</label><label><input type="checkbox" data-imgr="${x.n}" ${x.grupos ? "checked" : ""}> Grupos</label></div>
+        <button class="mini" data-imguardar="${x.n}">Guardar</button></details></div>`).join("");
+  return `<div class="card" style="margin-bottom:16px">${cab}
+    <p class="estado">${im.length} escritas · ${conFondo} con fondo de Flow · ${hechas} listas. La página de Facebook lleva todas; Instagram y los grupos, las marcadas. Cada copy cierra invitando a compartir; en los grupos van sin hashtags.</p>
+    <div style="display:flex;gap:12px;overflow-x:auto;padding:6px 0">${tarjetas}</div>
+    <div class="fila" style="margin-top:8px">
+      ${conFondo < im.length ? `<button class="btn primario peq" id="imFlow" title="Pide a Flow los fondos que falten (gasta créditos de la cuenta elegida) y pone la frase">Generar en Flow los ${im.length - conFondo} fondos que faltan</button>` : ""}
+      ${conFondo ? `<button class="btn peq" id="imComponer" title="Vuelve a poner las frases sobre los fondos (gratis)">Componer de nuevo</button>` : ""}
+      <button class="btn peq" id="imArmar" title="Vuelve a leer el último informe (no pisa lo escrito)">Releer informe</button>
+      <a class="btn peq" href="/imagenes-dia/${h(d.fecha)}/textos.txt" target="_blank">Ver todos los textos</a></div>
+    ${hechas && S.info.ghl ? `<div style="margin-top:12px"><b>Programar en GoHighLevel</b> <span class="estado">cada imagen a su hora del ${h(d.fecha)} (hora CDMX); las que ya pasaron se saltan</span>
+      <div class="fila" id="imCuentas" style="margin:8px 0;flex-wrap:wrap"><span class="estado">cargando cuentas…</span></div>
+      <div class="fila"><button class="btn peq" id="imSim">1 · Simular</button><button class="btn peq" id="imProg" style="background:var(--rojo,#e66);color:#fff">2 · Programar en GHL</button></div>
+      <div id="imRes" class="estado" style="margin-top:6px"></div></div>` : hechas ? `<p class="estado">Para programarlas pon GHL_TOKEN y GHL_LOCATION_ID en el .env.</p>` : ""}
+  </div>`;
+}
+
+async function conectarImagenes(d, recargar) {
+  const post = (cuerpo) => api("/api/imagenes-dia", "POST", { fecha: d.fecha, ...cuerpo });
+  if ($("#imArmar")) $("#imArmar").onclick = async () => { avisar("Leyendo el último informe…"); try { const r = await post({ accion: "armar" }); avisar(r.imagenes?.length ? `${r.imagenes.length} imágenes escritas.` : "Informe leído. Faltan las frases: dile a Claude Code «escribe las imágenes del día»."); recargar(); } catch (e) { avisar(e.message, true); } };
+  if ($("#imFlow")) $("#imFlow").onclick = async () => { if (!confirm("Esto pide los fondos a Google Flow y GASTA créditos de la cuenta de Flow elegida. ¿Seguir?")) return; try { await post({ accion: "flow" }); avisar("En la fila: fondos de Flow y luego las frases encima. Recarga cuando termine."); } catch (e) { avisar(e.message, true); } };
+  if ($("#imComponer")) $("#imComponer").onclick = async () => { try { await post({ accion: "componer" }); avisar("Componiendo… recarga en un momento."); } catch (e) { avisar(e.message, true); } };
+  for (const b of document.querySelectorAll("[data-imguardar]")) b.onclick = async () => {
+    const n = b.dataset.imguardar, v = (k) => document.querySelector(`[data-${k}="${n}"]`);
+    try {
+      await post({ accion: "editar", n: Number(n), cambios: { frase: v("imf").value, autor: v("ima").value, copy: v("imc").value, hashtags: v("imh").value.split(/[\s,]+/).filter(Boolean), hora: v("imhora").value, instagram: v("imig").checked, grupos: v("imgr").checked } });
+      avisar(`Imagen ${n} guardada${d.imagenes.find((x) => x.n === Number(n))?.frase !== v("imf").value ? ": dale «Componer de nuevo» para que salga la frase nueva" : ""}.`);
+    } catch (e) { avisar(e.message, true); }
+  };
+  if (!$("#imCuentas")) return;
+  let cs = [], aj = {};
+  try { [cs, aj] = await Promise.all([api("/api/ghl/cuentas"), api("/api/ajustes")]); } catch (e) { $("#imCuentas").textContent = e.message; return; }
+  const sirven = cs.filter((a) => !a.caducada && (/facebook|instagram/.test(a.plataforma) || /group/i.test(a.tipo)));
+  const antes = aj.ghlImagenes?.monarca || aj.ghlCuentas?.monarca || [];
+  const tipo = (a) => (/group/i.test(`${a.tipo} ${a.plataforma}`) ? "grupo" : a.plataforma);
+  $("#imCuentas").innerHTML = sirven.length ? sirven.map((a) => `<label style="margin-right:12px"><input type="checkbox" data-imcta="${h(a.id)}" ${antes.includes(a.id) || (!antes.length && /monarca/i.test(a.nombre)) ? "checked" : ""}> ${h(a.nombre)} <span class="estado">(${h(tipo(a))})</span></label>`).join("")
+    + (sirven.some((a) => tipo(a) === "grupo") ? "" : `<div class="estado" style="width:100%">No veo grupos de Facebook conectados: en GHL → Social Planner → Settings → conecta los grupos donde eres admin y dale «Actualizar cuentas» en un video.</div>`)
+    : "No hay cuentas de Facebook ni Instagram conectadas en GHL.";
+  const elegidas = () => [...document.querySelectorAll("[data-imcta]")].filter((x) => x.checked).map((x) => x.dataset.imcta);
+  const pintar = (r, sim) => { $("#imRes").innerHTML = `${sim ? "<b>Simulación</b> (no se publicó nada): " : "<b>Programado:</b> "}${r.hechos.map((x) => `${x.n} ${h(x.hora)} → ${h(x.destino)} (${h(x.cuentas.join(", "))})`).join(" · ") || "nada nuevo"}${r.saltadas.length ? `<br>Se saltan: ${h(r.saltadas.join(" · "))}` : ""}`; };
+  $("#imSim").onclick = async () => { try { pintar(await post({ accion: "simular", cuentas: elegidas() }), true); } catch (e) { avisar(e.message, true); } };
+  $("#imProg").onclick = async () => { if (!confirm(`Se programan en GHL las imágenes del ${d.fecha} en las cuentas elegidas, cada una a su hora. ¿Seguir?`)) return; $("#imProg").disabled = true;
+    try { pintar(await post({ accion: "programar", cuentas: elegidas() }), false); avisar("Imágenes programadas en GHL."); } catch (e) { avisar(e.message, true); } finally { $("#imProg").disabled = false; } };
+}
+
 // ---------- investigador ----------
 const marcarAcento = (t) => h(t).replace(/\*([^*]+)\*/g, "<em style='color:var(--a)'>$1</em>");
 const lista = (v) => String(v || "").split(/[,\n]/).map((x) => x.trim()).filter(Boolean);
@@ -1121,6 +1181,7 @@ async function investigador(archivo) {
   archivo = archivo || d.lista[0]?.archivo;
   const inv = archivo ? await api(`/api/investigacion/${archivo}`) : null;
   const plan = c.id === "monarca" ? await api("/api/plan-dia").catch(() => ({})) : null;
+  const imgDia = c.id === "monarca" ? await api("/api/imagenes-dia").catch(() => null) : null;
   $("#main").innerHTML = `
     <h1>Investigador de virales</h1>
     <div class="fila" style="margin:-4px 0 10px"><label style="margin:0">Nicho</label><select id="iNicho" style="width:auto;font-weight:600">${d.nichos.map((n) => `<option value="${h(n.id)}" ${n.id === c.id ? "selected" : ""}>${h(n.nombre)}</option>`).join("")}</select><button class="btn peq" id="iNuevoNicho" title="Otra marca o página con sus propias cuentas, público y estilos">+ Nuevo nicho</button></div>
@@ -1128,6 +1189,7 @@ async function investigador(archivo) {
     ${!d.ia ? `<div class="nota">Sin IA conectada: pon <code>GEMINI_API_KEY</code> (gratis en aistudio.google.com) en el <code>.env</code>, o pídeselo a <b>Claude Code</b> en la carpeta de la fábrica: <code>investiga mi nicho y dame frases virales</code> (o <code>convierte los informes pendientes</code>). Recarga esta página al terminar.</div>` : `<div class="estado" style="margin-bottom:8px">Motor: ${h(d.motor)}</div>`}
     ${d.pendientes?.length ? `<div class="nota">Informes guardados sin convertir: ${d.pendientes.map(h).join(", ")}. ${d.ia ? "Se reintentan solos cada 15 minutos (Gemini a veces está saturado)." : "Dile a Claude Code: <code>convierte los informes pendientes</code>."}</div>` : ""}
     ${plan ? tarjetaPlan(plan) : ""}
+    ${imgDia ? tarjetaImagenes(imgDia) : ""}
     <details class="card" style="margin-bottom:16px"><summary style="cursor:pointer;font-weight:600">Importar un informe (Gemini Deep Research, muse.ai…)</summary>
       <p class="estado">1) Copia el prompt y pégalo en Gemini con <b>Deep Research</b>. 2) Copia el informe que te dé y pégalo abajo. También puedes soltar archivos .md/.txt/.csv en <code>investigacion/entrada/</code> o mandarlos desde n8n.</p>
       <div class="fila"><button class="btn peq" id="iPrompt">Copiar prompt para Deep Research</button></div>
@@ -1196,6 +1258,7 @@ async function investigador(archivo) {
   };
   $("#iCorrer").onclick = async () => { if (S.info.apify && !confirm("Esto trae publicaciones con Apify y GASTA de tu saldo (tope de unos $1.5 USD por investigación; tu plan gratis da $5 al mes). ¿Seguir?")) return; await $("#iGuardar").onclick(); api("/api/investigacion", "POST", { nicho: c.id }).catch((e) => avisar(e.message, true)); };
   for (const a of document.querySelectorAll("[data-abrir]")) a.onclick = (e) => { e.preventDefault(); abrir(a.dataset.abrir); };
+  if (imgDia) conectarImagenes(imgDia, () => investigador(archivo));
   if ($("#pdArmar")) $("#pdArmar").onclick = async () => { avisar("Armando el plan con el último informe…"); try { await api("/api/plan-dia", "POST", { accion: "armar", nicho: "monarca" }); avisar("Plan del día listo."); investigador(archivo); } catch (e) { avisar(e.message, true); } };
   if ($("#pdCrear")) $("#pdCrear").onclick = async () => { try { const r = await api("/api/plan-dia", "POST", { accion: "crear", fecha: plan.dia, musica: conMusica(), flow: conFlow() }); const nuevos = r.hechos.filter((x) => x.id && !x.ya).length, enFila = r.hechos.filter((x) => x.enFila === true).length, malos = r.hechos.filter((x) => x.error), f = r.hechos.filter((x) => x.pendiente).length; avisar(`${nuevos} videos del plan creados; ${enFila} en la fila de trabajo (imágenes de Flow → voz → video, uno tras otro)${f ? `; ${f} esperan guion` : ""}${malos.length ? `. No entraron: ${malos.map((x) => `${x.id} (${x.error})`).join(" | ")}` : ""}.`, !!malos.length); S.proyectos = await api("/api/proyectos"); pintarLista(); investigador(archivo); } catch (e) { avisar(e.message, true); } };
   $("#iPrompt").onclick = async () => navigator.clipboard.writeText(await api(`/api/investigacion/prompt?${nq}`)).then(() => avisar("Prompt copiado. Pégalo en Gemini con Deep Research."));

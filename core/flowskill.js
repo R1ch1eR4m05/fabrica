@@ -267,11 +267,11 @@ function rescatar(dir, nombres) {
 let flowActivo = null;
 export function matarFlow() { try { flowActivo?.kill(); } catch {} flowActivo = null; }
 
-export function lote(id, nombre, jobs, avisar = () => {}, { minutos = 60, ratio = "9:16", proyecto = null } = {}) {
+export function lote(id, nombre, jobs, avisar = () => {}, { minutos = 60, ratio = "9:16", proyecto = null, dir: dirTrabajo = null } = {}) {
   return new Promise((ok, mal) => {
     if (!flowSkillListo()) return mal(new Error("No encuentro Google Flow Skill. Pon FLOW_SKILL_DIR en el .env (la carpeta donde está flow.py) y haz 'python flow.py login' una vez."));
     try { parcharSkill(); } catch {}
-    const m = modelos(), dir = path.join(dirProyecto(id), "flow");
+    const m = modelos(), dir = dirTrabajo || path.join(dirProyecto(id), "flow"); // dir: para trabajos que no son un video (imágenes del día)
     fs.mkdirSync(dir, { recursive: true });
     const archivo = path.join(dir, `${nombre}.json`);
     fs.writeFileSync(archivo, JSON.stringify({ project: nombre, ...(proyecto ? { project_uuid: proyecto } : {}), defaults: { ratio, image_model: m.imagen, video_model: m.video, video_duration: "8s" }, jobs }, null, 2));

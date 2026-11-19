@@ -39,6 +39,7 @@ const horaCDMX = (d) => new Date(d.getTime() - 6 * 3600e3).toISOString().slice(1
 function ocupacion(regs) {
   const oc = { short: new Map(), largo: new Map() }, semanasLargo = new Map();
   for (const r of regs) {
+    if (r.tipo === "imagen") continue; // las imágenes del día tienen sus propias horas
     const p = leer(r.id, "proyecto.json"), t = p ? tipoDe(p) : "short", f = new Date(r.publica), d = diaCDMX(f);
     if (!oc[t].has(d)) oc[t].set(d, new Set());
     oc[t].get(d).add(horaCDMX(f));

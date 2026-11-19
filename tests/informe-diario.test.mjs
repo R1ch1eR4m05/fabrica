@@ -73,3 +73,14 @@ test("formato real del correo: codificación rota, encabezados con guion y JSON 
   assert.ok(ev.every((x) => !x.riesgo), "«sin odio» no es riesgo de marca");
   assert.equal(ev[0].pico, 32);
 });
+
+test("repara correos reenviados sin el bit alto (miC)rcoles) y encabezados con paréntesis", async () => {
+  const { arreglarCodificacion, parsearInforme } = await import("../core/informe-diario.js");
+  const roto = (t) => [...Buffer.from(t, "utf8")].map((b) => String.fromCharCode(b & 0x7f)).join("");
+  const sano = "INFORME — miércoles 18\nPUBLICACIONES (las 15 mejores)\n\n1. Instagram | @cuenta | 9,000 seguidores\nEnlace: https://www.instagram.com/p/AAA/\nIdea central: Tú eres más fuerte; ¿ñoño? Ácido «sí».\nLikes: 5,000\n";
+  assert.equal(arreglarCodificacion(roto(sano)), sano);
+  assert.equal(arreglarCodificacion("Plan C) y club\r\nsano"), "Plan C) y club\r\nsano"); // sin la huella no se toca
+  const r = parsearInforme(roto(sano));
+  assert.equal(r.publicaciones.length, 1);
+  assert.match(r.publicaciones[0].idea, /Tú eres más fuerte/);
+});

@@ -35,14 +35,14 @@ const cancelados = (reg) => new Set(reg.filter((r) => r.estado === "cancelado").
 export const vigentes = (reg = leerRegistro()) => { const fuera = cancelados(reg); return reg.filter((r) => r.estado === "programado" && !fuera.has(`${r.postId}|${r.cuenta}`)); };
 export function duplicado(h, plataforma, cuenta, reg = leerRegistro()) {
   const fuera = cancelados(reg);
-  return reg.find((r) => r.estado === "programado" && !fuera.has(`${r.postId}|${r.cuenta}`) && r.plataforma === plataforma && r.cuenta === cuenta &&
+  return reg.find((r) => r.estado === "programado" && r.tipo !== "imagen" && !fuera.has(`${r.postId}|${r.cuenta}`) && r.plataforma === plataforma && r.cuenta === cuenta &&
     (r.archivoHash === h.archivoHash || r.guionHash === h.guionHash || (normal(r.titulo) === normal(h.titulo) && mismoFormato(r, h)))) || null;
 }
 
 // lo que hoy bloquea programar este video (mismo archivo, guion o título ya programado, de este u otro proyecto)
 export function bloqueos(id, reg = leerRegistro()) {
   const h = huellas(id), fuera = cancelados(reg), vistos = new Map();
-  for (const r of reg) if (r.estado === "programado" && !fuera.has(`${r.postId}|${r.cuenta}`) && duplicado(h, r.plataforma, r.cuenta, [r])) vistos.set(`${r.postId}|${r.cuenta}`, r);
+  for (const r of reg) if (r.estado === "programado" && r.tipo !== "imagen" && !fuera.has(`${r.postId}|${r.cuenta}`) && duplicado(h, r.plataforma, r.cuenta, [r])) vistos.set(`${r.postId}|${r.cuenta}`, r);
   return [...vistos.values()];
 }
 // "ya lo borré en GHL": anota esos posts como cancelados para poder programar la versión nueva. No toca GHL.
@@ -255,4 +255,60 @@ export async function programarImagenes(id, { cuentasIds = [], fecha, posts = []
   p.ghl = { ...(p.ghl || {}), programados: [...(p.ghl?.programados || []), ...hechos] }; guardar(id, "proyecto.json", p);
   avisar({ progreso: 1, msg: "Imágenes programadas en GHL." });
   return hechos;
+}
+
+// ---- imágenes del día (core/imagenes-dia.js) ----
+// Cada imagen a su hora: página de Facebook (todas), Instagram (las marcadas) y grupos de Facebook (las marcadas; GHL solo
+// publica en grupos donde Richie es admin y que estén conectados en el Social Planner). Igual que los videos: primero
+// simular (dry-run, no sube ni publica nada) y luego programar exactamente eso; lo ya programado no se repite.
+const esGrupo = (a) => /group/i.test(`${a.tipo} ${a.plataforma}`);
+const destinoDe = (a) => (esGrupo(a) ? "grupo" : /instagram/.test(a.plataforma) ? "instagram" : /facebook/.test(a.plataforma) ? "facebook" : null);
+async function subirArchivoImagen(ruta, nombre) {
+  const form = new FormData();
+  form.append("file", new Blob([fs.readFileSync(ruta)], { type: "image/jpeg" }), nombre);
+  form.append("hosted", "false"); form.append("name", nombre);
+  return (await pedir("POST", "/medias/upload-file", form, { form: true, ms: 120000 })).url;
+}
+export async function programarDia(fecha, { cuentasIds = [], simular = false } = {}, avisar = () => {}) {
+  const D = await import("./imagenes-dia.js");
+  const d = D.leerDia(fecha); if (!d?.imagenes?.length) throw new Error("No hay imágenes de ese día.");
+  if (!cuentasIds.length) throw new Error("Elige al menos una cuenta.");
+  const elegidas = (await cuentas()).filter((a) => cuentasIds.includes(a.id) && !a.caducada && destinoDe(a));
+  if (!elegidas.length) throw new Error("Elige la página de Facebook, Instagram o un grupo de Facebook (YouTube y TikTok no llevan imágenes).");
+  const reg = leerRegistro(), vivos = vigentes(reg), usuario = simular ? null : await usuarioGHL();
+  const hechos = [], saltadas = [];
+  const listas = d.imagenes.filter((x) => x.archivo && fs.existsSync(path.join(D.dirDia(fecha), x.archivo)));
+  if (!listas.length) throw new Error("Ninguna imagen está compuesta todavía: primero genera los fondos en Flow y compón las imágenes.");
+  for (const [k, x] of listas.entries()) {
+    const cuando = D.fechaDe(fecha, x.hora);
+    if (cuando.getTime() < Date.now() + MARGEN) { saltadas.push(`${x.n} (${x.hora} ya pasó)`); continue; }
+    const id = `img-${fecha}-${String(x.n).padStart(2, "0")}`, ruta = path.join(D.dirDia(fecha), x.archivo);
+    const hash = hashArchivo(ruta);
+    const destinos = elegidas.filter((a) => { const t = destinoDe(a); return t === "facebook" || (t === "instagram" && x.instagram) || (t === "grupo" && x.grupos); });
+    const libres = destinos.filter((a) => !vivos.some((r) => r.tipo === "imagen" && r.cuenta === a.id && (r.archivoHash === hash || r.id === id)));
+    if (destinos.length > libres.length) saltadas.push(`${x.n} ya programada en ${destinos.length - libres.length} cuenta(s)`);
+    if (!libres.length) continue;
+    if (!simular) {
+      const sinSim = libres.filter((a) => !reg.some((r) => r.estado === "simulado" && r.tipo === "imagen" && r.archivoHash === hash && r.cuenta === a.id && Date.now() - new Date(r.fecha).getTime() < 72 * 3600e3));
+      if (sinSim.length) throw new Error(`La imagen ${x.n} no se ha simulado en ${sinSim.map((a) => a.nombre).join(", ")}. Primero «Simular». No se publica nada sin simular antes.`);
+    }
+    avisar({ progreso: (k + 0.3) / listas.length, msg: `${simular ? "Simulando" : "Programando"} imagen ${x.n} (${x.hora})…` });
+    let url = null;
+    if (!simular) { url = x.ghl?.hash === hash && x.ghl.url ? x.ghl.url : await subirArchivoImagen(ruta, `${id}.jpg`); x.ghl = { url, hash }; }
+    // un post por destino (la página/IG con hashtags; el grupo sin ellos)
+    const porDestino = {};
+    for (const a of libres) (porDestino[destinoDe(a)] ||= []).push(a);
+    for (const [destino, cs] of Object.entries(porDestino)) {
+      const texto = (await import("./imagenes-dia.js")).textoPara(x, destino), base = { id, tipo: "imagen", titulo: x.frase, archivoHash: hash, publica: cuando.toISOString(), formato: "4:5" };
+      if (simular) { for (const a of cs) anotar({ ...base, plataforma: a.plataforma, cuenta: a.id, postId: null, estado: "simulado" }); hechos.push({ n: x.n, hora: x.hora, destino, cuentas: cs.map((a) => a.nombre), texto }); continue; }
+      try {
+        const j = await pedir("POST", `/social-media-posting/${CFG.ghlLocation}/posts`, { accountIds: cs.map((a) => a.id), summary: texto, media: [{ url, type: "image/jpeg" }], status: "scheduled", scheduleDate: cuando.toISOString(), type: "post", userId: usuario });
+        const postId = j.results?.post?._id || j.results?.post?.id || j.post?._id || j.id || null;
+        for (const a of cs) anotar({ ...base, plataforma: a.plataforma, cuenta: a.id, postId, estado: "programado" });
+        hechos.push({ n: x.n, hora: x.hora, destino, cuentas: cs.map((a) => a.nombre), postId });
+      } catch (e) { for (const a of cs) anotar({ ...base, plataforma: a.plataforma, cuenta: a.id, postId: null, estado: "error", error: e.message.slice(0, 200) }); throw new Error(`Imagen ${x.n}: ${e.message}`); }
+    }
+  }
+  if (!simular) D.guardarDia({ ...D.leerDia(fecha), imagenes: D.leerDia(fecha).imagenes.map((y) => listas.find((z) => z.n === y.n)?.ghl ? { ...y, ghl: listas.find((z) => z.n === y.n).ghl } : y) });
+  return { hechos, saltadas };
 }

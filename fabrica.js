@@ -33,6 +33,8 @@
 //   node fabrica.js serie <id> ["nombre"]           asigna serie y número (sin nombre: la primera serie de su marca)
 //   node fabrica.js relacionar <id> <url>           liga un Short con su video largo (sale en la descripción)
 //   node fabrica.js cola [marca] [--confirmar]      cola automática: sin --confirmar SIMULA (no publica); con --confirmar programa el plan simulado
+//   node fabrica.js imagenes-dia [informe.md] [--fecha AAAA-MM-DD] [--escritas archivo.json] [--flow] [--componer] [--forzar]
+//        10 imágenes de frase del informe (Monarca): arma el día; --escritas guarda las que escribió Claude Code; --flow genera los fondos (gasta Flow); --componer pone la frase
 //   node fabrica.js plan-dia [informe.md] [--crear] [--forzar]   informe de la mañana → 5 videos (3 Shorts, 1 largo, 1 experimento) con horario; --crear los crea
 //   node fabrica.js comparar-voces ["texto"] [--estilo id]   mismo texto con cada modelo de voz → listos/comparar-voces/
 import fs from "node:fs";
@@ -112,6 +114,16 @@ async function main() {
       q.relacionado = { url: libres[1] }; P.guardar(libres[0], "proyecto.json", q);
       const M = await import("./core/metadatos.js"); await M.generarMetadatos(libres[0], { conIA: false });
       console.log(`${libres[0]} enlaza a ${libres[1]} (ya está en su descripción de YouTube).`); return;
+    }
+    case "imagenes-dia": {
+      const D = await import("./core/imagenes-dia.js"), fecha = opc("fecha") || D.hoyCDMX();
+      if (opc("escritas")) { const j = JSON.parse(fs.readFileSync(opc("escritas"), "utf8")); const d = D.guardarEscritas(fecha, j.imagenes || j); console.log(`Guardadas ${d.imagenes.length} imágenes de ${fecha}${d.imagenes.some((x) => x.sinReferencia) ? ` (sin referencia válida: ${d.imagenes.filter((x) => x.sinReferencia).map((x) => x.n).join(", ")})` : ""}.`); return; }
+      if (args.includes("--flow")) { const r = await D.generarEnFlow(fecha, avisar); console.log(`Fondos: ${r.hechas} nuevos${r.faltan.length ? `; faltan ${r.faltan.join(", ")} (${r.fallos[0] || ""})` : ""}.`); }
+      if (args.includes("--componer") || args.includes("--flow")) { const r = await D.componer(fecha, avisar); console.log(`Compuestas: ${r.hechas.join(", ") || "ninguna (faltan fondos)"} → imagenes-dia/${fecha}/`); return; }
+      const d = await D.armarDia({ archivo: libres[0], fecha, forzar: args.includes("--forzar"), conIA: !args.includes("--sin-ia") });
+      console.log(`Imágenes del día ${fecha} (informe ${d.informe}): ${d.imagenes.length ? `${d.imagenes.length} escritas` : "sin escribir"}${d.errorIA ? ` (IA: ${d.errorIA})` : ""}.`);
+      if (!d.imagenes.length) console.log(`En Claude Code di «escribe las imágenes del día». Pedido en imagenes-dia/${fecha}/dia.json → pedido.`);
+      return;
     }
     case "plan-dia": {
       const PD = await import("./core/plan-dia.js");
