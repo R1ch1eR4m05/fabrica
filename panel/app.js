@@ -792,7 +792,7 @@ function panelClips(p) {
   const aud = p.auditoria?.escenas || {}, malas = Object.entries(aud).filter(([, r]) => r.ok === false).map(([n]) => +n);
   const cs = p.clips || [], faltan = cs.filter((x) => (x.tipo !== "cierre" || estiloDe(p.estilo)?.clipsFlow === "imagen") && !x.archivo && !x.misma).length, est = estiloDe(p.estilo) || {}, img = est.clipsFlow === "imagen";
   return `<div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--b)">
-    <div class="estado" id="est-fondo">Clips por escena: ${cs.filter((x) => x.archivo).length} listos${cs.some((x) => x.misma) ? ` · ${cs.filter((x) => x.misma).length} siguen con la imagen anterior` : ""} · ${faltan} sin ${img ? "imagen" : "clip"} (${est.banco ? "al hacer el video se llenan solas: banco de videos anteriores → Pexels → banco" : 'sin clip usa Pexels con "buscar" o un dibujo animado'})</div>
+    <div class="estado" id="est-fondo">Clips por escena: ${cs.filter((x) => x.archivo).length} listos${cs.some((x) => x.misma) ? ` · ${cs.filter((x) => x.misma).length} siguen con la imagen anterior` : ""} · ${faltan} sin ${img ? "imagen" : "clip"} (${est.banco ? (est.sinPexels ? "al hacer el video se llenan solas: banco de videos anteriores (sin Pexels)" : "al hacer el video se llenan solas: banco de videos anteriores → Pexels → banco") : 'sin clip usa Pexels con "buscar" o un dibujo animado'})</div>
     <div class="barra oculto" id="bar-fondo"><div></div></div>
     ${est.anuncios ? panelProductoAPIMart(p, faltan) : ""}
     <div class="fila" style="margin:8px 0;${est.anuncios && p.opciones?.generador !== "flow" ? "display:none" : ""}">
