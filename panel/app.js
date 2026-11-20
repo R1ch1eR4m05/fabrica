@@ -1133,15 +1133,23 @@ function tarjetaImagenes(d) {
       ${conFondo ? `<button class="btn peq" id="imComponer" title="Vuelve a poner las frases sobre los fondos (gratis)">Componer de nuevo</button>` : ""}
       <button class="btn peq" id="imArmar" title="Vuelve a leer el último informe (no pisa lo escrito)">Releer informe</button>
       <a class="btn peq" href="/imagenes-dia/${h(d.fecha)}/textos.txt" target="_blank">Ver todos los textos</a></div>
-    ${hechas && S.info.ghl ? `<div style="margin-top:12px"><b>Programar en GoHighLevel</b> <span class="estado">cada imagen a su hora del ${h(d.fecha)} (hora CDMX); las que ya pasaron se saltan</span>
+    ${hechas && S.info.ghl ? `<div style="margin-top:12px"><b>Programar en GoHighLevel</b> <span class="estado">cada imagen a su hora del día que elijas (hora CDMX); las que ya pasaron se saltan</span>
+      <div class="fila" style="margin-top:8px"><span class="estado">Publicar el día</span> <input type="date" id="imPublicar" value="${h(diaParaPublicar(d))}" style="width:auto"></div>
       <div class="fila" id="imCuentas" style="margin:8px 0;flex-wrap:wrap"><span class="estado">cargando cuentas…</span></div>
       <div class="fila"><button class="btn peq" id="imSim">1 · Simular</button><button class="btn peq" id="imProg" style="background:var(--rojo,#e66);color:#fff">2 · Programar en GHL</button></div>
       <div id="imRes" class="estado" style="margin-top:6px"></div></div>` : hechas ? `<p class="estado">Para programarlas pon GHL_TOKEN y GHL_LOCATION_ID en el .env.</p>` : ""}
   </div>`;
 }
 
+// el primer día cuyas horas todavía no pasan: hoy si aún no es la primera hora, si no mañana (nunca antes del día de las imágenes)
+function diaParaPublicar(d) {
+  const ahora = new Date(Date.now() - 6 * 3600e3), hoy = ahora.toISOString().slice(0, 10), hm = ahora.toISOString().slice(11, 16);
+  const primera = (d.imagenes || []).map((x) => x.hora).sort()[0] || "08:00";
+  let dia = hm < primera ? hoy : new Date(Date.parse(hoy) + 864e5).toISOString().slice(0, 10);
+  return d.fecha > dia ? d.fecha : dia;
+}
 async function conectarImagenes(d, recargar) {
-  const post = (cuerpo) => api("/api/imagenes-dia", "POST", { fecha: d.fecha, ...cuerpo });
+  const post = (cuerpo) => api("/api/imagenes-dia", "POST", { fecha: d.fecha, publicar: $("#imPublicar")?.value || "", ...cuerpo });
   if ($("#imArmar")) $("#imArmar").onclick = async () => { avisar("Leyendo el último informe…"); try { const r = await post({ accion: "armar" }); avisar(r.imagenes?.length ? `${r.imagenes.length} imágenes escritas.` : "Informe leído. Faltan las frases: dile a Claude Code «escribe las imágenes del día»."); recargar(); } catch (e) { avisar(e.message, true); } };
   if ($("#imFlow")) $("#imFlow").onclick = async () => { if (!confirm("Esto pide los fondos a Google Flow y GASTA créditos de la cuenta de Flow elegida. ¿Seguir?")) return; try { await post({ accion: "flow" }); avisar("En la fila: fondos de Flow y luego las frases encima. Recarga cuando termine."); } catch (e) { avisar(e.message, true); } };
   if ($("#imComponer")) $("#imComponer").onclick = async () => { try { await post({ accion: "componer" }); avisar("Componiendo… recarga en un momento."); } catch (e) { avisar(e.message, true); } };
@@ -1164,7 +1172,7 @@ async function conectarImagenes(d, recargar) {
   const elegidas = () => [...document.querySelectorAll("[data-imcta]")].filter((x) => x.checked).map((x) => x.dataset.imcta);
   const pintar = (r, sim) => { $("#imRes").innerHTML = `${sim ? "<b>Simulación</b> (no se publicó nada): " : "<b>Programado:</b> "}${r.hechos.map((x) => `${x.n} ${h(x.hora)} → ${h(x.destino)} (${h(x.cuentas.join(", "))})`).join(" · ") || "nada nuevo"}${r.saltadas.length ? `<br>Se saltan: ${h(r.saltadas.join(" · "))}` : ""}`; };
   $("#imSim").onclick = async () => { try { pintar(await post({ accion: "simular", cuentas: elegidas() }), true); } catch (e) { avisar(e.message, true); } };
-  $("#imProg").onclick = async () => { if (!confirm(`Se programan en GHL las imágenes del ${d.fecha} en las cuentas elegidas, cada una a su hora. ¿Seguir?`)) return; $("#imProg").disabled = true;
+  $("#imProg").onclick = async () => { if (!confirm(`Se programan en GHL las imágenes para el ${$("#imPublicar").value} en las cuentas elegidas, cada una a su hora. ¿Seguir?`)) return; $("#imProg").disabled = true;
     try { pintar(await post({ accion: "programar", cuentas: elegidas() }), false); avisar("Imágenes programadas en GHL."); } catch (e) { avisar(e.message, true); } finally { $("#imProg").disabled = false; } };
 }
 

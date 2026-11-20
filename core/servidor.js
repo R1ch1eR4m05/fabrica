@@ -224,7 +224,7 @@ async function api(req, res, partes) {
         }
         if (b.accion === "simular" || b.accion === "programar") {
           if (Array.isArray(b.cuentas) && b.cuentas.length) { const a = leerAjustes(); guardarAjustes({ ...a, ghlImagenes: { ...(a.ghlImagenes || {}), monarca: b.cuentas } }); }
-          return json(res, 200, await GHL.programarDia(fecha, { cuentasIds: b.cuentas || [], simular: b.accion === "simular" }));
+          return json(res, 200, await GHL.programarDia(fecha, { cuentasIds: b.cuentas || [], simular: b.accion === "simular", publicar: /^\d{4}-\d{2}-\d{2}$/.test(b.publicar || "") ? b.publicar : null }));
         }
         return json(res, 400, { error: "Acción no válida." });
       } catch (e) { return json(res, 400, { error: e.message }); }

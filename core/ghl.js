@@ -269,7 +269,8 @@ async function subirArchivoImagen(ruta, nombre) {
   form.append("hosted", "false"); form.append("name", nombre);
   return (await pedir("POST", "/medias/upload-file", form, { form: true, ms: 120000 })).url;
 }
-export async function programarDia(fecha, { cuentasIds = [], simular = false } = {}, avisar = () => {}) {
+export async function programarDia(fecha, { cuentasIds = [], simular = false, publicar = null } = {}, avisar = () => {}) {
+  // publicar: el día (AAAA-MM-DD) en que salen; por defecto el mismo día de las imágenes
   const D = await import("./imagenes-dia.js");
   const d = D.leerDia(fecha); if (!d?.imagenes?.length) throw new Error("No hay imágenes de ese día.");
   if (!cuentasIds.length) throw new Error("Elige al menos una cuenta.");
@@ -280,7 +281,7 @@ export async function programarDia(fecha, { cuentasIds = [], simular = false } =
   const listas = d.imagenes.filter((x) => x.archivo && fs.existsSync(path.join(D.dirDia(fecha), x.archivo)));
   if (!listas.length) throw new Error("Ninguna imagen está compuesta todavía: primero genera los fondos en Flow y compón las imágenes.");
   for (const [k, x] of listas.entries()) {
-    const cuando = D.fechaDe(fecha, x.hora);
+    const cuando = D.fechaDe(publicar || fecha, x.hora);
     if (cuando.getTime() < Date.now() + MARGEN) { saltadas.push(`${x.n} (${x.hora} ya pasó)`); continue; }
     const id = `img-${fecha}-${String(x.n).padStart(2, "0")}`, ruta = path.join(D.dirDia(fecha), x.archivo);
     const hash = hashArchivo(ruta);
