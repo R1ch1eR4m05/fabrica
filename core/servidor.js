@@ -369,6 +369,14 @@ async function api(req, res, partes) {
         .finally(() => (investigando = null));
       return json(res, 200, { ok: true });
     }
+    // los videos ya creados desde esta investigación que tienen guion y todavía no tienen video → a la fila, uno tras otro
+    if (id && accion === "hacer-creados" && m === "POST") {
+      const b = await cuerpo(req).catch(() => ({}));
+      const lista = P.listarProyectos().filter((p) => p.desdeInvestigacion?.archivo === id);
+      const hacer = lista.filter((p) => p.estado?.guion === "listo" && p.estado?.render !== "listo" && !(p.estado?.render === "trabajando"));
+      for (const p of hacer) await hacerTodoProyecto(p.id, b);
+      return json(res, 200, { enFila: hacer.map((p) => p.id), sinGuion: lista.filter((p) => p.estado?.guion !== "listo").map((p) => p.id), listos: lista.filter((p) => p.estado?.render === "listo").length });
+    }
     if (id && accion === "crear" && m === "POST") {
       const b = await cuerpo(req);
       try { return json(res, 200, await crearDesdePropuesta(id, Number(b.n), b)); }
