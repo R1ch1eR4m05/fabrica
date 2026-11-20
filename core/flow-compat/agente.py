@@ -18,9 +18,17 @@ SEL_PANEL_AGENTE = "flow-agent-panel"
 # Google le da a cada cuenta textos distintos (nov 2026: "Configuración" en unas, "Ajustes" en otras, en español de España):
 # se busca por etiqueta Y por el icono "tune" de la caja del agente, que es el mismo en todas.
 SEL_AJUSTES_AGENTE = ('flow-agent-panel button[aria-label="Configuración"], flow-agent-panel button[aria-label="Ajustes"], '
-                      'flow-agent-panel button[aria-label="Settings"], '
+                      'flow-agent-panel button[aria-label="Settings"], flow-agent-panel button[aria-label^="Configuración de"], '
+                      'flow-agent-panel button[aria-label^="Configuración del"], flow-agent-panel button[aria-label^="Agent settings"], '
                       'flow-agent-panel flow-creative-agent-prompt-box button.agent-action-button:has(mat-icon:text-is("tune"))')
 SEL_VISTA_AJUSTES = "flow-settings-view"
+# Flow de nov 2026 (19-20 nov): el engrane va arriba del panel y abre "flow-unified-settings-view"; ahí está
+# "Confirmar antes de generar" (Siempre/Nunca) y un renglón para imagen y otro para video, cada uno con su pantalla
+# (modelo en radios, proporción, cantidad). No hay "Guardar": se guarda solo; se sale con "Atrás".
+SEL_VISTA_NUEVA = "flow-unified-settings-view"
+SEL_VISTA_DEFAULTS = "flow-generation-defaults-view"
+SEL_ATRAS = 'flow-agent-panel button[aria-label="Atrás"], flow-agent-panel button[aria-label="Back"], flow-agent-panel button[aria-label="Volver"]'
+
 SEL_GUARDAR = "flow-agent-panel button.settings-save-button"  # por clase: el texto ("Guardar"/"Save") cambia
 SEL_LISTO = ('flow-agent-panel div.ProseMirror[contenteditable="true"]:visible, '
              'button[aria-label="Botón de configuración"]:visible, button[aria-label="Activador de ajustes"]:visible')
@@ -77,6 +85,8 @@ async def es_agente(page) -> bool:
 
 async def esperar_listo(page, timeout=45_000) -> None:
     await page.locator(SEL_LISTO).first.wait_for(state="visible", timeout=timeout)
+    await page.wait_for_timeout(800)  # el aviso de novedades aparece un momento después
+    await cerrar_novedades(page)
 
 
 # orden de los controles en "Configuración de agentes" (si cambian las etiquetas, se usan por posición)
@@ -106,6 +116,70 @@ async def _clic_toggle(vista, grupo, texto):
         print(f"    [agente] No encontré la opción '{texto}' (sigo con la que esté).")
 
 
+async def cerrar_novedades(page) -> None:
+    """Quita el aviso de novedades de Flow ("A faster, easier-to-reach Flow Agent") que tapa todo y no se cierra con Escape."""
+    try:
+        await page.evaluate("""() => {
+          let quitado = false;
+          document.querySelectorAll('.cdk-overlay-pane').forEach(p => { if (p.querySelector('flow-change-log-modal')) { p.remove(); quitado = true; } });
+          if (quitado) {
+            document.querySelectorAll('.cdk-overlay-backdrop').forEach(b => b.remove());
+            document.documentElement.classList.remove('cdk-global-scrollblock');
+          }
+        }""")
+    except Exception:
+        pass
+
+
+async def _modelo_radio(page, vista, model) -> None:
+    opciones = vista.locator("label.radio-option, [role='radio']")
+    if await opciones.count() == 0:
+        return
+    op = opciones.filter(has_text=re.compile(r"(^|\s)" + re.escape(model) + r"\s*$", re.I)).first
+    if await op.count() == 0:
+        op = opciones.filter(has_text=model).first
+    if await op.count() > 0:
+        await op.click()
+        await page.wait_for_timeout(250)
+    else:
+        print(f"    [agente] El modelo '{model}' no aparece; uso el que está.")
+
+
+async def _configurar_nuevo(page, modo, aspect_ratio, count, model) -> None:
+    vista = page.locator(SEL_VISTA_NUEVA).first
+    # Confirmar antes de generar → Nunca (si no, el agente pregunta y nunca genera)
+    conf = vista.locator("flow-toggles").first
+    nunca = conf.locator("button").filter(has_text=re.compile(r"Nunca|Never", re.I)).first
+    if await nunca.count() == 0:
+        nunca = conf.locator("button").nth(1)
+    if await nunca.count() > 0:
+        await nunca.click()
+        await page.wait_for_timeout(250)
+    fila = vista.locator('button[class*="image-default"]' if modo == "imagen" else 'button[class*="video-default"]').first
+    if await fila.count() == 0:  # por orden: imagen es el primer renglón, video el segundo
+        fila = vista.locator('button[class*="defaults-row"]').nth(0 if modo == "imagen" else 1)
+    await fila.click(timeout=10_000)
+    defs = page.locator(SEL_VISTA_DEFAULTS).first
+    await defs.wait_for(state="visible", timeout=10_000)
+    if model:
+        await _modelo_radio(page, defs, model)
+    ratio = defs.locator('flow-toggles[aria-label*="aspecto"], flow-toggles[aria-label*="spect"]')
+    cant = defs.locator('flow-toggles[aria-label*="antidad"], flow-toggles[aria-label*="umber"], flow-toggles[aria-label*="utputs"]')
+    await _clic_toggle(defs, 'flow-toggles[aria-label*="aspecto"], flow-toggles[aria-label*="spect"]' if await ratio.count() else "flow-toggles >> nth=0", aspect_ratio)
+    await _clic_toggle(defs, 'flow-toggles[aria-label*="antidad"], flow-toggles[aria-label*="umber"], flow-toggles[aria-label*="utputs"]' if await cant.count() else "flow-toggles >> nth=1", f"x{count}")
+    await page.wait_for_timeout(300)
+    # salir: Atrás hasta volver al chat (se guarda solo)
+    for _ in range(3):
+        if await page.locator(f"{SEL_VISTA_DEFAULTS}, {SEL_VISTA_NUEVA}").count() == 0:
+            break
+        atras = page.locator(SEL_ATRAS).first
+        if await atras.count() == 0:
+            await page.keyboard.press("Escape")
+        else:
+            await atras.click()
+        await page.wait_for_timeout(500)
+
+
 async def configurar(page, modo, aspect_ratio="9:16", count=1, model=None) -> None:
     """Abre 'Configuración de agentes', pone generar sin confirmar, proporción, cantidad y modelo, y guarda."""
     _estado["modo"] = modo
@@ -117,7 +191,13 @@ async def configurar(page, modo, aspect_ratio="9:16", count=1, model=None) -> No
     if clave in _estado["configurado"]:
         return
     print(f"    [agente] Configurando el agente de Flow: {modo}, {aspect_ratio}, x{count}, {model or 'modelo actual'}...")
+    await cerrar_novedades(page)
     await page.locator(SEL_AJUSTES_AGENTE).first.click(timeout=10_000)
+    await page.locator(f"{SEL_VISTA_AJUSTES}, {SEL_VISTA_NUEVA}").first.wait_for(state="visible", timeout=10_000)
+    if await page.locator(SEL_VISTA_NUEVA).count() > 0:
+        await _configurar_nuevo(page, modo, aspect_ratio, count, model)
+        _estado["configurado"].add(clave)
+        return
     vista = page.locator(SEL_VISTA_AJUSTES).first
     await vista.wait_for(state="visible", timeout=10_000)
     # "Confirmar antes de generar: Nunca" (si no, el agente pregunta y nunca genera)
