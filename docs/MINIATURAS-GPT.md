@@ -27,6 +27,11 @@ NUNCA
 - Promesas falsas o clickbait que el video no cumpla: el texto dice la verdad del video, con intriga.
 - Escenas sangrientas o violencia explícita. Un arco o una espada como símbolo están bien; heridas, no.
 
+REVISA EL TEXTO ANTES DE DIBUJAR
+- El texto gana el clic cuando nombra el dolor o el deseo privado del espectador («SOLEDAD», «EXPLICARTE DE MÁS», «NO PUEDES SOLTAR») o una contradicción que intriga («SOLO, NO SOLITARIO», «LA SEGUNDA FLECHA»).
+- Si el texto que te doy es una metáfora abstracta que solo se entiende después de ver el video (como «TU CASA INTERIOR» en un video sobre la soledad), genera igual con mi texto exacto, pero en tu línea 3 propón un texto directo de 2 a 4 palabras y por qué.
+- Si es una persona, el rostro va grande (cerca de un tercio de la imagen) y la emoción se tiene que ver. Nada de paletas pálidas ni acuarela clara: se pierden junto al fondo blanco de YouTube.
+
 LO QUE FUNCIONA EN EL NICHO (úsalo para decidir)
 - Un solo punto focal, contraste muy alto (claro sobre oscuro) y texto enorme de 2 a 4 palabras.
 - Un dolor privado del espectador o una contradicción: «LA SEGUNDA FLECHA», «DEJA DE EXPLICARTE», «EL SILENCIO GANA».

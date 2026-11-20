@@ -36,5 +36,7 @@ Video largo y pausado para YouTube (también sirve en 3-5 min para Reels largos)
 En `guion.json` pon `"miniatura"`: una lista de 3 opciones `{ "lineas": ["…","…"], "acento": 1, "escena": N }`.
 - 2 a 4 palabras EN TOTAL, en 1-2 líneas cortas (máx. 12 letras por línea). Se lee a 168 px de ancho.
 - No repite el título: lo complementa con la emoción o la promesa ("LA SEGUNDA / FLECHA", "DEJA DE / SUFRIR DOBLE"). Dice la verdad del video, sin engaño.
+- Nombra el dolor o el deseo PRIVADO de quien lo ve, o una contradicción que intriga ("SOLO, NO / SOLITARIO"). Nada de metáforas que solo se entienden después de ver el video ("TU CASA / INTERIOR"): quien se siente solo no busca su casa interior, busca dejar de sentirse solo. Las 3 opciones van por ángulos distintos: dolor, contradicción y promesa (pon `"angulo"` y `"porque"` en cada una).
+- Para la `escena` prefiere un rostro grande con la emoción visible o una silueta a contraluz. La fábrica avisa en el panel si el texto repite el título, no se conecta con su tema o pasa de 4 palabras (`revisarTexto`).
 - `acento` = la línea que va en dorado; `escena` = la escena con la figura más clara (una estatua, un monje, un rostro; que se pueda recortar), distinta en cada opción.
 - La fábrica las arma sola al terminar el video: figura recortada en grande a un lado con un halo, fondo oscuro desenfocado y el texto enorme del otro lado. La A se sube a YouTube al programar.

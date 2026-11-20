@@ -189,7 +189,7 @@ async function concepto(id, receta, estilo, guion) {
   const sistema = `Diseñas el CONTENIDO de miniaturas de YouTube para un canal en español de México (${estilo.nombre}: ${estilo.descripcion}).
 Receta del nicho (patrones de miniaturas que funcionan): ${JSON.stringify(leerReceta(estilo.id).patrones)}. Ajustes: ${JSON.stringify(receta)}.
 Reglas: el texto de la miniatura tiene ${receta.palabras.min} a ${receta.palabras.max} palabras EN TOTAL, repartidas en 2 o 3 líneas de máximo 10 letras cada una (las palabras chicas como LA/EL/DE pueden ir solas arriba), con ortografía perfecta (revisa letra por letra, con acentos), ${receta.mayusculas ? "en MAYÚSCULAS" : "en minúsculas o frase"}; provoca curiosidad o emoción pero DICE LA VERDAD de lo que trata el video (nada de engañar); complementa el título en vez de repetirlo; nunca copies frases de otros canales. "escena" es el número de la escena del guion cuya imagen mejor funciona de fondo (una figura clara y con espacio libre). "promptFondo" es el prompt en inglés para generar un fondo NUEVO: estilo "${estilo.estiloVisual || ""}", 16:9, un solo sujeto fuerte, alto contraste, espacio vacío en el lado donde va el texto, sin letras ni marcas de agua.
-Da 3 opciones DISTINTAS de texto y de escena. Responde SOLO JSON: {"opciones":[{"lineas":["…"],"acento":0,"escena":1,"promptFondo":"…"}]} (acento = índice de la línea que va en color de énfasis).`;
+Criterio del texto (lo más importante): ${CRITERIO_TEXTO.join(" ")}\nPara la escena prefiere una figura humana con el rostro grande y la emoción visible (ojos cerrados en paz, tensión, tristeza) o una silueta dramática a contraluz.\nDa 3 opciones DISTINTAS de texto y de escena. Responde SOLO JSON: {"opciones":[{"lineas":["…"],"acento":0,"escena":1,"angulo":"dolor|contradicción|promesa","porque":"una frase: qué siente el espectador al leerlo","promptFondo":"…"}]} (acento = índice de la línea que va en color de énfasis).`;
   const texto = `Título del video: ${guion.titulo || ""}\nEscenas:\n${resumen}`;
   const j = jsonDe((await pedir(sistema, texto, { maxTokens: 3000 })).texto);
   const opciones = (j.opciones || []).slice(0, 3).map((o) => ({ ...o, escena: Math.max(1, Math.min(nEsc, +o.escena || 1)) })).filter((o) => o.lineas?.length);
@@ -250,9 +250,10 @@ export function promptExterno({ estilo = {}, guion = {}, o = {}, receta = RECETA
   const texto = lineas.map((t, i) => `line ${i + 1}: "${t}" ${i === ac ? `(BIGGEST, textured metallic gold ${receta.colorAcento}, with a golden brush-stroke underline)` : "(bright white, smaller)"}`).join("; ");
   return [
     `YouTube thumbnail, 16:9 (1280x720), for a Spanish-language philosophy channel. It must read instantly at a tiny size (168x94 px) in the "suggested videos" sidebar.`,
-    `SCENE: ${sujeto}. Tell the idea with ONE main subject (large, close, on the ${figLado} 45% of the frame, dramatic silhouette or clear face) plus at most one symbolic element (for example a calm Buddha statue, a temple, an arrow), never more.`,
-    `LOOK: epic cinematic digital painting, dramatic golden-hour backlight with the sun behind the subject, warm orange-gold vs deep shadow contrast, atmospheric mist and mountains, a few red leaves floating, rich detail on the subject but a simple, darker background behind the text. ${guion.estiloVisual || estilo.estiloVisual ? `Keep a nod to the video's art style: ${guion.estiloVisual || estilo.estiloVisual}.` : ""}`,
+    `SCENE: ${sujeto}. Tell the idea with ONE main subject (large, close, on the ${figLado} 45% of the frame) plus at most one symbolic element (for example a calm Buddha statue, a temple, an arrow), never more. If the subject is a person, the FACE is big (about a third of the frame) with the emotion clearly visible (eyes closed in peace, tension, sorrow); otherwise a dramatic backlit silhouette.`,
+    `LOOK: warm, saturated and high-contrast (never pale, washed-out or light watercolor: it disappears next to YouTube's white background). Epic cinematic digital painting, dramatic golden-hour backlight with the sun behind the subject, warm orange-gold vs deep shadow contrast, atmospheric mist and mountains, a few red leaves floating, rich detail on the subject but a simple, darker background behind the text. ${guion.estiloVisual || estilo.estiloVisual ? `Keep a nod to the video's art style: ${guion.estiloVisual || estilo.estiloVisual}.` : ""}`,
     `TEXT (render EXACTLY, Spanish, keep accents, ${receta.mayusculas ? "ALL CAPS" : "as written"}): ${texto}. Heavy classical Roman serif typeface (like Trajan / Cinzel Black), huge: the text block covers about half of the image on the ${txtLado} side, over a rough black ink brush-stroke band that makes it pop. Thick dark outline and drop shadow. The text never covers the subject's face. No other words anywhere.`,
+    `VIDEO TITLE (for context, do not write it): "${guion.titulo || ""}". TEXT CHECK: if the text above is an abstract metaphor that does not name the viewer's pain or desire behind that title, still render it exactly, but after the image suggest a more direct 2-4 word alternative in Spanish.${(o.avisos || []).length ? ` Note from the factory: ${o.avisos.join(" ")}` : ""}`,
     `AVOID: extra or misspelled words, logos, watermarks, borders, frames, tiny details near the text, multiple people, cluttered composition${receta.evitar.length ? ", " + receta.evitar.join(", ") : ""}.`,
   ].join("\n");
 }
@@ -418,6 +419,30 @@ async function dibujar(nav, html, salida, ancho = W, alto = H) {
   } finally { await pag.close(); }
 }
 
+// ---------------- criterio del texto (lo que aprendimos con «TU CASA INTERIOR» vs «SOLO, NO SOLITARIO») ----------------
+// El texto gana el clic cuando nombra el dolor o el deseo PRIVADO del espectador, o una contradicción que intriga.
+// Una metáfora bonita que solo se entiende después de ver el video («TU CASA INTERIOR») no le dice nada a quien no lo ha visto.
+export const CRITERIO_TEXTO = [
+  "Nombra el dolor o el deseo privado del espectador con palabras de la calle (soledad, ansiedad, que te traicionen, explicarte de más, no poder soltar) o plantea una contradicción que intriga («SOLO, NO SOLITARIO», «LA SEGUNDA FLECHA»).",
+  "Nada de metáforas abstractas que solo se entienden después de ver el video («TU CASA INTERIOR», «EL RÍO SERENO»): quien se siente solo no busca su casa interior, busca dejar de sentirse solo.",
+  "Las 3 opciones van por ángulos distintos: dolor (lo que le pasa), contradicción (lo que no esperaba) y promesa o consecuencia (lo que gana o pierde).",
+  "Complementa el título, no lo repite, y dice la verdad del video.",
+];
+const CHICAS_T = new Set("LA EL LOS LAS DE DEL EN Y QUE TU TE SE LO UN UNA A AL POR NO MI SU ES".split(" "));
+// avisos sin IA: repite el título, no se conecta con su tema (suele ser una metáfora abstracta) o es demasiado largo
+export function revisarTexto(lineas, guion) {
+  const pal = norm((lineas || []).join(" ")).split(/\s+/).filter(Boolean);
+  const llenas = pal.filter((p) => !CHICAS_T.has(p));
+  const tit = norm(`${guion.titulo || ""} ${(guion.subir?.titulos || []).join(" ")}`).split(/\s+/).filter((p) => p.length >= 3 && !CHICAS_T.has(p));
+  const raiz = (p) => p.slice(0, 5);
+  const enTitulo = (p) => tit.some((t) => raiz(t) === raiz(p));
+  const avisos = [];
+  if (pal.length > 4) avisos.push(`Son ${pal.length} palabras: deja 2 a 4.`);
+  if (tit.length && llenas.length && llenas.every(enTitulo) && llenas.length >= Math.min(3, tit.length)) avisos.push("Repite el título: mejor complementarlo con el dolor o la promesa.");
+  else if (tit.length && llenas.length && !llenas.some(enTitulo)) avisos.push("No se conecta con el tema del título: si es una metáfora, cámbiala por el dolor o el deseo de quien lo ve.");
+  return avisos;
+}
+
 // palabras de la miniatura (4+ letras) que no salen en el título ni en el guion: casi siempre un error de dedo de la IA
 const norm = (t) => sinTildes(String(t).toUpperCase()).replace(/[^A-ZÑ0-9\s]/g, " ");
 function palabrasRaras(lineas, guion) {
@@ -467,7 +492,8 @@ export async function crearMiniaturas(id, { avisar = () => {}, ia = false } = {}
         await dibujar(nav, htmlRecorte({ fondo, recorte: rec, lineas, acento: ac, receta, lado: i === 0 ? "derecha" : "izquierda" }), path.join(dir, archivo));
       } else await dibujar(nav, htmlMiniatura({ fondo, lineas, acento: ac, diseno, receta }), path.join(dir, archivo));
       const raras = palabrasRaras(lineas, guion);
-      opciones.push({ letra, archivo, lineas, revisar: raras.length ? `Revisa la ortografía: «${raras.join("», «")}» no aparece en el guion.` : undefined, escena: o.escena, fondo: origen, diseno, conFondo: !!fondo, prompt: promptExterno({ estilo, guion, o: { ...o, lineas, acento: ac }, receta, lado: i === 1 ? "izquierda" : "derecha" }) });
+      const avisos = [...(raras.length ? [`Revisa la ortografía: «${raras.join("», «")}» no aparece en el guion.`] : []), ...revisarTexto(lineas, guion)];
+      opciones.push({ letra, archivo, lineas, angulo: o.angulo, porque: o.porque, revisar: avisos.length ? avisos.join(" ") : undefined, escena: o.escena, fondo: origen, diseno, conFondo: !!fondo, prompt: promptExterno({ estilo, guion, o: { ...o, lineas, acento: ac, avisos: revisarTexto(lineas, guion) }, receta, lado: i === 1 ? "izquierda" : "derecha" }) });
     }
     // comparativa: así se verán en la página principal (grande) y en la barra lateral (chica)
     const datos = opciones.map((o) => `data:image/jpeg;base64,${fs.readFileSync(path.join(dir, o.archivo)).toString("base64")}`);
