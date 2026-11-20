@@ -30,15 +30,16 @@ const TONOS = { turquesa: "#3fb2a3", ambar: "#d49a5a", plata: "#9a9a9a", rojo: "
 const ESTILO_BASE = "Dark cinematic photo of ancient Greek marble statues or misty classical landscapes, dramatic moody low light, high contrast, monochrome, shallow depth of field";
 
 // ajustes.json → "imagenesDia": { "cantidad": 10, "horas": [...], "instagram": [1,5,9], "grupos": [3,7,10], "tonos": [...] }
-// instagram / grupos = números de imagen (1 a 10) que también van ahí; la página de Facebook lleva todas.
+// instagram / grupos = números de imagen (1 a 10) que también van ahí (sin la clave: todas); la página de Facebook lleva todas.
 export function config() {
   const a = leerAjustes().imagenesDia || {};
   const horas = Array.isArray(a.horas) && a.horas.length ? a.horas : ["08:00", "09:30", "11:00", "12:00", "14:30", "16:00", "17:30", "18:30", "20:30", "21:30"];
   return {
     cantidad: Number(a.cantidad) || horas.length,
     horas,
-    instagram: Array.isArray(a.instagram) ? a.instagram : [1, 5, 9],
-    grupos: Array.isArray(a.grupos) ? a.grupos : [3, 7, 10],
+    // por defecto TODAS van también a Instagram y a los grupos (Richie las publica en todo); se puede limitar con una lista
+    instagram: Array.isArray(a.instagram) ? a.instagram : horas.map((_, i) => i + 1),
+    grupos: Array.isArray(a.grupos) ? a.grupos : horas.map((_, i) => i + 1),
     tonos: Array.isArray(a.tonos) && a.tonos.length ? a.tonos : ["turquesa", "ambar", "plata", "rojo"],
   };
 }
