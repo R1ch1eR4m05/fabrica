@@ -195,17 +195,63 @@ Da 3 opciones DISTINTAS de texto y de escena. Responde SOLO JSON: {"opciones":[{
 }
 
 // ---------------- fondo ----------------
+// La imagen de la escena n (o la más cercana). Se busca por varias vías porque historia.json puede traer rutas de
+// otra máquina (la laptop, C:\\Users\\…) o de banco/: 1) lo que dice historia.json, 2) clips/escena-N.*,
+// 3) cualquier imagen de clips/, 4) un cuadro del video terminado en el punto de esa escena.
+const IMG = /\.(jpe?g|png|webp)$/i, VID = /\.(mp4|mov|webm)$/i;
+async function cuadroDe(video, seg, sal) {
+  try { await ffmpeg(["-y", "-ss", String(Math.max(0, seg)), "-i", video, "-frames:v", "1", "-q:v", "2", sal]); return fs.existsSync(sal) ? sal : null; } catch { return null; }
+}
 export async function imagenDeEscena(id, n, tmp) {
-  const dir = dirProyecto(id), info = leer(id, path.join("clips", "historia.json")) || [];
-  for (let k = n - 1; k >= 0; k--) {
-    const e = info[k]; if (!e?.archivo) continue;
-    const f = path.isAbsolute(e.archivo) ? e.archivo : path.join(dir, e.archivo);
-    if (!fs.existsSync(f)) continue;
-    if (e.tipo !== "video" && /\.(jpe?g|png|webp)$/i.test(f)) return f;
-    const sal = path.join(tmp, `frame-${n}.jpg`);
-    if (/\.(mp4|mov|webm)$/i.test(f)) { await ffmpeg(["-ss", "1", "-i", f, "-frames:v", "1", "-q:v", "2", sal]); return sal; }
+  const dir = dirProyecto(id), clips = path.join(dir, "clips");
+  const info = leer(id, path.join("clips", "historia.json")) || [];
+  const enClips = fs.existsSync(clips) ? fs.readdirSync(clips) : [];
+  const total = Math.max(info.length, n);
+  const candidatos = (k) => {
+    const r = [], e = info[k - 1];
+    if (e?.archivo) {
+      const a = String(e.archivo), base = a.split(/[\\/]/).pop();
+      if (path.isAbsolute(a) && !/^[A-Za-z]:/.test(a)) r.push(a);
+      r.push(path.join(dir, a.replace(/\\/g, "/")), path.join(clips, base), path.join(RAIZ, "banco", ...a.replace(/\\/g, "/").split("/").slice(-2)));
+    }
+    for (const x of enClips) if (x.startsWith(`escena-${k}.`)) r.push(path.join(clips, x));
+    return r.filter((f) => !/^[A-Za-z]:/.test(f) && fs.existsSync(f));
+  };
+  // la escena pedida, luego hacia atrás y luego hacia adelante; primero imágenes (más limpias que un cuadro de video)
+  const orden = [n]; for (let d = 1; d < total; d++) { if (n - d >= 1) orden.push(n - d); if (n + d <= total) orden.push(n + d); }
+  for (const soloImg of [true, false]) for (const k of orden) for (const f of candidatos(k)) {
+    if (IMG.test(f)) return f;
+    if (!soloImg && VID.test(f)) { const c = await cuadroDe(f, 1, path.join(tmp, `frame-${n}.jpg`)); if (c) return c; }
+  }
+  const otra = enClips.find((x) => IMG.test(x) && !/^cuadro-|personajes/.test(x));
+  if (otra) return path.join(clips, otra);
+  // último recurso: un cuadro del video terminado, en el punto de esa escena
+  const fin = path.join(dir, "final.mp4");
+  if (fs.existsSync(fin)) {
+    const t = leer(id, "tiempos.json");
+    const e = t?.escenas?.[n - 1], seg = e ? (e.ini + Math.min(e.fin, e.ini + 6)) / 2 : t?.duracion ? (t.duracion * (n - 0.5)) / total : 5;
+    return cuadroDe(fin, seg, path.join(tmp, `final-${n}.jpg`));
   }
   return null;
+}
+
+// ---------------- prompt para generarla fuera (Nano Banana, ChatGPT, Midjourney…) ----------------
+// Describe la miniatura completa: formato, sujeto, composición, luz, colores, texto exacto y tipografía.
+export function promptExterno({ estilo = {}, guion = {}, o = {}, receta = RECETA_BASE, lado = "derecha" }) {
+  const esc2 = guion.escenas?.[Math.max(0, (+o.escena || 1) - 1)] || {};
+  const sujeto = (o.promptFondo || esc2.flowPrompt || receta.sujeto || "a single strong central figure").replace(/\s+/g, " ").trim();
+  const visual = guion.estiloVisual || estilo.estiloVisual || "";
+  const lineas = (o.lineas || []).map(String), ac = Math.min(Math.max(0, +o.acento || 0), Math.max(0, lineas.length - 1));
+  const txtLado = lado === "derecha" ? "left" : "right", figLado = lado === "derecha" ? "right" : "left";
+  const texto = lineas.map((t, i) => `line ${i + 1}: "${t}" (${i === ac ? `accent color ${receta.colorAcento}` : `color ${receta.colorTexto}`})`).join("; ");
+  return [
+    `YouTube thumbnail, 16:9, 1280x720, designed to be readable at a tiny size (168x94) in the "suggested videos" sidebar.`,
+    `SUBJECT: ${sujeto}. Only ONE subject, large and close (bust or upper body), occupying the ${figLado} 45% of the frame, cropped at the bottom edge, face or key gesture clearly visible.`,
+    `STYLE: ${visual ? visual + ". " : ""}High contrast, cinematic, dark and moody${receta.paleta.length ? `, palette ${receta.paleta.join(", ")}` : ""}.`,
+    `LIGHT: soft glowing halo / rim light in ${receta.colorAcento} behind the subject so it separates from the background; the rest of the background darker, blurred and simple, with a subtle vignette.`,
+    `TEXT (render it exactly, Spanish, keep accents, ${receta.mayusculas ? "ALL CAPS" : "as written"}): ${texto}. Heavy geometric sans-serif (like Montserrat ExtraBold), huge (text block about 45% of the width), stacked on the ${txtLado} side and ${txtLado}-aligned, thick dark outline and soft drop shadow, never overlapping the face. No other words anywhere.`,
+    `AVOID: extra text, logos, watermarks, borders, small details, cluttered background, multiple people, misspelled words${receta.evitar.length ? ", " + receta.evitar.join(", ") : ""}.`,
+  ].join("\n");
 }
 
 // ---------------- dibujo ----------------
@@ -358,7 +404,7 @@ export async function crearMiniaturas(id, { avisar = () => {}, ia = false } = {}
         diseno = i === 0 ? "recorte-derecha" : "recorte-izquierda";
         await dibujar(nav, htmlRecorte({ fondo, recorte: rec, lineas, acento: ac, receta, lado: i === 0 ? "derecha" : "izquierda" }), path.join(dir, archivo));
       } else await dibujar(nav, htmlMiniatura({ fondo, lineas, acento: ac, diseno, receta }), path.join(dir, archivo));
-      opciones.push({ letra, archivo, lineas, escena: o.escena, fondo: origen, diseno, conFondo: !!fondo });
+      opciones.push({ letra, archivo, lineas, escena: o.escena, fondo: origen, diseno, conFondo: !!fondo, prompt: promptExterno({ estilo, guion, o: { ...o, lineas, acento: ac }, receta, lado: i === 1 ? "izquierda" : "derecha" }) });
     }
     // comparativa: así se verán en la página principal (grande) y en la barra lateral (chica)
     const datos = opciones.map((o) => `data:image/jpeg;base64,${fs.readFileSync(path.join(dir, o.archivo)).toString("base64")}`);
@@ -390,7 +436,14 @@ export function usarMiniatura(id, letra, info = null) {
   return info;
 }
 
-export const leerMiniaturas = (id) => leerJson(path.join(dirMiniProyecto(id), "miniaturas.json"));
+export function leerMiniaturas(id) {
+  const info = leerJson(path.join(dirMiniProyecto(id), "miniaturas.json"));
+  if (!info?.opciones?.some((o) => !o.prompt)) return info;
+  const p = leer(id, "proyecto.json"), guion = leer(id, "guion.json") || {};
+  const estilo = p ? leerEstilo(p.estilo) : {}, { receta } = leerReceta(p?.estilo || "");
+  for (const [i, o] of info.opciones.entries()) if (!o.prompt) o.prompt = promptExterno({ estilo, guion, o: { ...o, acento: o.lineas?.length - 1 }, receta, lado: i === 1 ? "izquierda" : "derecha" });
+  return info;
+}
 
 // ---------------- recorte de la figura (ISNet, el mismo de Estatuas) ----------------
 async function recortar(imagen, salida) {

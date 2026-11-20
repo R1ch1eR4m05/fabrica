@@ -390,6 +390,14 @@ function pintarProyecto() {
   if ($("#iTexto")) $("#iTexto").onclick = async () => { const t = await (await fetch(`/proyectos/${p.id}/imagenes/texto.txt?v=${Date.now()}`)).text(); try { await navigator.clipboard.writeText(t); avisar("Texto copiado."); } catch { prompt("Copia el texto:", t); } };
   for (const b of document.querySelectorAll("[data-copiaimg]")) b.onclick = async () => { const c = p.imagenesPost?.copy || {}; const t = `${c[b.dataset.copiaimg] || ""}${c.hashtags?.length ? "\n\n" + c.hashtags.join(" ") : ""}`; try { await navigator.clipboard.writeText(t); avisar("Copy copiado."); } catch { prompt("Copia el texto:", t); } };
   if ($("#mCrear")) $("#mCrear").onclick = () => api(`/api/proyectos/${p.id}/miniatura`, "POST", { ia: $("#mIA").checked }).then(() => avisar("Creando miniaturas… sale en la barra de la fila.")).catch((e) => avisar(e.message, true));
+  // los prompts se piden al abrir, para copiar en el mismo toque (en el celular, sin https, copiar después de esperar falla)
+  const mPrompts = {};
+  if (document.querySelector("[data-mprompt]")) api(`/api/proyectos/${p.id}/miniatura`).then((m) => { for (const o of m?.opciones || []) mPrompts[o.letra] = o.prompt || ""; }).catch(() => {});
+  for (const b of document.querySelectorAll("[data-mprompt]")) b.onclick = () => {
+    const t = mPrompts[b.dataset.mprompt];
+    if (!t) return avisar("Todavía no llega el prompt (o esta miniatura es vieja: rehazla). Intenta otra vez en un segundo.", true);
+    copiarTexto(t, "Prompt copiado. Pégalo en tu generador de imágenes (16:9).");
+  };
   for (const b of document.querySelectorAll("[data-musar]")) b.onclick = () => api(`/api/proyectos/${p.id}/miniatura`, "POST", { usar: b.dataset.musar }).then(() => { avisar(`Miniatura ${b.dataset.musar} elegida: ya está en la carpeta listos.`); abrir(p.id, { mantener: true }); }).catch((e) => avisar(e.message, true));
   if ($("#cCortar")) $("#cCortar").onclick = () => api(`/api/proyectos/${p.id}/capitulos`, "POST", { reels: $("#cCortarReels").checked }).then(() => avisar("Cortando por capítulos… sale en la barra de la fila.")).catch((e) => avisar(e.message, true));
   for (const b of document.querySelectorAll("[data-copiacap]")) b.onclick = async () => {
@@ -770,6 +778,16 @@ function panelImagenes(p) {
     ${im?.copy?.suelta || im?.copy?.carrusel ? `<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));margin-top:10px">${[["suelta", "Copy de la imagen suelta"], ["carrusel", "Copy del carrusel"]].filter(([k]) => im.copy[k]).map(([k, t]) => `<div class="card" style="padding:10px"><div class="fila" style="align-items:center;justify-content:space-between"><b>${t}</b><button class="mini" data-copiaimg="${k}">Copiar</button></div><div class="estado" style="white-space:pre-wrap;margin-top:6px">${h(im.copy[k])}${im.copy.hashtags?.length ? "\n\n" + h(im.copy.hashtags.join(" ")) : ""}</div></div>`).join("")}</div>` : ""}
   </div>`;
 }
+// copia aunque el panel se abra por http desde el celular (ahí no existe navigator.clipboard)
+function copiarTexto(t, msg = "Copiado.") {
+  const ta = document.createElement("textarea"); ta.value = t; ta.setAttribute("readonly", ""); ta.style.cssText = "position:fixed;top:0;left:0;opacity:0;font-size:16px";
+  document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, t.length);
+  let ok = false; try { ok = document.execCommand("copy"); } catch {}
+  ta.remove();
+  if (ok) return avisar(msg);
+  if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(t).then(() => avisar(msg)).catch(() => prompt("Copia el texto:", t));
+  prompt("Copia el texto:", t);
+}
 function panelMiniaturas(p) {
   const m = p.miniaturas, ops = m?.opciones || [];
   return `<div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--b)">
@@ -781,7 +799,9 @@ function panelMiniaturas(p) {
     <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr));margin-top:8px">${ops.map((o) => `<div class="card" style="padding:8px">
       <img src="/proyectos/${h(p.id)}/miniaturas/${h(o.archivo)}?v=${Date.now()}" style="width:100%;border-radius:6px">
       <div class="fila" style="margin-top:6px;align-items:center"><b>${h(o.letra)}</b><span class="estado">${h((o.lineas || []).join(" "))}</span></div>
-      <div class="fila" style="margin-top:4px"><button class="mini" data-musar="${h(o.letra)}">${m.elegida === o.letra ? "✓ Elegida" : "Usar esta"}</button><a class="mini" href="/proyectos/${h(p.id)}/miniaturas/${h(o.archivo)}" download="${h(p.id)}-miniatura-${h(o.letra)}.jpg">Descargar</a></div></div>`).join("")}</div>` : ""}
+      <div class="fila" style="margin-top:4px"><button class="mini" data-musar="${h(o.letra)}">${m.elegida === o.letra ? "✓ Elegida" : "Usar esta"}</button><a class="mini" href="/proyectos/${h(p.id)}/miniaturas/${h(o.archivo)}" download="${h(p.id)}-miniatura-${h(o.letra)}.jpg">Descargar</a><button class="mini" data-mprompt="${h(o.letra)}" title="Prompt para hacerla en Nano Banana, ChatGPT, Midjourney…">Copiar prompt</button></div>
+      ${o.conFondo === false ? `<div class="nota" style="margin-top:4px">Salió sin imagen: no encontré las imágenes de este video en este equipo. Rehazla o usa el prompt.</div>` : ""}</div>`).join("")}</div>
+    <div class="estado" style="margin-top:6px">«Copiar prompt» trae todo lo de esa opción (figura, composición, halo, colores y el texto exacto) para pegarlo en un generador de imágenes en 16:9.</div>` : ""}
   </div>`;
 }
 function panelCortes(p) {
