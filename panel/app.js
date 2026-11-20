@@ -800,6 +800,7 @@ function panelMiniaturas(p) {
       <img src="/proyectos/${h(p.id)}/miniaturas/${h(o.archivo)}?v=${Date.now()}" style="width:100%;border-radius:6px">
       <div class="fila" style="margin-top:6px;align-items:center"><b>${h(o.letra)}</b><span class="estado">${h((o.lineas || []).join(" "))}</span></div>
       <div class="fila" style="margin-top:4px"><button class="mini" data-musar="${h(o.letra)}">${m.elegida === o.letra ? "✓ Elegida" : "Usar esta"}</button><a class="mini" href="/proyectos/${h(p.id)}/miniaturas/${h(o.archivo)}" download="${h(p.id)}-miniatura-${h(o.letra)}.jpg">Descargar</a><button class="mini" data-mprompt="${h(o.letra)}" title="Prompt para hacerla en Nano Banana, ChatGPT, Midjourney…">Copiar prompt</button></div>
+      ${o.revisar ? `<div class="nota" style="margin-top:4px">${h(o.revisar)}</div>` : ""}
       ${o.conFondo === false ? `<div class="nota" style="margin-top:4px">Salió sin imagen: no encontré las imágenes de este video en este equipo. Rehazla o usa el prompt.</div>` : ""}</div>`).join("")}</div>
     <div class="estado" style="margin-top:6px">«Copiar prompt» trae todo lo de esa opción (figura, composición, halo, colores y el texto exacto) para pegarlo en un generador de imágenes en 16:9.</div>` : ""}
   </div>`;

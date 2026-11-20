@@ -185,7 +185,7 @@ async function concepto(id, receta, estilo, guion) {
   const resumen = guion.escenas.map((e, k) => `${k + 1}${e.capitulo ? ` [CAPÍTULO: ${e.capitulo}]` : ""}: ${textoEscena(e).slice(0, 90)}`).slice(0, 70).join("\n");
   const sistema = `Diseñas el CONTENIDO de miniaturas de YouTube para un canal en español de México (${estilo.nombre}: ${estilo.descripcion}).
 Receta del nicho (patrones de miniaturas que funcionan): ${JSON.stringify(leerReceta(estilo.id).patrones)}. Ajustes: ${JSON.stringify(receta)}.
-Reglas: el texto de la miniatura tiene ${receta.palabras.min} a ${receta.palabras.max} palabras EN TOTAL, repartidas en 1 a 3 líneas de máximo 14 letras cada una, ${receta.mayusculas ? "en MAYÚSCULAS" : "en minúsculas o frase"}; provoca curiosidad o emoción pero DICE LA VERDAD de lo que trata el video (nada de engañar); complementa el título en vez de repetirlo; nunca copies frases de otros canales. "escena" es el número de la escena del guion cuya imagen mejor funciona de fondo (una figura clara y con espacio libre). "promptFondo" es el prompt en inglés para generar un fondo NUEVO: estilo "${estilo.estiloVisual || ""}", 16:9, un solo sujeto fuerte, alto contraste, espacio vacío en el lado donde va el texto, sin letras ni marcas de agua.
+Reglas: el texto de la miniatura tiene ${receta.palabras.min} a ${receta.palabras.max} palabras EN TOTAL, repartidas en 2 o 3 líneas de máximo 10 letras cada una (las palabras chicas como LA/EL/DE pueden ir solas arriba), con ortografía perfecta (revisa letra por letra, con acentos), ${receta.mayusculas ? "en MAYÚSCULAS" : "en minúsculas o frase"}; provoca curiosidad o emoción pero DICE LA VERDAD de lo que trata el video (nada de engañar); complementa el título en vez de repetirlo; nunca copies frases de otros canales. "escena" es el número de la escena del guion cuya imagen mejor funciona de fondo (una figura clara y con espacio libre). "promptFondo" es el prompt en inglés para generar un fondo NUEVO: estilo "${estilo.estiloVisual || ""}", 16:9, un solo sujeto fuerte, alto contraste, espacio vacío en el lado donde va el texto, sin letras ni marcas de agua.
 Da 3 opciones DISTINTAS de texto y de escena. Responde SOLO JSON: {"opciones":[{"lineas":["…"],"acento":0,"escena":1,"promptFondo":"…"}]} (acento = índice de la línea que va en color de énfasis).`;
   const texto = `Título del video: ${guion.titulo || ""}\nEscenas:\n${resumen}`;
   const j = jsonDe((await pedir(sistema, texto, { maxTokens: 3000 })).texto);
@@ -263,8 +263,10 @@ const DISENOS = {
 };
 
 function ordenDeDisenos(pref) {
-  const resto = ["izquierda", "abajo", "centro", "derecha"].filter((x) => x !== pref);
-  return [pref, ...resto].slice(0, 3);
+  // A y B llevan la figura recortada; C es la imagen completa con el texto al lado de la receta (con sombra detrás),
+  // nunca encima del centro, donde suele estar la figura
+  const lado = pref === "centro" || pref === "abajo" ? "izquierda" : pref;
+  return [lado, lado === "izquierda" ? "derecha" : "izquierda", lado];
 }
 
 function htmlMiniatura({ fondo, lineas, acento, diseno, receta }) {
@@ -285,11 +287,20 @@ function htmlMiniatura({ fondo, lineas, acento, diseno, receta }) {
 .l.a{color:${receta.colorAcento}}
 </style><div id="bg"></div><div id="sc"></div><div id="caja">${lineas.map((t, i) => `<div class="l${i === acento ? " a" : ""}">${esc(t)}</div>`).join("")}</div>
 <script>
+// cada línea llena el ancho; una línea de puras palabras chicas (LA, EL, DE, QUE…) va a 45 %; ninguna pasa de 1.25 veces la de acento; luego todo cabe en el alto
+const CHICAS=new Set("LA EL LOS LAS DE DEL EN Y QUE TU TE SE LO UN UNA A AL POR NO".split(" "));
+function ajustarTexto(ls,maxW,maxH){
+  for(const l of ls){let z=360;l.style.fontSize=z+"px";while(l.scrollWidth>maxW&&z>30){z-=4;l.style.fontSize=z+"px"}
+    const pal=l.textContent.trim().toUpperCase().split(/\s+/);if(ls.length>1&&pal.every((p)=>CHICAS.has(p)))l.style.fontSize=(z*0.45)+"px"}
+  const a=ls.find((l)=>l.classList.contains("a"));if(a){const za=parseFloat(a.style.fontSize);for(const l of ls)if(l!==a)l.style.fontSize=Math.min(parseFloat(l.style.fontSize),za*1.25)+"px"}
+  const alto=ls.reduce((s,l)=>s+l.getBoundingClientRect().height,0);
+  if(alto>maxH){const f=maxH/alto;for(const l of ls)l.style.fontSize=(parseFloat(l.style.fontSize)*f)+"px"}
+}
+</script>
+<script>
 document.fonts.load("800 100px M").then(()=>{
   const caja=document.getElementById("caja"),ls=[...caja.children],maxW=caja.clientWidth,maxH=parseFloat(getComputedStyle(caja).maxHeight);
-  for(const l of ls){let s=300;l.style.fontSize=s+"px";while(l.scrollWidth>maxW&&s>40){s-=4;l.style.fontSize=s+"px"}}
-  let alto=ls.reduce((a,l)=>a+l.getBoundingClientRect().height,0);
-  if(alto>maxH){const f=maxH/alto;for(const l of ls)l.style.fontSize=(parseFloat(l.style.fontSize)*f)+"px"}
+  ajustarTexto(ls,maxW,maxH);
   document.body.dataset.listo="1";
 });
 </script>`;
@@ -306,15 +317,15 @@ function htmlRecorte({ fondo, recorte, lineas, acento, receta, lado = "derecha",
   const vertical = alto > ancho, txtLado = lado === "derecha" ? "izquierda" : "derecha";
   const caja = vertical
     ? `left:6%;right:6%;top:9%;height:30%;align-items:center;text-align:center`
-    : `${txtLado === "izquierda" ? "left" : "right"}:4.5%;top:50%;transform:translateY(-50%);width:47%;max-height:84%;align-items:${txtLado === "izquierda" ? "flex-start" : "flex-end"};text-align:${txtLado === "izquierda" ? "left" : "right"}`;
+    : `${txtLado === "izquierda" ? "left" : "right"}:4%;top:50%;transform:translateY(-50%);width:52%;height:86%;align-items:${txtLado === "izquierda" ? "flex-start" : "flex-end"};text-align:${txtLado === "izquierda" ? "left" : "right"}`;
   const tam = vertical ? 150 : 112;
   return `<!doctype html><meta charset="utf-8"><style>
 @font-face{font-family:F;font-weight:800;src:url(data:font/woff2;base64,${f}) format("woff2")}
 *{margin:0;box-sizing:border-box}html,body{width:${ancho}px;height:${alto}px;overflow:hidden;background:#05070a}
 #bg{position:absolute;inset:-40px;background:url('${bg}') center/cover;filter:blur(14px) brightness(.42) saturate(1.15)}
 #tinte{position:absolute;inset:0;${tinte ? `background:${tinte};mix-blend-mode:color;opacity:.85` : "display:none"}}
-#halo{position:absolute;border-radius:50%;background:radial-gradient(circle,${receta.colorAcento}99 0%,${receta.colorAcento}33 35%,transparent 68%);filter:blur(30px);opacity:.7}
-#fig{position:absolute;filter:drop-shadow(0 0 1.5px ${receta.colorAcento}cc) drop-shadow(0 0 22px ${receta.colorAcento}55) drop-shadow(0 18px 30px rgba(0,0,0,.7)) contrast(1.1) brightness(1.06) saturate(1.1)}
+#halo{position:absolute;border-radius:50%;background:radial-gradient(circle,${receta.colorAcento}99 0%,${receta.colorAcento}33 35%,transparent 68%);filter:blur(30px);opacity:.85}
+#fig{position:absolute;filter:drop-shadow(0 0 2px ${receta.colorAcento}) drop-shadow(0 0 26px ${receta.colorAcento}88) drop-shadow(0 18px 30px rgba(0,0,0,.7)) contrast(1.12) brightness(1.22) saturate(1.12)}
 #vig{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.55) 100%)}
 #caja{position:absolute;display:flex;flex-direction:column;justify-content:center;${caja}}
 .l{font:800 ${tam}px/0.98 F,sans-serif;letter-spacing:-0.01em;white-space:nowrap;color:${receta.colorTexto};
@@ -322,6 +333,17 @@ function htmlRecorte({ fondo, recorte, lineas, acento, receta, lado = "derecha",
 .l.a{color:${receta.colorAcento}}
 </style><div id="bg"></div><div id="tinte"></div><div id="halo"></div><canvas id="fig"></canvas><div id="vig"></div>
 <div id="caja">${lineas.map((t, i) => `<div class="l${i === acento ? " a" : ""}">${esc(t)}</div>`).join("")}</div>
+<script>
+// cada línea llena el ancho; una línea de puras palabras chicas (LA, EL, DE, QUE…) va a 45 %; ninguna pasa de 1.25 veces la de acento; luego todo cabe en el alto
+const CHICAS=new Set("LA EL LOS LAS DE DEL EN Y QUE TU TE SE LO UN UNA A AL POR NO".split(" "));
+function ajustarTexto(ls,maxW,maxH){
+  for(const l of ls){let z=360;l.style.fontSize=z+"px";while(l.scrollWidth>maxW&&z>30){z-=4;l.style.fontSize=z+"px"}
+    const pal=l.textContent.trim().toUpperCase().split(/\s+/);if(ls.length>1&&pal.every((p)=>CHICAS.has(p)))l.style.fontSize=(z*0.45)+"px"}
+  const a=ls.find((l)=>l.classList.contains("a"));if(a){const za=parseFloat(a.style.fontSize);for(const l of ls)if(l!==a)l.style.fontSize=Math.min(parseFloat(l.style.fontSize),za*1.25)+"px"}
+  const alto=ls.reduce((s,l)=>s+l.getBoundingClientRect().height,0);
+  if(alto>maxH){const f=maxH/alto;for(const l of ls)l.style.fontSize=(parseFloat(l.style.fontSize)*f)+"px"}
+}
+</script>
 <script>
 const W=${ancho},H=${alto},vertical=${vertical},lado=${JSON.stringify(lado)};
 // la máscara guarda la FORMA (alfa); la figura se arma con la imagen de fondo recortada por esa forma
@@ -351,9 +373,7 @@ const carga=(u)=>new Promise((ok)=>{const i=new Image();i.onload=()=>ok(i);i.src
   h.style.width=h.style.height=hr+"px";h.style.left=(fx+bw*s/2-hr/2)+"px";h.style.top=(fy+bh*s*0.3-hr/2)+"px";
   await document.fonts.load("800 100px F");
   const caja=document.getElementById("caja"),ls=[...caja.children],maxW=caja.clientWidth,maxH=caja.clientHeight||parseFloat(getComputedStyle(caja).maxHeight);
-  for(const l of ls){let z=320;l.style.fontSize=z+"px";while(l.scrollWidth>maxW&&z>40){z-=4;l.style.fontSize=z+"px"}}
-  let alto=ls.reduce((a,l)=>a+l.getBoundingClientRect().height,0);
-  if(alto>maxH){const f=maxH/alto;for(const l of ls)l.style.fontSize=(parseFloat(l.style.fontSize)*f)+"px"}
+  ajustarTexto(ls,maxW,maxH);
   document.body.dataset.listo="1";
 })();
 </script>`.replace(JSON.stringify("BG"), JSON.stringify(bg)).replace(JSON.stringify("FIG"), JSON.stringify(fig));
@@ -369,6 +389,15 @@ async function dibujar(nav, html, salida, ancho = W, alto = H) {
       if (fs.statSync(salida).size < 1.9e6) break;
     }
   } finally { await pag.close(); }
+}
+
+// palabras de la miniatura (4+ letras) que no salen en el título ni en el guion: casi siempre un error de dedo de la IA
+const norm = (t) => sinTildes(String(t).toUpperCase()).replace(/[^A-ZÑ0-9\s]/g, " ");
+function palabrasRaras(lineas, guion) {
+  const corpus = new Set(norm([guion.titulo, guion.gancho, ...(guion.subir?.titulos || []), ...(guion.escenas || []).map((e) => `${e.voz || ""} ${e.texto || ""} ${e.capitulo || ""}`)].join(" ")).split(/\s+/));
+  const raiz = (p) => p.replace(/(ES|S)$/, "");
+  const cRaiz = new Set([...corpus].map(raiz));
+  return lineas.join(" ").split(/\s+/).filter((p) => { const n = norm(p).trim(); return n.length >= 4 && !corpus.has(n) && !cRaiz.has(raiz(n)); });
 }
 
 // ---------------- crear las 3 opciones de un video ----------------
@@ -404,7 +433,8 @@ export async function crearMiniaturas(id, { avisar = () => {}, ia = false } = {}
         diseno = i === 0 ? "recorte-derecha" : "recorte-izquierda";
         await dibujar(nav, htmlRecorte({ fondo, recorte: rec, lineas, acento: ac, receta, lado: i === 0 ? "derecha" : "izquierda" }), path.join(dir, archivo));
       } else await dibujar(nav, htmlMiniatura({ fondo, lineas, acento: ac, diseno, receta }), path.join(dir, archivo));
-      opciones.push({ letra, archivo, lineas, escena: o.escena, fondo: origen, diseno, conFondo: !!fondo, prompt: promptExterno({ estilo, guion, o: { ...o, lineas, acento: ac }, receta, lado: i === 1 ? "izquierda" : "derecha" }) });
+      const raras = palabrasRaras(lineas, guion);
+      opciones.push({ letra, archivo, lineas, revisar: raras.length ? `Revisa la ortografía: «${raras.join("», «")}» no aparece en el guion.` : undefined, escena: o.escena, fondo: origen, diseno, conFondo: !!fondo, prompt: promptExterno({ estilo, guion, o: { ...o, lineas, acento: ac }, receta, lado: i === 1 ? "izquierda" : "derecha" }) });
     }
     // comparativa: así se verán en la página principal (grande) y en la barra lateral (chica)
     const datos = opciones.map((o) => `data:image/jpeg;base64,${fs.readFileSync(path.join(dir, o.archivo)).toString("base64")}`);
