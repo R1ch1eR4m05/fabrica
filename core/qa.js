@@ -133,7 +133,11 @@ export async function renderConQA(id, avisar = () => {}, renderizar) {
     try { r = await renderizar(id, avisar); ultimoError = null; } catch (e) { ultimoError = e; }
     if (!ultimoError) {
       const q = await qaVideo(id);
-      if (q.aprobado) { marcarQA(id, "aprobado", []); return { ...r, qa: q }; }
+      if (q.aprobado) {
+        marcarQA(id, "aprobado", []);
+        try { await (await import("./miniatura.js")).miniaturasAutomaticas(id, avisar); } catch (e) { console.warn("Miniaturas:", e.message); }
+        return { ...r, qa: q };
+      }
       const graves = Object.keys(q.checks).filter((k) => !q.checks[k].ok && !q.checks[k].config && REINTENTABLES.includes(k)); // lo que es de configuración no se arregla renderizando
       if (!graves.length || intento === 2) { marcarQA(id, intento === 2 && graves.length ? "fallido" : "rechazado", q.motivos); return { ...r, qa: q }; }
       avisar({ paso: "render", progreso: 0.05, msg: `QA: ${graves.join(", ")} falló. Reintento el render una vez…` });

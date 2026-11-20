@@ -31,3 +31,10 @@ Video largo y pausado para YouTube (también sirve en 3-5 min para Reels largos)
 - Citas solo reales y verificadas; si no estás seguro, parafrasea sin atribuir.
 - Nada de promesas de salud, dinero ni "ley de la atracción".
 - Nada de copiar guiones de otros canales: misma idea, palabras y ejemplos propios.
+
+## Miniatura (obligatoria: es lo que decide si alguien da clic)
+En `guion.json` pon `"miniatura"`: una lista de 3 opciones `{ "lineas": ["…","…"], "acento": 1, "escena": N }`.
+- 2 a 4 palabras EN TOTAL, en 1-2 líneas cortas (máx. 12 letras por línea). Se lee a 168 px de ancho.
+- No repite el título: lo complementa con la emoción o la promesa ("LA SEGUNDA / FLECHA", "DEJA DE / SUFRIR DOBLE"). Dice la verdad del video, sin engaño.
+- `acento` = la línea que va en dorado; `escena` = la escena con la figura más clara (una estatua, un monje, un rostro; que se pueda recortar), distinta en cada opción.
+- La fábrica las arma sola al terminar el video: figura recortada en grande a un lado con un halo, fondo oscuro desenfocado y el texto enorme del otro lado. La A se sube a YouTube al programar.

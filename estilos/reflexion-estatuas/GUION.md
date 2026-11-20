@@ -28,3 +28,6 @@ Short/Reel de **20 a 30 s** (55 a 80 palabras de voz) en segunda persona ("tú")
 - Cambia de imagen cada 3-6 s; nunca dos escenas seguidas con la misma imagen.
 - Los subtítulos salen palabra por palabra desde el segundo 0; no hace falta escribir texto aparte.
 - Sin promesas de salud ni datos inventados.
+
+## Portada (Shorts y Reels)
+Opcional en `guion.json`: `"miniatura": { "lineas": ["TU ENOJO","ES DE OTROS"], "acento": 1, "escena": 1 }` (2-5 palabras). Sin eso, la fábrica usa la primera frase del gancho. Al terminar el video saca `listos/<id>-portada.jpg` (1080x1920: figura recortada abajo, gancho enorme arriba, mismo tono): para la portada del Reel en Instagram/Facebook y para YouTube cuando el canal pueda subir portadas de Shorts.

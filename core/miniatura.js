@@ -175,6 +175,12 @@ async function concepto(id, receta, estilo, guion) {
   const nEsc = guion.escenas.length;
   const mano = leerJson(path.join(dirProyecto(id), "miniatura.json"));
   if (mano?.opciones?.length) return { origen: "miniatura.json", opciones: mano.opciones.slice(0, 3) };
+  // el guion puede traer su miniatura (la escribe quien escribe el guion): "miniatura": { "lineas": [...], "acento": 1, "escena": 3 } o una lista de 3
+  const delGuion = [].concat(guion.miniatura || []).filter((o) => o?.lineas?.length);
+  if (delGuion.length) {
+    const pasos = [1, Math.round(nEsc / 3) || 1, Math.round((2 * nEsc) / 3) || 1];
+    return { origen: "guion", opciones: [0, 1, 2].map((i) => { const o = delGuion[i] || delGuion[0]; return { lineas: o.lineas, acento: o.acento ?? o.lineas.length - 1, escena: Math.max(1, Math.min(nEsc, +(delGuion[i]?.escena || (i ? pasos[i] : o.escena) || 1))) }; }) };
+  }
   if (!CFG.anthropicKey && !CFG.geminiKey) return { origen: "título", opciones: conceptoDeTitulo(guion, nEsc, receta) };
   const resumen = guion.escenas.map((e, k) => `${k + 1}${e.capitulo ? ` [CAPÍTULO: ${e.capitulo}]` : ""}: ${textoEscena(e).slice(0, 90)}`).slice(0, 70).join("\n");
   const sistema = `Diseñas el CONTENIDO de miniaturas de YouTube para un canal en español de México (${estilo.nombre}: ${estilo.descripcion}).
@@ -243,8 +249,72 @@ document.fonts.load("800 100px M").then(()=>{
 </script>`;
 }
 
-async function dibujar(nav, html, salida) {
-  const pag = await nav.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: 1 });
+// Diseño "recorte": la figura (estatua, monje, rostro) recortada con ISNet y en grande a un lado, con un halo del color de
+// acento detrás; el resto de la imagen desenfocado y oscuro; 2-4 palabras enormes del otro lado. Es lo que más separa la
+// miniatura del montón de "frase sobre estatua" y se sigue leyendo a 168 px de ancho.
+function htmlRecorte({ fondo, recorte, lineas, acento, receta, lado = "derecha", ancho = W, alto = H, fuente = "montserrat-latin-800-normal.woff2", tinte = null }) {
+  const f = fs.readFileSync(path.join(FUENTES, fuente)).toString("base64");
+  const mime = (x) => (/\.png$/i.test(x) ? "png" : "jpeg");
+  const bg = `data:image/${mime(fondo)};base64,${fs.readFileSync(fondo).toString("base64")}`;
+  const fig = `data:image/png;base64,${fs.readFileSync(recorte).toString("base64")}`;
+  const vertical = alto > ancho, txtLado = lado === "derecha" ? "izquierda" : "derecha";
+  const caja = vertical
+    ? `left:6%;right:6%;top:9%;height:30%;align-items:center;text-align:center`
+    : `${txtLado === "izquierda" ? "left" : "right"}:4.5%;top:50%;transform:translateY(-50%);width:47%;max-height:84%;align-items:${txtLado === "izquierda" ? "flex-start" : "flex-end"};text-align:${txtLado === "izquierda" ? "left" : "right"}`;
+  const tam = vertical ? 150 : 112;
+  return `<!doctype html><meta charset="utf-8"><style>
+@font-face{font-family:F;font-weight:800;src:url(data:font/woff2;base64,${f}) format("woff2")}
+*{margin:0;box-sizing:border-box}html,body{width:${ancho}px;height:${alto}px;overflow:hidden;background:#05070a}
+#bg{position:absolute;inset:-40px;background:url('${bg}') center/cover;filter:blur(14px) brightness(.42) saturate(1.15)}
+#tinte{position:absolute;inset:0;${tinte ? `background:${tinte};mix-blend-mode:color;opacity:.85` : "display:none"}}
+#halo{position:absolute;border-radius:50%;background:radial-gradient(circle,${receta.colorAcento}99 0%,${receta.colorAcento}33 35%,transparent 68%);filter:blur(30px);opacity:.7}
+#fig{position:absolute;filter:drop-shadow(0 0 1.5px ${receta.colorAcento}cc) drop-shadow(0 0 22px ${receta.colorAcento}55) drop-shadow(0 18px 30px rgba(0,0,0,.7)) contrast(1.1) brightness(1.06) saturate(1.1)}
+#vig{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.55) 100%)}
+#caja{position:absolute;display:flex;flex-direction:column;justify-content:center;${caja}}
+.l{font:800 ${tam}px/0.98 F,sans-serif;letter-spacing:-0.01em;white-space:nowrap;color:${receta.colorTexto};
+  -webkit-text-stroke:${vertical ? 16 : 13}px #07090c;paint-order:stroke fill;text-shadow:0 8px 24px rgba(0,0,0,.6)}
+.l.a{color:${receta.colorAcento}}
+</style><div id="bg"></div><div id="tinte"></div><div id="halo"></div><canvas id="fig"></canvas><div id="vig"></div>
+<div id="caja">${lineas.map((t, i) => `<div class="l${i === acento ? " a" : ""}">${esc(t)}</div>`).join("")}</div>
+<script>
+const W=${ancho},H=${alto},vertical=${vertical},lado=${JSON.stringify(lado)};
+// la máscara guarda la FORMA (alfa); la figura se arma con la imagen de fondo recortada por esa forma
+const carga=(u)=>new Promise((ok)=>{const i=new Image();i.onload=()=>ok(i);i.src=u});
+(async()=>{
+  const [foto,mas]=await Promise.all([carga(${JSON.stringify("BG")}),carga(${JSON.stringify("FIG")})]);
+  const img=document.getElementById("fig");img.width=foto.naturalWidth;img.height=foto.naturalHeight;
+  const g=img.getContext("2d");g.drawImage(foto,0,0);g.globalCompositeOperation="destination-in";g.drawImage(mas,0,0,foto.naturalWidth,foto.naturalHeight);
+
+  // dónde está la figura dentro del recorte (alfa > 40)
+  const NW=foto.naturalWidth,NH=foto.naturalHeight;
+  const c=document.createElement("canvas"),k=Math.min(1,400/Math.max(NW,NH));
+  c.width=Math.round(NW*k);c.height=Math.round(NH*k);
+  const x=c.getContext("2d");x.drawImage(mas,0,0,c.width,c.height);
+  const d=x.getImageData(0,0,c.width,c.height).data;let x0=c.width,y0=c.height,x1=0,y1=0;
+  for(let y=0;y<c.height;y++)for(let i=0;i<c.width;i++)if(d[(y*c.width+i)*4+3]>40){if(i<x0)x0=i;if(i>x1)x1=i;if(y<y0)y0=y;if(y>y1)y1=y}
+  if(x1<=x0||y1<=y0){x0=0;y0=0;x1=c.width;y1=c.height}
+  const bw=(x1-x0)/k,bh=(y1-y0)/k;
+  // la figura ocupa casi todo el alto (y como mucho la mitad del ancho en 16:9); se corta abajo, como un busto
+  const altoObj=vertical?H*0.66:H*1.0,anchoMax=vertical?W*0.98:W*0.46;
+  const s=Math.min(altoObj/bh,anchoMax/bw);
+  img.style.width=NW*s+"px";img.style.height=NH*s+"px";
+  const fx=vertical?(W-bw*s)/2:(lado==="derecha"?W*0.985-bw*s:W*0.015);
+  const fy=vertical?H-bh*s+H*0.02:H*0.04+(H-bh*s)*0.0;
+  img.style.left=(fx-x0/k*s)+"px";img.style.top=(fy-y0/k*s)+"px";
+  const h=document.getElementById("halo"),hr=Math.max(bw,bh)*s*0.75;
+  h.style.width=h.style.height=hr+"px";h.style.left=(fx+bw*s/2-hr/2)+"px";h.style.top=(fy+bh*s*0.3-hr/2)+"px";
+  await document.fonts.load("800 100px F");
+  const caja=document.getElementById("caja"),ls=[...caja.children],maxW=caja.clientWidth,maxH=caja.clientHeight||parseFloat(getComputedStyle(caja).maxHeight);
+  for(const l of ls){let z=320;l.style.fontSize=z+"px";while(l.scrollWidth>maxW&&z>40){z-=4;l.style.fontSize=z+"px"}}
+  let alto=ls.reduce((a,l)=>a+l.getBoundingClientRect().height,0);
+  if(alto>maxH){const f=maxH/alto;for(const l of ls)l.style.fontSize=(parseFloat(l.style.fontSize)*f)+"px"}
+  document.body.dataset.listo="1";
+})();
+</script>`.replace(JSON.stringify("BG"), JSON.stringify(bg)).replace(JSON.stringify("FIG"), JSON.stringify(fig));
+}
+
+async function dibujar(nav, html, salida, ancho = W, alto = H) {
+  const pag = await nav.newPage({ viewport: { width: ancho, height: alto }, deviceScaleFactor: 1 });
   try {
     await pag.setContent(html, { waitUntil: "load" });
     await pag.waitForSelector("body[data-listo]", { timeout: 15000 });
@@ -280,9 +350,15 @@ export async function crearMiniaturas(id, { avisar = () => {}, ia = false } = {}
         fondo = path.join(dir, `fondo-${letra}${r.ext}`); fs.writeFileSync(fondo, r.bytes); origen = "ia";
       } else fondo = await imagenDeEscena(id, o.escena, tmp);
       const lineas = (o.lineas || []).slice(0, 3).map((t) => (receta.mayusculas ? String(t).toUpperCase() : String(t)));
-      const archivo = `miniatura-${letra}.jpg`;
-      await dibujar(nav, htmlMiniatura({ fondo, lineas, acento: Math.min(Math.max(0, +o.acento || 0), lineas.length - 1), diseno: disenos[i], receta }), path.join(dir, archivo));
-      opciones.push({ letra, archivo, lineas, escena: o.escena, fondo: origen, diseno: disenos[i], conFondo: !!fondo });
+      const archivo = `miniatura-${letra}.jpg`, ac = Math.min(Math.max(0, +o.acento || 0), lineas.length - 1);
+      // A y B: figura recortada (derecha / izquierda); C: imagen completa con el texto encima (el diseño de antes)
+      let diseno = disenos[i], rec = null;
+      if (fondo && i < 2) rec = await recortar(fondo, path.join(tmp, `recorte-${letra}.png`));
+      if (rec) {
+        diseno = i === 0 ? "recorte-derecha" : "recorte-izquierda";
+        await dibujar(nav, htmlRecorte({ fondo, recorte: rec, lineas, acento: ac, receta, lado: i === 0 ? "derecha" : "izquierda" }), path.join(dir, archivo));
+      } else await dibujar(nav, htmlMiniatura({ fondo, lineas, acento: ac, diseno, receta }), path.join(dir, archivo));
+      opciones.push({ letra, archivo, lineas, escena: o.escena, fondo: origen, diseno, conFondo: !!fondo });
     }
     // comparativa: así se verán en la página principal (grande) y en la barra lateral (chica)
     const datos = opciones.map((o) => `data:image/jpeg;base64,${fs.readFileSync(path.join(dir, o.archivo)).toString("base64")}`);
@@ -315,3 +391,58 @@ export function usarMiniatura(id, letra, info = null) {
 }
 
 export const leerMiniaturas = (id) => leerJson(path.join(dirMiniProyecto(id), "miniaturas.json"));
+
+// ---------------- recorte de la figura (ISNet, el mismo de Estatuas) ----------------
+async function recortar(imagen, salida) {
+  try { const { mascara } = await import("./recorte.js"); return await mascara(imagen, salida); } catch { return null; }
+}
+
+// ---------------- portada de Shorts / Reels (1080x1920) ----------------
+// La figura de la escena más fuerte recortada abajo, el gancho enorme arriba (zona que no tapan los botones de la app),
+// con el tono y la letra romana de Estatuas. Sirve para: YouTube (cuando el canal pueda subir portadas a Shorts),
+// la portada del Reel en Instagram/Facebook (se elige a mano en la app) y el feed. Queda en listos/<id>-portada.jpg.
+const TONOS_PORTADA = { turquesa: ["#3fb2a3", "#f3c66f"], ambar: ["#d49a5a", "#fff0c7"], plata: ["#9a9a9a", "#e9c47c"], rojo: ["#b5473a", "#f3c66f"] };
+function lineasDeGancho(guion) {
+  const de = [].concat(guion.miniatura || []).find((o) => o?.lineas?.length);
+  if (de) return { lineas: de.lineas.map((t) => String(t).toUpperCase()), acento: de.acento ?? de.lineas.length - 1, escena: de.escena || 1 };
+  const voz = String(guion.escenas?.[0]?.voz || guion.titulo || "").split(/[.!?¿¡:;]/).map((x) => x.trim()).filter(Boolean)[0] || "";
+  // la primera frase completa (si cabe en 7 palabras); si no, sus primeras 5 con puntos suspensivos
+  let pal = voz.split(/\s+/).filter(Boolean);
+  if (pal.length > 7) pal = [...pal.slice(0, 5), "…"];
+  const corte = pal.length > 3 ? Math.ceil(pal.length / 2) : pal.length;
+  const lineas = [pal.slice(0, corte).join(" "), pal.slice(corte).join(" ")].filter(Boolean).map((t) => t.toUpperCase());
+  const clave = String([].concat(guion.escenas?.[0]?.clave || [])[0] || "").toUpperCase();
+  const acento = Math.max(0, lineas.findIndex((l) => clave && l.includes(clave)));
+  return { lineas, acento: clave ? acento : lineas.length - 1, escena: 1 };
+}
+export async function crearPortadaShort(id, { avisar = () => {} } = {}) {
+  const p = leer(id, "proyecto.json"), guion = leer(id, "guion.json");
+  if (!p || !guion?.escenas?.length) throw new Error("Este video todavía no tiene guion.");
+  const dir = dirMiniProyecto(id), tmp = path.join(dir, "_tmp"); fs.mkdirSync(tmp, { recursive: true });
+  const g = lineasDeGancho(guion);
+  const [tinte, acentoColor] = TONOS_PORTADA[p.opciones?.tono] || TONOS_PORTADA.turquesa;
+  avisar({ paso: "render", progreso: 0.2, msg: "Portada del Short…" });
+  let fondo = null, rec = null;
+  for (const n of [g.escena, 1, 2, 3]) { fondo = await imagenDeEscena(id, n, tmp); if (fondo && (rec = await recortar(fondo, path.join(tmp, `recorte-${n}.png`)))) break; }
+  if (!fondo) throw new Error("El video no tiene imágenes todavía.");
+  const receta = { ...normalizarReceta(), colorTexto: "#FFFFFF", colorAcento: acentoColor };
+  const nav = await abrirNavegador(), salida = path.join(dir, "portada.jpg");
+  try {
+    if (rec) await dibujar(nav, htmlRecorte({ fondo, recorte: rec, lineas: g.lineas, acento: g.acento, receta, ancho: 1080, alto: 1920, fuente: "cinzel-latin-800-normal.woff2", tinte }), salida, 1080, 1920);
+    else await dibujar(nav, htmlMiniatura({ fondo, lineas: g.lineas, acento: g.acento, diseno: "centro", receta }).replace(new RegExp(`${W}px`, "g"), "1080px").replace(new RegExp(`${H}px`, "g"), "1920px"), salida, 1080, 1920);
+  } finally { await nav.close(); fs.rmSync(tmp, { recursive: true, force: true }); }
+  fs.copyFileSync(salida, path.join(DIR_LISTOS, `${id}-portada.jpg`));
+  const info = { ...(leerMiniaturas(id) || {}), portada: { archivo: "portada.jpg", lineas: g.lineas, conRecorte: !!rec, fecha: new Date().toISOString() } };
+  fs.writeFileSync(path.join(dir, "miniaturas.json"), JSON.stringify(info, null, 2));
+  return info.portada;
+}
+
+// Al terminar cada video: largo (16:9) → 3 miniaturas de YouTube (la A queda elegida y se sube a YouTube al programar);
+// Short (9:16) → portada. Gratis (fondos del propio video). No pisa las que ya existen ni las elegidas a mano.
+export async function miniaturasAutomaticas(id, avisar = () => {}) {
+  const p = leer(id, "proyecto.json"); if (!p) return null;
+  const ya = leerMiniaturas(id);
+  if (p.formato === "16:9") return ya?.opciones?.length ? null : crearMiniaturas(id, { avisar });
+  if (p.formato === "9:16" && !ya?.portada) return crearPortadaShort(id, { avisar });
+  return null;
+}
