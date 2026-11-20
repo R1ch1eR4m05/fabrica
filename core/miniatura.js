@@ -19,6 +19,7 @@ const DIR_MINI = path.join(RAIZ, "investigacion", "miniaturas");
 export const dirRef = (estilo) => path.join(DIR_MINI, estilo);
 export const dirMiniProyecto = (id) => path.join(dirProyecto(id), "miniaturas");
 const FUENTES = path.join(RAIZ, "estilos", "_comun", "fuentes");
+const archivoFuente = (receta) => (receta?.fuente === "moderna" ? "montserrat-latin-800-normal.woff2" : "cinzel-latin-800-normal.woff2");
 const W = 1280, H = 720;
 const esc = (t) => String(t ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const leerJson = (f, def = null) => { try { return JSON.parse(fs.readFileSync(f, "utf8")); } catch { return def; } };
@@ -27,6 +28,7 @@ const leerJson = (f, def = null) => { try { return JSON.parse(fs.readFileSync(f,
 const RECETA_BASE = {
   palabras: { min: 2, max: 4 }, mayusculas: true, textoPosicion: "izquierda", tema: "oscuro",
   colorTexto: "#FFFFFF", colorAcento: "#F2C14E", paleta: [], sujeto: "", fondo: "", evitar: [],
+  fuente: "romana", pincel: true,
 };
 const POSICIONES = ["izquierda", "derecha", "centro", "abajo"];
 const hex = (c, def) => (/^#[0-9a-f]{6}$/i.test(String(c || "")) ? c : def);
@@ -41,6 +43,7 @@ function normalizarReceta(r = {}) {
     colorTexto: hex(r.colorTexto, b.colorTexto), colorAcento: hex(r.colorAcento, b.colorAcento),
     paleta: (r.paleta || []).filter((c) => hex(c, null)).slice(0, 6),
     sujeto: String(r.sujeto || ""), fondo: String(r.fondo || ""), evitar: (r.evitar || []).map(String).slice(0, 8),
+    fuente: r.fuente === "moderna" ? "moderna" : "romana", pincel: r.pincel !== false,
   };
 }
 
@@ -238,19 +241,19 @@ export async function imagenDeEscena(id, n, tmp) {
 // ---------------- prompt para generarla fuera (Nano Banana, ChatGPT, Midjourney…) ----------------
 // Describe la miniatura completa: formato, sujeto, composición, luz, colores, texto exacto y tipografía.
 export function promptExterno({ estilo = {}, guion = {}, o = {}, receta = RECETA_BASE, lado = "derecha" }) {
+  // Estilo que mejor ha funcionado (nov 2026): pintura cinematográfica épica, contraluz dorado, una escena que cuenta la
+  // idea con 1-2 elementos (sujeto + símbolo), letra romana enorme con el acento en oro y una pincelada de tinta detrás.
   const esc2 = guion.escenas?.[Math.max(0, (+o.escena || 1) - 1)] || {};
   const sujeto = (o.promptFondo || esc2.flowPrompt || receta.sujeto || "a single strong central figure").replace(/\s+/g, " ").trim();
-  const visual = guion.estiloVisual || estilo.estiloVisual || "";
   const lineas = (o.lineas || []).map(String), ac = Math.min(Math.max(0, +o.acento || 0), Math.max(0, lineas.length - 1));
   const txtLado = lado === "derecha" ? "left" : "right", figLado = lado === "derecha" ? "right" : "left";
-  const texto = lineas.map((t, i) => `line ${i + 1}: "${t}" (${i === ac ? `accent color ${receta.colorAcento}` : `color ${receta.colorTexto}`})`).join("; ");
+  const texto = lineas.map((t, i) => `line ${i + 1}: "${t}" ${i === ac ? `(BIGGEST, textured metallic gold ${receta.colorAcento}, with a golden brush-stroke underline)` : "(bright white, smaller)"}`).join("; ");
   return [
-    `YouTube thumbnail, 16:9, 1280x720, designed to be readable at a tiny size (168x94) in the "suggested videos" sidebar.`,
-    `SUBJECT: ${sujeto}. Only ONE subject, large and close (bust or upper body), occupying the ${figLado} 45% of the frame, cropped at the bottom edge, face or key gesture clearly visible.`,
-    `STYLE: ${visual ? visual + ". " : ""}High contrast, cinematic, dark and moody${receta.paleta.length ? `, palette ${receta.paleta.join(", ")}` : ""}.`,
-    `LIGHT: soft glowing halo / rim light in ${receta.colorAcento} behind the subject so it separates from the background; the rest of the background darker, blurred and simple, with a subtle vignette.`,
-    `TEXT (render it exactly, Spanish, keep accents, ${receta.mayusculas ? "ALL CAPS" : "as written"}): ${texto}. Heavy geometric sans-serif (like Montserrat ExtraBold), huge (text block about 45% of the width), stacked on the ${txtLado} side and ${txtLado}-aligned, thick dark outline and soft drop shadow, never overlapping the face. No other words anywhere.`,
-    `AVOID: extra text, logos, watermarks, borders, small details, cluttered background, multiple people, misspelled words${receta.evitar.length ? ", " + receta.evitar.join(", ") : ""}.`,
+    `YouTube thumbnail, 16:9 (1280x720), for a Spanish-language philosophy channel. It must read instantly at a tiny size (168x94 px) in the "suggested videos" sidebar.`,
+    `SCENE: ${sujeto}. Tell the idea with ONE main subject (large, close, on the ${figLado} 45% of the frame, dramatic silhouette or clear face) plus at most one symbolic element (for example a calm Buddha statue, a temple, an arrow), never more.`,
+    `LOOK: epic cinematic digital painting, dramatic golden-hour backlight with the sun behind the subject, warm orange-gold vs deep shadow contrast, atmospheric mist and mountains, a few red leaves floating, rich detail on the subject but a simple, darker background behind the text. ${guion.estiloVisual || estilo.estiloVisual ? `Keep a nod to the video's art style: ${guion.estiloVisual || estilo.estiloVisual}.` : ""}`,
+    `TEXT (render EXACTLY, Spanish, keep accents, ${receta.mayusculas ? "ALL CAPS" : "as written"}): ${texto}. Heavy classical Roman serif typeface (like Trajan / Cinzel Black), huge: the text block covers about half of the image on the ${txtLado} side, over a rough black ink brush-stroke band that makes it pop. Thick dark outline and drop shadow. The text never covers the subject's face. No other words anywhere.`,
+    `AVOID: extra or misspelled words, logos, watermarks, borders, frames, tiny details near the text, multiple people, cluttered composition${receta.evitar.length ? ", " + receta.evitar.join(", ") : ""}.`,
   ].join("\n");
 }
 
@@ -274,7 +277,7 @@ function htmlMiniatura({ fondo, lineas, acento, diseno, receta }) {
   const S = claro ? "rgba(244,238,223," : "rgba(8,11,16,";
   const scrim = d.scrim.replace(/S ([\d.]+)/g, (_, a) => `${S}${a})`);
   const txt = claro ? "#17130E" : receta.colorTexto, contorno = claro ? "#F4EEDF" : "#0B0E13";
-  const fuente = fs.readFileSync(path.join(FUENTES, "montserrat-latin-800-normal.woff2")).toString("base64");
+  const fuente = fs.readFileSync(path.join(FUENTES, archivoFuente(receta))).toString("base64");
   const bg = fondo ? `url('data:image/jpeg;base64,${fs.readFileSync(fondo).toString("base64")}')` : "linear-gradient(135deg,#2a3340,#0e1319)";
   return `<!doctype html><meta charset="utf-8"><style>
 @font-face{font-family:M;font-weight:800;src:url(data:font/woff2;base64,${fuente}) format("woff2")}
@@ -284,8 +287,9 @@ function htmlMiniatura({ fondo, lineas, acento, diseno, receta }) {
 #caja{position:absolute;display:flex;flex-direction:column;justify-content:center;${d.caja}}
 .l{font:800 100px/0.98 M,sans-serif;letter-spacing:-0.02em;white-space:nowrap;color:${txt};
   -webkit-text-stroke:12px ${contorno};paint-order:stroke fill;text-shadow:0 6px 18px rgba(0,0,0,.35)}
-.l.a{color:${receta.colorAcento}}
-</style><div id="bg"></div><div id="sc"></div><div id="caja">${lineas.map((t, i) => `<div class="l${i === acento ? " a" : ""}">${esc(t)}</div>`).join("")}</div>
+.l.a{color:${receta.colorAcento}${receta.pincel ? `;background:linear-gradient(180deg,#FFF3C4 0%,${receta.colorAcento} 42%,#B47C10 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;-webkit-text-stroke:0;text-shadow:none;filter:drop-shadow(4px 0 0 #07090c) drop-shadow(-4px 0 0 #07090c) drop-shadow(0 4px 0 #07090c) drop-shadow(0 -4px 0 #07090c) drop-shadow(0 10px 22px rgba(0,0,0,.7))` : ""}}
+#pin{position:absolute;inset:0}
+</style><div id="bg"></div><div id="sc"></div><canvas id="pin"></canvas><div id="caja">${lineas.map((t, i) => `<div class="l${i === acento ? " a" : ""}">${esc(t)}</div>`).join("")}</div>
 <script>
 // cada línea llena el ancho; una línea de puras palabras chicas (LA, EL, DE, QUE…) va a 45 %; ninguna pasa de 1.25 veces la de acento; luego todo cabe en el alto
 const CHICAS=new Set("LA EL LOS LAS DE DEL EN Y QUE TU TE SE LO UN UNA A AL POR NO".split(" "));
@@ -295,6 +299,28 @@ function ajustarTexto(ls,maxW,maxH){
   const a=ls.find((l)=>l.classList.contains("a"));if(a){const za=parseFloat(a.style.fontSize);for(const l of ls)if(l!==a)l.style.fontSize=Math.min(parseFloat(l.style.fontSize),za*1.25)+"px"}
   const alto=ls.reduce((s,l)=>s+l.getBoundingClientRect().height,0);
   if(alto>maxH){const f=maxH/alto;for(const l of ls)l.style.fontSize=(parseFloat(l.style.fontSize)*f)+"px"}
+  if(PINCEL)pincel(ls);
+}
+const PINCEL=${receta.pincel ? "true" : "false"},ACENTO=${JSON.stringify(receta.colorAcento)};
+function pincel(ls){
+  const c=document.getElementById("pin"),W2=innerWidth,H2=innerHeight;c.width=W2;c.height=H2;const g=c.getContext("2d");
+  let sem=7;const r=()=>(sem=(sem*16807)%2147483647)/2147483647;
+  const x0=Math.min(...ls.map((l)=>l.getBoundingClientRect().left)),x1=Math.max(...ls.map((l)=>l.getBoundingClientRect().right));
+  const y0=Math.min(...ls.map((l)=>l.getBoundingClientRect().top)),y1=Math.max(...ls.map((l)=>l.getBoundingClientRect().bottom));
+  const pad=(y1-y0)*0.12;g.lineCap="round";
+  for(let i=0;i<70;i++){
+    const y=y0-pad+r()*(y1-y0+2*pad),a=x0-pad*(1.2+r()*2),b=x1+pad*(0.6+r()*2.2);
+    g.strokeStyle="rgba(4,5,7,"+(0.18+r()*0.32)+")";g.lineWidth=(y1-y0)*(0.05+r()*0.12);
+    g.beginPath();g.moveTo(a,y);g.bezierCurveTo(a+(b-a)*0.33,y+(r()-.5)*pad,a+(b-a)*0.66,y+(r()-.5)*pad,b,y+(r()-.5)*pad*0.6);g.stroke();
+  }
+  // cerdas sueltas en las orillas
+  for(let i=0;i<60;i++){const y=y0-pad+r()*(y1-y0+2*pad),lado=r()<.5,xb=lado?x0-pad*(1.4+r()*2.4):x1+pad*(1+r()*2.4);
+    g.strokeStyle="rgba(4,5,7,"+(0.2+r()*0.4)+")";g.lineWidth=1+r()*4;g.beginPath();g.moveTo(xb,y);g.lineTo(xb+(lado?1:-1)*pad*(1+r()*3),y+(r()-.5)*4);g.stroke()}
+  const a=ls.find((l)=>l.classList.contains("a"));if(!a)return;
+  const q=a.getBoundingClientRect(),yb=q.bottom+q.height*0.02,gr=q.height*0.09;
+  const grad=g.createLinearGradient(q.left,0,q.right,0);grad.addColorStop(0,ACENTO+"00");grad.addColorStop(0.12,ACENTO);grad.addColorStop(0.85,ACENTO);grad.addColorStop(1,ACENTO+"00");
+  g.fillStyle=grad;g.beginPath();g.moveTo(q.left-pad*0.3,yb+gr*0.5);
+  g.quadraticCurveTo(q.left+q.width*0.5,yb-gr*0.9,q.right+pad*0.8,yb-gr*0.3);g.quadraticCurveTo(q.left+q.width*0.5,yb+gr*0.9,q.left-pad*0.3,yb+gr*0.5);g.fill();
 }
 </script>
 <script>
@@ -309,7 +335,7 @@ document.fonts.load("800 100px M").then(()=>{
 // Diseño "recorte": la figura (estatua, monje, rostro) recortada con ISNet y en grande a un lado, con un halo del color de
 // acento detrás; el resto de la imagen desenfocado y oscuro; 2-4 palabras enormes del otro lado. Es lo que más separa la
 // miniatura del montón de "frase sobre estatua" y se sigue leyendo a 168 px de ancho.
-function htmlRecorte({ fondo, recorte, lineas, acento, receta, lado = "derecha", ancho = W, alto = H, fuente = "montserrat-latin-800-normal.woff2", tinte = null }) {
+function htmlRecorte({ fondo, recorte, lineas, acento, receta, lado = "derecha", ancho = W, alto = H, fuente = archivoFuente(receta), tinte = null }) {
   const f = fs.readFileSync(path.join(FUENTES, fuente)).toString("base64");
   const mime = (x) => (/\.png$/i.test(x) ? "png" : "jpeg");
   const bg = `data:image/${mime(fondo)};base64,${fs.readFileSync(fondo).toString("base64")}`;
@@ -330,9 +356,10 @@ function htmlRecorte({ fondo, recorte, lineas, acento, receta, lado = "derecha",
 #caja{position:absolute;display:flex;flex-direction:column;justify-content:center;${caja}}
 .l{font:800 ${tam}px/0.98 F,sans-serif;letter-spacing:-0.01em;white-space:nowrap;color:${receta.colorTexto};
   -webkit-text-stroke:${vertical ? 16 : 13}px #07090c;paint-order:stroke fill;text-shadow:0 8px 24px rgba(0,0,0,.6)}
-.l.a{color:${receta.colorAcento}}
+.l.a{color:${receta.colorAcento}${receta.pincel ? `;background:linear-gradient(180deg,#FFF3C4 0%,${receta.colorAcento} 42%,#B47C10 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;-webkit-text-stroke:0;text-shadow:none;filter:drop-shadow(4px 0 0 #07090c) drop-shadow(-4px 0 0 #07090c) drop-shadow(0 4px 0 #07090c) drop-shadow(0 -4px 0 #07090c) drop-shadow(0 10px 22px rgba(0,0,0,.7))` : ""}}
+#pin{position:absolute;inset:0}
 </style><div id="bg"></div><div id="tinte"></div><div id="halo"></div><canvas id="fig"></canvas><div id="vig"></div>
-<div id="caja">${lineas.map((t, i) => `<div class="l${i === acento ? " a" : ""}">${esc(t)}</div>`).join("")}</div>
+<canvas id="pin"></canvas><div id="caja">${lineas.map((t, i) => `<div class="l${i === acento ? " a" : ""}">${esc(t)}</div>`).join("")}</div>
 <script>
 // cada línea llena el ancho; una línea de puras palabras chicas (LA, EL, DE, QUE…) va a 45 %; ninguna pasa de 1.25 veces la de acento; luego todo cabe en el alto
 const CHICAS=new Set("LA EL LOS LAS DE DEL EN Y QUE TU TE SE LO UN UNA A AL POR NO".split(" "));
@@ -408,7 +435,13 @@ export async function crearMiniaturas(id, { avisar = () => {}, ia = false } = {}
   const { receta, sinEstudio } = leerReceta(p.estilo);
   if (ia && !hayAPIMart()) throw new Error("Para generar fondos nuevos falta APIMART_API_KEY en el .env. Sin eso uso las imágenes del propio video.");
   const dir = dirMiniProyecto(id), tmp = path.join(dir, "_tmp");
+  // la que Richie subió (S) se conserva al rehacer
+  const previa = leerJson(path.join(dir, "miniaturas.json"));
+  const suya = previa?.opciones?.find((o) => o.letra === "S"), suyaBytes = suya && fs.existsSync(path.join(dir, suya.archivo)) ? fs.readFileSync(path.join(dir, suya.archivo)) : null;
+  const portada = previa?.portada, portadaBytes = portada && fs.existsSync(path.join(dir, portada.archivo)) ? fs.readFileSync(path.join(dir, portada.archivo)) : null;
   fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(tmp, { recursive: true });
+  if (suyaBytes) fs.writeFileSync(path.join(dir, suya.archivo), suyaBytes);
+  if (portadaBytes) fs.writeFileSync(path.join(dir, portada.archivo), portadaBytes);
 
   avisar({ paso: "render", progreso: 0.05, msg: "Pensando qué dice cada miniatura…" });
   const con = await concepto(id, receta, { ...estilo, id: p.estilo }, guion);
@@ -446,9 +479,10 @@ export async function crearMiniaturas(id, { avisar = () => {}, ia = false } = {}
     await pag.close();
   } finally { await nav.close(); fs.rmSync(tmp, { recursive: true, force: true }); }
 
-  const info = { fecha: new Date().toISOString(), origen: con.origen, sinEstudio: !!sinEstudio, opciones, elegida: null };
+  if (suyaBytes) opciones.push(suya);
+  const info = { fecha: new Date().toISOString(), origen: con.origen, sinEstudio: !!sinEstudio, opciones, elegida: null, ...(portadaBytes ? { portada } : {}) };
   fs.writeFileSync(path.join(dir, "miniaturas.json"), JSON.stringify(info, null, 2));
-  usarMiniatura(id, "A", info);
+  usarMiniatura(id, suyaBytes && previa?.elegida === "S" ? "S" : "A", info);
   avisar({ paso: "render", progreso: 1, msg: "Miniaturas listas." });
   return info;
 }
@@ -466,12 +500,37 @@ export function usarMiniatura(id, letra, info = null) {
   return info;
 }
 
+// ---------------- subir una hecha en otro lado (ChatGPT, Nano Banana, Canva…) ----------------
+// Largo 16:9: se ajusta a 1280x720 (llena y recorta al centro), JPEG de menos de 2 MB, queda como opción «S» y elegida.
+// Short 9:16: se vuelve la portada (1080x1920).
+export async function subirMiniatura(id, original) {
+  const p = leer(id, "proyecto.json"); if (!p) throw new Error("No existe ese video.");
+  const dir = dirMiniProyecto(id); fs.mkdirSync(dir, { recursive: true });
+  const vertical = p.formato === "9:16", [w, h] = vertical ? [1080, 1920] : [W, H];
+  const salida = path.join(dir, vertical ? "portada.jpg" : "miniatura-S.jpg");
+  for (const q of [2, 4, 6]) {
+    await ffmpeg(["-y", "-i", original, "-vf", `scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h}`, "-frames:v", "1", "-q:v", String(q), salida]);
+    if (fs.statSync(salida).size < 1.9e6) break;
+  }
+  fs.rmSync(original, { force: true });
+  const info = leerJson(path.join(dir, "miniaturas.json")) || { fecha: new Date().toISOString(), origen: "subida", opciones: [], elegida: null };
+  if (vertical) {
+    fs.copyFileSync(salida, path.join(DIR_LISTOS, `${id}-portada.jpg`));
+    info.portada = { archivo: "portada.jpg", lineas: [], subida: true, fecha: new Date().toISOString() };
+    fs.writeFileSync(path.join(dir, "miniaturas.json"), JSON.stringify(info, null, 2));
+    return info;
+  }
+  info.opciones = (info.opciones || []).filter((o) => o.letra !== "S");
+  info.opciones.push({ letra: "S", archivo: "miniatura-S.jpg", lineas: [], diseno: "subida", subida: true, conFondo: true });
+  return usarMiniatura(id, "S", info);
+}
+
 export function leerMiniaturas(id) {
   const info = leerJson(path.join(dirMiniProyecto(id), "miniaturas.json"));
-  if (!info?.opciones?.some((o) => !o.prompt)) return info;
+  if (!info?.opciones?.some((o) => !o.prompt && !o.subida)) return info;
   const p = leer(id, "proyecto.json"), guion = leer(id, "guion.json") || {};
   const estilo = p ? leerEstilo(p.estilo) : {}, { receta } = leerReceta(p?.estilo || "");
-  for (const [i, o] of info.opciones.entries()) if (!o.prompt) o.prompt = promptExterno({ estilo, guion, o: { ...o, acento: o.lineas?.length - 1 }, receta, lado: i === 1 ? "izquierda" : "derecha" });
+  for (const [i, o] of info.opciones.entries()) if (!o.prompt && !o.subida) o.prompt = promptExterno({ estilo, guion, o: { ...o, acento: o.lineas?.length - 1 }, receta, lado: i === 1 ? "izquierda" : "derecha" });
   return info;
 }
 

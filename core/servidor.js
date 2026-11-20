@@ -516,9 +516,17 @@ async function api(req, res, partes) {
       destino = path.join(d, pre + (ext || (pre === "fuente" ? ".mp4" : ".jpg")));
     }
     else if (tipo === "producto") { fs.mkdirSync(AM.dirProducto(id), { recursive: true }); destino = path.join(AM.dirProducto(id), `foto-${Date.now()}${ext || ".jpg"}`); }
+    else if (tipo === "miniatura") { // hecha en otro lado: se ajusta a 1280x720 (o portada 1080x1920 en Shorts) y queda elegida
+      if (!/^\.(jpe?g|png|webp)$/.test(ext)) return json(res, 400, { error: "Sube una imagen JPG, PNG o WEBP." });
+      fs.mkdirSync(path.join(dir, "miniaturas"), { recursive: true }); destino = path.join(dir, "miniaturas", `subida-original${ext}`);
+    }
     else if (tipo === "imagen") { fs.mkdirSync(path.join(dir, "img"), { recursive: true }); destino = path.join(dir, "img", P.slug(path.basename(nombre, ext)) + ext); }
     else return json(res, 400, { error: "Tipo de archivo no válido." });
     await new Promise((ok, mal) => { const w = fs.createWriteStream(destino); req.pipe(w); w.on("finish", ok); w.on("error", mal); });
+    if (tipo === "miniatura") {
+      try { const MIN = await import("./miniatura.js"); await MIN.subirMiniatura(id, destino); return json(res, 200, P.detalle(id)); }
+      catch (e) { return json(res, 400, { error: e.message }); }
+    }
     if (base && p.estado.render === "listo") { p.estado.render = "desactualizado"; P.guardar(id, "proyecto.json", p); }
     if (base === "fondo" && P.existe(id, "tiempos.json")) { try { encolar(id, "fondo", (av) => prepararFondo(id, (a) => av({ ...a, paso: "fondo" }))); } catch {} }
     return json(res, 200, { ...P.detalle(id), subido: path.relative(dir, destino).replace(/\\/g, "/") });

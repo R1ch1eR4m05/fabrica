@@ -389,6 +389,7 @@ function pintarProyecto() {
   if ($("#iSacar")) $("#iSacar").onclick = () => api(`/api/proyectos/${p.id}/imagenes`, "POST", {}).then(() => avisar("Sacando imágenes… sale en la barra de la fila.")).catch((e) => avisar(e.message, true));
   if ($("#iTexto")) $("#iTexto").onclick = async () => { const t = await (await fetch(`/proyectos/${p.id}/imagenes/texto.txt?v=${Date.now()}`)).text(); try { await navigator.clipboard.writeText(t); avisar("Texto copiado."); } catch { prompt("Copia el texto:", t); } };
   for (const b of document.querySelectorAll("[data-copiaimg]")) b.onclick = async () => { const c = p.imagenesPost?.copy || {}; const t = `${c[b.dataset.copiaimg] || ""}${c.hashtags?.length ? "\n\n" + c.hashtags.join(" ") : ""}`; try { await navigator.clipboard.writeText(t); avisar("Copy copiado."); } catch { prompt("Copia el texto:", t); } };
+  if ($("#mSubir")) $("#mSubir").onclick = () => subir(p.id, "miniatura", "image/jpeg,image/png,image/webp");
   if ($("#mCrear")) $("#mCrear").onclick = () => api(`/api/proyectos/${p.id}/miniatura`, "POST", { ia: $("#mIA").checked }).then(() => avisar("Creando miniaturas… sale en la barra de la fila.")).catch((e) => avisar(e.message, true));
   // los prompts se piden al abrir, para copiar en el mismo toque (en el celular, sin https, copiar después de esperar falla)
   const mPrompts = {};
@@ -792,14 +793,15 @@ function panelMiniaturas(p) {
   const m = p.miniaturas, ops = m?.opciones || [];
   return `<div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--b)">
     <div class="fila" style="align-items:center"><button class="btn peq primario" id="mCrear">${ops.length ? "Rehacer miniaturas" : "Crear miniaturas de YouTube"}</button>
+      <button class="btn peq" id="mSubir" title="Una que hiciste en ChatGPT, Nano Banana, Canva…">Subir mi miniatura</button>
       <label class="estado" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="mIA" style="width:auto"> fondo nuevo con APIMart (gasta créditos)</label></div>
     <div class="estado">3 opciones de 1280×720 con texto grande, hechas con lo que funciona en las miniaturas del nicho. Por defecto usan las imágenes de tu video.</div>
     ${m?.sinEstudio ? `<div class="nota">Usé una receta base. Para afinarla con miniaturas reales del nicho: <code>node fabrica.js miniatura-estudiar</code> (o pídeselo a Claude Code).</div>` : ""}
-    ${ops.length ? `<img src="/proyectos/${h(p.id)}/miniaturas/comparativa.jpg?v=${Date.now()}" style="width:100%;max-width:900px;border-radius:8px;margin-top:8px">
+    ${ops.length ? `${ops.some((o) => !o.subida) ? `<img src="/proyectos/${h(p.id)}/miniaturas/comparativa.jpg?v=${Date.now()}" style="width:100%;max-width:900px;border-radius:8px;margin-top:8px">` : ""}
     <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr));margin-top:8px">${ops.map((o) => `<div class="card" style="padding:8px">
       <img src="/proyectos/${h(p.id)}/miniaturas/${h(o.archivo)}?v=${Date.now()}" style="width:100%;border-radius:6px">
-      <div class="fila" style="margin-top:6px;align-items:center"><b>${h(o.letra)}</b><span class="estado">${h((o.lineas || []).join(" "))}</span></div>
-      <div class="fila" style="margin-top:4px"><button class="mini" data-musar="${h(o.letra)}">${m.elegida === o.letra ? "✓ Elegida" : "Usar esta"}</button><a class="mini" href="/proyectos/${h(p.id)}/miniaturas/${h(o.archivo)}" download="${h(p.id)}-miniatura-${h(o.letra)}.jpg">Descargar</a><button class="mini" data-mprompt="${h(o.letra)}" title="Prompt para hacerla en Nano Banana, ChatGPT, Midjourney…">Copiar prompt</button></div>
+      <div class="fila" style="margin-top:6px;align-items:center"><b>${o.subida ? "Tuya" : h(o.letra)}</b><span class="estado">${h(o.subida ? "subida por ti" : (o.lineas || []).join(" "))}</span></div>
+      <div class="fila" style="margin-top:4px"><button class="mini" data-musar="${h(o.letra)}">${m.elegida === o.letra ? "✓ Elegida" : "Usar esta"}</button><a class="mini" href="/proyectos/${h(p.id)}/miniaturas/${h(o.archivo)}" download="${h(p.id)}-miniatura-${h(o.letra)}.jpg">Descargar</a>${o.subida ? "" : `<button class="mini" data-mprompt="${h(o.letra)}" title="Prompt para hacerla en Nano Banana, ChatGPT, Midjourney…">Copiar prompt</button>`}</div>
       ${o.revisar ? `<div class="nota" style="margin-top:4px">${h(o.revisar)}</div>` : ""}
       ${o.conFondo === false ? `<div class="nota" style="margin-top:4px">Salió sin imagen: no encontré las imágenes de este video en este equipo. Rehazla o usa el prompt.</div>` : ""}</div>`).join("")}</div>
     <div class="estado" style="margin-top:6px">«Copiar prompt» trae todo lo de esa opción (figura, composición, halo, colores y el texto exacto) para pegarlo en un generador de imágenes en 16:9.</div>` : ""}
