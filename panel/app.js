@@ -1114,7 +1114,7 @@ function tarjetaImagenes(d) {
   const cab = `<div class="fila" style="justify-content:space-between"><b>Imágenes del día${d.fecha ? ` · ${h(d.fecha)}` : ""}</b><span class="estado">${h(d.informe || "")}</span></div>`;
   if (!d.fecha) return `<div class="card" style="margin-bottom:16px">${cab}<p class="estado">10 imágenes de frase con fondo de Flow, copy y hora, para la página de Facebook, grupos e Instagram. Se arman solas cuando llega el informe de Muse.</p><div class="fila"><button class="btn peq" id="imArmar">Armar con el último informe</button></div></div>`;
   if (!im.length) return `<div class="card" style="margin-bottom:16px">${cab}<p class="estado">${d.errorIA ? `La IA no pudo escribirlas (${h(d.errorIA)}). ` : ""}Faltan las frases: dile a Claude Code <code>escribe las imágenes del día</code> y recarga.</p><div class="fila"><button class="btn peq" id="imArmar">Volver a leer el último informe</button></div></div>`;
-  const red = (x) => ["Página", x.instagram ? "Instagram" : "", x.grupos ? "Grupos" : ""].filter(Boolean).join(" + ");
+  const red = (x) => ["Página de FB", x.instagram ? "Instagram" : "", x.grupos ? "grupos de FB" : ""].filter(Boolean).join(" + ");
   const tarjetas = im.map((x) => `<div style="width:190px;flex:0 0 auto">
       ${x.archivo ? `<img src="/imagenes-dia/${h(d.fecha)}/${h(x.archivo)}?v=${h(x.hash || "")}" style="width:190px;border-radius:8px;display:block">` : `<div style="width:190px;height:237px;border-radius:8px;background:var(--b);display:flex;align-items:center;justify-content:center;text-align:center;padding:10px;font-size:13px">${x.fondo ? "falta componer" : "sin fondo de Flow"}<br><br>${h(x.frase)}</div>`}
       <div class="estado" style="margin-top:4px"><b>${x.n}. ${h(x.hora)}</b> · ${h(red(x))}${x.sinReferencia ? ` · <span style="color:var(--rojo,#e66)">sin referencia</span>` : ""}${x.inspiradaEn?.[0] ? ` · <a href="${h(x.inspiradaEn[0])}" target="_blank" rel="noopener" style="color:var(--a)">inspiración</a>` : ""}</div>
@@ -1123,7 +1123,8 @@ function tarjetaImagenes(d) {
         <input data-ima="${x.n}" value="${h(x.autor || "")}" placeholder="Autor (solo cita real)" style="font-size:12px">
         <textarea data-imc="${x.n}" style="min-height:120px;font-size:12px" title="Copy">${h(x.copy)}</textarea>
         <input data-imh="${x.n}" value="${h((x.hashtags || []).join(" "))}" style="font-size:12px" title="Hashtags (los grupos van sin ellos)">
-        <div class="fila" style="gap:6px;font-size:12px"><input data-imhora="${x.n}" value="${h(x.hora)}" style="width:70px;font-size:12px"><label><input type="checkbox" data-imig="${x.n}" ${x.instagram ? "checked" : ""}> IG</label><label><input type="checkbox" data-imgr="${x.n}" ${x.grupos ? "checked" : ""}> Grupos</label></div>
+        <div class="fila" style="gap:6px;font-size:12px"><input data-imhora="${x.n}" value="${h(x.hora)}" style="width:70px;font-size:12px" title="Hora (CDMX)"><span class="estado" title="La página de Facebook lleva todas">Página de Facebook ✓</span></div>
+        <div class="fila" style="gap:10px;font-size:12px"><label><input type="checkbox" data-imig="${x.n}" ${x.instagram ? "checked" : ""}> también Instagram</label><label><input type="checkbox" data-imgr="${x.n}" ${x.grupos ? "checked" : ""}> también grupos de Facebook</label></div>
         <button class="mini" data-imguardar="${x.n}">Guardar</button></details></div>`).join("");
   return `<div class="card" style="margin-bottom:16px">${cab}
     <p class="estado">${im.length} escritas · ${conFondo} con fondo de Flow · ${hechas} listas. La página de Facebook lleva todas; Instagram y los grupos, las marcadas. Cada copy cierra invitando a compartir; en los grupos van sin hashtags.</p>
@@ -1375,6 +1376,13 @@ function escuchar() {
   es.onmessage = async (m) => {
     const ev = JSON.parse(m.data);
     if (ev.id === "_flow") { avisar(ev.msg, ev.estado === "error"); cargar(); if ($("#vFlow")) ventanaCuentasFlow(); return; }
+    if (ev.id === "_imagenes") { // fondos de Flow y composición de las imágenes del día
+      if (ev.estado === "listo") avisar(ev.paso === "fondo" ? "Imágenes del día: fondos de Flow listos y frases puestas." : "Imágenes del día compuestas.");
+      if (ev.estado === "error") avisar(ev.msg, true);
+      if (S.vista === "inv" && ["listo", "error"].includes(ev.estado)) investigador();
+      else if (S.vista === "inv" && ev.msg && ev.estado === "trabajando") avisar(ev.msg);
+      return;
+    }
     if (ev.id === "_investigador") {
       if (S.vista === "inv") { mostrarProgreso("investigar", ev); if (ev.estado === "listo") { avisar(ev.msg); investigador(ev.resultado?.archivo); } if (ev.estado === "error") { avisar(ev.msg, true); investigador(); } }
       return;
