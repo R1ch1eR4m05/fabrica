@@ -140,11 +140,11 @@ async function esperarVideo(tarea, avisar, etiqueta, minutos = 20) {
     if (Date.now() - t0 > minutos * 60000) throw new Error(`APIMart tardó más de ${minutos} minutos.`);
   }
 }
-async function pedirVideo(cuerpo, avisar, etiqueta) {
+export async function pedirVideo(cuerpo, avisar, etiqueta, minutos = 20) {
   const r = await llamar("/videos/generations", cuerpo);
   const tarea = r?.data?.[0]?.task_id;
   if (!tarea) throw new Error("APIMart no devolvió el número de tarea.");
-  return esperarVideo(tarea, avisar, etiqueta);
+  return esperarVideo(tarea, avisar, etiqueta, minutos);
 }
 const ratioVideo = (f) => (["16:9", "4:3", "1:1", "3:4", "9:16"].includes(f) ? f : f === "4:5" ? "3:4" : "9:16");
 

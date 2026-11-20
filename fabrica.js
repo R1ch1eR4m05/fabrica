@@ -193,7 +193,12 @@ async function main() {
         else console.log(await A.exportarImagenes(id, avisar));
         P.marcar(id, "render", "listo"); return;
       }
-      if (orden === "todo") { const { hacerVoz } = await import("./core/voz.js"); await hacerVoz(id, avisar); P.marcar(id, "voz", "listo"); }
+      if (orden === "todo" && leerEstilo(P.leer(id, "proyecto.json").estilo)?.wan) { // Cine · Toma continua: el clip de Wan gasta, solo con --confirmar-gasto
+        const W = await import("./core/wan.js"), q = P.leer(id, "proyecto.json"), c = W.configWan(q);
+        if (args.includes("--confirmar-gasto")) { q.wan = { ...(q.wan || {}), confirmado: true }; P.guardar(id, "proyecto.json", q); }
+        else if (!fs.existsSync(W.clipWan(id))) { console.log(`Wan 3.0: ≈ US$ ${c.costo} (${c.segundos} s, ${c.resolucion}, ${W.MODELOS[c.modelo]}). Para generarlo: node fabrica.js todo ${id} --confirmar-gasto`); return; }
+        console.log(JSON.stringify(await W.prepararWan(id, avisar))); P.marcar(id, "voz", "listo");
+      } else if (orden === "todo") { const { hacerVoz } = await import("./core/voz.js"); await hacerVoz(id, avisar); P.marcar(id, "voz", "listo"); }
       const { render } = await import("./core/render.js");
       const { renderConQA } = await import("./core/qa.js");
       const r = await renderConQA(id, avisar, render); P.marcar(id, "render", "listo");

@@ -322,6 +322,7 @@ function pintarProyecto() {
           ${p.tieneVoz ? `<div style="margin:6px 0 4px"><b>Voz</b></div><audio id="vAudio" controls src="/proyectos/${h(p.id)}/voz.mp3?v=${Date.now()}" style="width:100%"></audio><div class="estado">${p.tiempos ? `${p.tiempos.duracion.toFixed(1)} s${p.tiempos.sinVoz ? " · sin voz, solo música" : p.tiempos.prueba ? " · voz de prueba" : ""}` : ""}</div>` : `<div class="estado">Primero el guion.</div>`}
           ${est?.fondo ? panelFondo(p) : ""}
           ${est?.preparar === "historia" ? panelClips(p) : ""}
+          ${est?.wan ? `<div id="wanPanel" class="card" style="margin:8px 0;padding:12px"><span class="estado">Cargando Wan…</span></div>` : ""}
         </div></section>
 
       <section class="paso">${pasoCab(3, "render", "Vista previa y video", `<button class="btn peq" id="rTodo" title="${est?.anuncios ? "Imágenes con APIMart (las que falten) y luego todas las medidas" : "Hace la voz y luego el video, sin esperar"}" ${p.estado.guion !== "listo" || S.sucio || ocupado("voz") || ocupado("render") ? "disabled" : ""}>${est?.anuncios ? "Hacer todo" : "Voz + video"}</button><button class="btn peq ${p.estado.voz === "listo" ? "primario" : ""}" id="rHacer" ${(est?.anuncios && p.opciones?.tipo !== "video" && p.opciones?.plantilla !== "avatar" ? p.estado.guion !== "listo" : p.estado.voz !== "listo") || ocupado("render") || ocupado("fondo") ? "disabled" : ""}>${est?.anuncios ? (p.opciones?.tipo === "video" || p.opciones?.plantilla === "avatar" ? "Sacar videos (todas las medidas)" : "Sacar imágenes (todas las medidas)") : p.tieneFinal ? "Volver a sacar el video" : "Sacar el video"}</button>`)}
@@ -389,7 +390,8 @@ function pintarProyecto() {
   if ($("#iSacar")) $("#iSacar").onclick = () => api(`/api/proyectos/${p.id}/imagenes`, "POST", {}).then(() => avisar("Sacando imágenes… sale en la barra de la fila.")).catch((e) => avisar(e.message, true));
   if ($("#iTexto")) $("#iTexto").onclick = async () => { const t = await (await fetch(`/proyectos/${p.id}/imagenes/texto.txt?v=${Date.now()}`)).text(); try { await navigator.clipboard.writeText(t); avisar("Texto copiado."); } catch { prompt("Copia el texto:", t); } };
   for (const b of document.querySelectorAll("[data-copiaimg]")) b.onclick = async () => { const c = p.imagenesPost?.copy || {}; const t = `${c[b.dataset.copiaimg] || ""}${c.hashtags?.length ? "\n\n" + c.hashtags.join(" ") : ""}`; try { await navigator.clipboard.writeText(t); avisar("Copy copiado."); } catch { prompt("Copia el texto:", t); } };
-  if ($("#mSubir")) $("#mSubir").onclick = () => subir(p.id, "miniatura", "image/jpeg,image/png,image/webp");
+  if ($("#wanPanel")) pintarWan(p);
+  if ($("#mSubirMini")) $("#mSubirMini").onclick = () => subir(p.id, "miniatura", "image/jpeg,image/png,image/webp");
   if ($("#mCrear")) $("#mCrear").onclick = () => api(`/api/proyectos/${p.id}/miniatura`, "POST", { ia: $("#mIA").checked }).then(() => avisar("Creando miniaturas… sale en la barra de la fila.")).catch((e) => avisar(e.message, true));
   // los prompts se piden al abrir, para copiar en el mismo toque (en el celular, sin https, copiar después de esperar falla)
   const mPrompts = {};
@@ -793,7 +795,7 @@ function panelMiniaturas(p) {
   const m = p.miniaturas, ops = m?.opciones || [];
   return `<div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--b)">
     <div class="fila" style="align-items:center"><button class="btn peq primario" id="mCrear">${ops.length ? "Rehacer miniaturas" : "Crear miniaturas de YouTube"}</button>
-      <button class="btn peq" id="mSubir" title="Una que hiciste en ChatGPT, Nano Banana, Canva…">Subir mi miniatura</button>
+      <button class="btn peq" id="mSubirMini" title="Una que hiciste en ChatGPT, Nano Banana, Canva…">Subir mi miniatura</button>
       <label class="estado" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="mIA" style="width:auto"> fondo nuevo con APIMart (gasta créditos)</label></div>
     <div class="estado">3 opciones de 1280×720 con texto grande, hechas con lo que funciona en las miniaturas del nicho. Por defecto usan las imágenes de tu video.</div>
     ${m?.sinEstudio ? `<div class="nota">Usé una receta base. Para afinarla con miniaturas reales del nicho: <code>node fabrica.js miniatura-estudiar</code> (o pídeselo a Claude Code).</div>` : ""}
@@ -1028,6 +1030,32 @@ function panelFondo(p) {
     </div>
     ${propio ? `<input id="fBuscar" type="hidden"><button id="fOtro" class="oculto"></button>` : ""}${musica ? `<button id="mSubir" class="oculto"></button>` : ""}
   </div>`;
+}
+
+// ---------- Cine · Toma continua (Wan 3.0): costo, referencias y botón que confirma el gasto ----------
+async function pintarWan(p) {
+  const caja = $("#wanPanel"); if (!caja) return;
+  let w; try { w = await api(`/api/proyectos/${p.id}/wan`); } catch (e) { caja.innerHTML = `<span class="estado">${h(e.message)}</span>`; return; }
+  const refs = Object.entries(w.refs || {});
+  caja.innerHTML = `<b>Wan 3.0 · toma continua</b> <span class="estado">— un solo plano con diálogo y sonido. Lo único que gasta es el clip.</span>
+    <div class="fila" style="margin-top:8px;align-items:center;gap:8px">
+      <select id="wanModelo" style="width:auto">${Object.entries(w.modelos).map(([k, n]) => `<option value="${k}" ${k === w.modelo ? "selected" : ""}>${h(n)}</option>`).join("")}</select>
+      <select id="wanRes" style="width:auto">${w.resoluciones.map((r) => `<option ${r === w.resolucion ? "selected" : ""}>${r}</option>`).join("")}</select>
+      <input id="wanSeg" type="number" min="2" max="30" value="${w.segundos}" style="width:70px"><span class="estado">s</span>
+      <b id="wanCosto">≈ US$ ${w.costo}</b><span class="estado">(tope US$ ${w.tope})</span>
+    </div>
+    ${refs.length ? `<div class="fila" style="margin-top:8px;gap:6px">${refs.map(([k, f]) => `<figure style="margin:0;text-align:center"><img src="/proyectos/${h(p.id)}/refs/${h(f)}?v=${Date.now()}" style="height:70px;border-radius:6px"><figcaption class="estado">${h(k)}</figcaption></figure>`).join("")}</div>` : `<div class="estado" style="margin-top:6px">Las hojas de referencia de los personajes se hacen solas antes del clip (centavos).</div>`}
+    <div class="fila" style="margin-top:8px"><button class="btn peq primario" id="wanIr" ${S.info && !S.info.apimart ? "disabled title='Pon APIMART_API_KEY en el .env'" : ""}>${w.clip ? "Rehacer con Wan" : "Generar con Wan"}</button>
+    ${w.clip ? `<span class="estado">Ya hay un clip: «Sacar el video» lo usa sin volver a gastar.</span>` : ""}</div>`;
+  const recalcular = async (confirmar = false) => api(`/api/proyectos/${p.id}/wan`, "POST", { modelo: $("#wanModelo").value, resolucion: $("#wanRes").value, duracion: +$("#wanSeg").value, confirmar });
+  for (const sel of ["#wanModelo", "#wanRes", "#wanSeg"]) $(sel).onchange = async () => { try { const c = await recalcular(); $("#wanCosto").textContent = `≈ US$ ${c.costo}`; } catch (e) { avisar(e.message, true); } };
+  $("#wanIr").onclick = async () => {
+    try {
+      const c = await recalcular();
+      if (!confirm(`Wan 3.0 va a generar ${c.segundos} s a ${c.resolucion}.\nCosto aproximado: US$ ${c.costo} (se cobra en APIMart aunque no te guste el resultado).\n¿Generar?`)) return;
+      await recalcular(true); avisar("Wan en camino: tarda varios minutos."); abrir(p.id, { mantener: true });
+    } catch (e) { avisar(e.message, true); }
+  };
 }
 
 function subir(id, tipo, aceptar) {

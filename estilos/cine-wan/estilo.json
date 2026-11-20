@@ -1,0 +1,17 @@
+{
+  "nombre": "Cine · Toma continua (Wan 3.0)",
+  "descripcion": "Un solo plano cinematográfico de hasta 30 s, sin cortes, con diálogo y sonido nativos (Wan 3.0 por APIMart). Cámara en mano, película de 35 mm, subtítulos quemados. Gasta: cada clip se confirma antes.",
+  "orden": 9,
+  "formatos": ["9:16", "16:9"],
+  "duraciones": { "corto": "15 a 30 segundos (un solo plano)" },
+  "tipos": ["toma"],
+  "visuales": [],
+  "wan": true,
+  "render": "wan",
+  "camposAvanzados": ["accion", "camara", "quien", "desde", "hasta"],
+  "portadaEn": 1.0,
+  "opciones": [
+    { "clave": "subtitulos", "nombre": "Subtítulos", "valores": { "si": "Con subtítulos", "no": "Sin subtítulos" } }
+  ],
+  "sonido": { "ambiente": null, "volumenAmbiente": 0, "golpesEn": [], "efectosPorTipo": {} }
+}

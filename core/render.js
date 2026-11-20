@@ -96,6 +96,13 @@ export async function render(id, avisar = () => {}) {
   const hilos = Math.min(CFG.hilos, Math.max(1, Math.floor(total / 60)));
   const t0 = Date.now();
 
+  // Cine · Toma continua (Wan 3.0): el clip ya trae imagen, diálogo y sonido; solo se ajusta y se le queman los subtítulos
+  if (estilo.render === "wan") {
+    const { renderWan } = await import("./wan.js");
+    await renderWan(id, avisar, tmp);
+    return await terminar();
+  }
+
   avisar({ paso: "render", progreso: 0, msg: "Preparando el audio…" });
   let sugerida = null; // sin música propia: la que recomienda la fábrica (generadas del nicho, del estilo o la biblioteca)
   try { const B = await import("./banco.js"); const o = await B.opcionesMusica(id); if (o.recomendada) sugerida = B.archivoMusica(o.recomendada); } catch {}

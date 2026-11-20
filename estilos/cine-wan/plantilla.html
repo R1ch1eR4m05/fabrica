@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><title>Cine · Toma continua (vista previa)</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}canvas{display:block;width:100vw;height:100vh;object-fit:contain}</style>
+</head><body><canvas id="lienzo"></canvas>
+<script src="../_comun/motor.js"></script>
+<script>
+// Solo vista previa del guion (storyboard): el video real es el clip de Wan, que se arma con ffmpeg (core/wan.js).
+Motor.iniciar({
+  fuentes: [["Montserrat", "../_comun/fuentes/montserrat-latin-800-normal.woff2", { weight: "800" }]],
+  async preparar(M) {},
+  dibujar(ctx, t, M) {
+    const W = M.W, H = M.H, u = M.u;
+    const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, "#2a1f14"); g.addColorStop(1, "#0b0907");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    const k = Math.max(0, M.escenaEn(t)), e = M.guion.escenas[k] || {};
+    ctx.fillStyle = "rgba(255,210,150,.85)"; ctx.font = `800 ${34 * u}px Montserrat`; ctx.textAlign = "center";
+    ctx.fillText(`TOMA CONTINUA · ${e.desde ?? ""}–${e.hasta ?? ""} s`, W / 2, H * 0.12);
+    ctx.fillStyle = "rgba(255,255,255,.75)"; ctx.font = `600 ${30 * u}px Montserrat`;
+    const acc = String(e.accion || "").split(" "), lin = []; let l = "";
+    for (const w of acc) { if (ctx.measureText(l + " " + w).width > W * 0.84) { lin.push(l); l = w; } else l = (l + " " + w).trim(); }
+    if (l) lin.push(l);
+    lin.slice(0, 8).forEach((x, i) => ctx.fillText(x, W / 2, H * 0.3 + i * 42 * u));
+    const pal = (M.tiempos?.escenas?.[k]?.palabras || []).filter((p) => p.t0 <= t + 0.05).slice(-5).map((p) => p.w).join(" ");
+    if (pal) { ctx.font = `800 ${64 * u}px Montserrat`; ctx.lineWidth = 10 * u; ctx.strokeStyle = "#000"; ctx.strokeText(pal, W / 2, H * 0.7); ctx.fillStyle = "#fff"; ctx.fillText(pal, W / 2, H * 0.7); }
+  },
+});
+</script></body></html>

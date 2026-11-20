@@ -85,7 +85,7 @@ async function hacerTodoProyecto(id, b = {}) {
   else if (b?.flow && est?.fondo && prompt && (await flowDisponible()))
     encolar(id, "fondo", (av) => clipDeFlow(id, prompt, (a) => av({ ...a, paso: "fondo" }), { maxCreditos: Number(b.flow.maxCreditos) || 25 })
       .catch((e) => { console.error("Flow", e.message); emitir({ id, paso: "fondo", estado: "error", msg: `Flow falló (${e.message}); sigo con Pexels.` }); }));
-  encolar(id, "voz", (av) => hacerVoz(id, av));
+  encolar(id, "voz", (av) => (est?.wan ? import("./wan.js").then((W) => W.prepararWan(id, av)) : hacerVoz(id, av)));
   // música a la medida con ElevenLabs (si la pidieron); si falla, el video sale con la música de la biblioteca
   if (b?.musica && CFG.elevenKey && est?.musicaIA) { fila.push({ id, paso: "musica", fn: (av) => musicaIA(id, av).catch((e) => { console.error("Música", e.message); emitir({ id, paso: "musica", estado: "error", msg: `No se pudo generar la música (${e.message}); sigue con la de la biblioteca.` }); }) }); P.marcar(id, "musica", "en-fila"); }
   fila.push({ id, paso: "render", fn: (av) => renderConQA(id, av, render) }); P.marcar(id, "render", "en-fila");
@@ -625,7 +625,23 @@ async function api(req, res, partes) {
     if (b.insertar) { fila.push({ id, paso: "render", fn: (av) => (esMot ? MOT.terminar(id) : renderConQA(id, av, render)) }); P.marcar(id, "render", "en-fila"); } // y se vuelve a sacar el video con la música nueva
     return json(res, 200, { ok: true });
   }
-  if (accion === "voz" && m === "POST") { encolar(id, "voz", (av) => (leerEstilo(p.estilo)?.anuncios && p.opciones?.plantilla === "avatar" ? ANU.prepararAvatar(id, av) : hacerVoz(id, av))); return json(res, 200, { ok: true }); }
+  if (accion === "voz" && m === "POST") { encolar(id, "voz", (av) => (leerEstilo(p.estilo)?.wan ? import("./wan.js").then((W) => W.prepararWan(id, av)) : leerEstilo(p.estilo)?.anuncios && p.opciones?.plantilla === "avatar" ? ANU.prepararAvatar(id, av) : hacerVoz(id, av))); return json(res, 200, { ok: true }); }
+  if (accion === "wan") { // Cine · Toma continua: GET = costo estimado y referencias; POST = guardar ajustes y, con confirmar, generar (gasta)
+    const W = await import("./wan.js");
+    if (m === "POST") {
+      const b = await cuerpo(req);
+      p.wan = { ...(p.wan || {}), ...(b.modelo ? { modelo: b.modelo } : {}), ...(b.resolucion ? { resolucion: b.resolucion } : {}), ...(b.duracion ? { duracion: +b.duracion } : {}) };
+      const c = W.configWan(p);
+      if (b.confirmar) {
+        if (c.costo > c.tope) return json(res, 400, { error: `≈ US$ ${c.costo} pasa el tope de US$ ${c.tope} (ajustes.json → wanTopeUSD).` });
+        p.wan.confirmado = true;
+      }
+      P.guardar(id, "proyecto.json", p);
+      if (b.confirmar) encolar(id, "voz", (av) => W.prepararWan(id, av));
+      return json(res, 200, { ...c, refs: W.refsDe(id) });
+    }
+    return json(res, 200, { ...W.configWan(p), refs: W.refsDe(id), clip: fs.existsSync(W.clipWan(id)), modelos: W.MODELOS, resoluciones: W.RESOLUCIONES });
+  }
   if (accion === "render" && m === "POST") {
     const esMotion = leerEstilo(p.estilo)?.tipo === "motion";
     if (leerEstilo(p.estilo)?.anuncios) { encolar(id, "render", (av) => (p.opciones?.tipo === "video" || p.opciones?.plantilla === "avatar" ? ANU.renderMedidas(id, av) : ANU.exportarImagenes(id, av))); return json(res, 200, { ok: true }); }
