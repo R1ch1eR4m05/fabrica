@@ -4,13 +4,84 @@
 // Docs (verificadas 2026-11-20): https://apimart.ai/model/wan-3-0-prime  ·  POST /v1/videos/generations
 //   model wan3.0-video | wan3.0-video-prime, prompt, duration 2-30, resolution 480P|720P|1080P, size 9:16|16:9…,
 //   audio, image_urls (hasta 10) + generation_type "reference"; no se mezclan referencias con primer/último cuadro.
+// Motores: "apimart" (llave en .env, cobra en dólares) o "higgsfield" (CLI `higgsfield` instalado y con sesión en ESA
+// máquina; cobra créditos de su plan). Richie lo pidió el 20 nov 2026 porque tenía descuento en Higgsfield.
+//   CLI (https://higgsfield.ai/blog/higgsfield-cli, v1.1.x): higgsfield generate create wan3_0 --prompt … --duration N
+//   --resolution 720p --aspect_ratio 9:16 [--image ruta-local …] --wait --wait-timeout 45m --json → { result_url, … }
+//   higgsfield generate cost wan3_0 … (créditos, sin crear trabajo) · higgsfield account status (créditos disponibles)
 // GASTA: cada generación cobra por segundo. Solo corre con confirmación explícita (proyecto.wan.confirmado) y bajo el tope.
 import fs from "node:fs";
 import path from "node:path";
 import { CFG, FORMATOS, RAIZ } from "./config.js";
 import { dirProyecto, leer, guardar } from "./proyectos.js";
 import { leerAjustes } from "./ajustes.js";
-import { ffmpeg, duracion } from "./ff.js";
+import { ffmpeg, duracion, correr } from "./ff.js";
+import { tomasPendientes, segundosToma } from "./corporativo.js";
+
+// ---------------- Higgsfield (CLI) ----------------
+// En Windows el comando de npm es un .cmd y Node no lo arranca sin shell (y con shell el prompt se rompe): se busca el .exe real.
+let binHF = null;
+function HF() {
+  if (process.env.HIGGSFIELD_BIN) return process.env.HIGGSFIELD_BIN;
+  if (binHF) return binHF;
+  binHF = "higgsfield";
+  if (process.platform === "win32") {
+    const raices = [path.join(process.env.APPDATA || "", "npm", "node_modules", "@higgsfield", "cli"), path.join(process.env.USERPROFILE || "", ".local", "bin"), path.join(process.env.LOCALAPPDATA || "", "Programs", "higgsfield")];
+    const buscar = (d, prof = 0) => { if (prof > 5 || !fs.existsSync(d)) return null; for (const x of fs.readdirSync(d, { withFileTypes: true })) { const f = path.join(d, x.name); if (x.isFile() && /^higgs(field)?(-[\w.-]+)?\.exe$/i.test(x.name)) return f; if (x.isDirectory()) { const r = buscar(f, prof + 1); if (r) return r; } } return null; };
+    for (const r of raices) { const f = buscar(r); if (f) { binHF = f; break; } }
+    // si el paquete de npm trae el CLI en JavaScript, se corre con este mismo node
+    if (binHF === "higgsfield") try {
+      const dir = raices[0], pj = JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf8"));
+      const b = typeof pj.bin === "string" ? pj.bin : pj.bin?.higgsfield || Object.values(pj.bin || {})[0];
+      if (b && /\.(c|m)?js$/.test(b)) binHF = [process.execPath, path.join(dir, b)];
+    } catch {}
+  }
+  return binHF;
+}
+const hf = (args) => { const b = HF(); return Array.isArray(b) ? correr(b[0], [...b.slice(1), ...args]) : correr(b, args); };
+let hfCache = null;
+export async function estadoHiggsfield() {
+  if (hfCache && Date.now() - hfCache.t < 120000) return hfCache.v;
+  let v;
+  try { const o = await hf(["account", "status"]); const m = o.match(/credit[s]?\D{0,20}([\d.,]+)/i); v = { ok: true, creditos: m ? m[1] : null, texto: o.trim().slice(0, 300) }; }
+  catch (e) { v = { ok: false, error: /ENOENT/.test(e.message) ? "No está instalado el CLI de Higgsfield en este equipo (npm i -g @higgsfield/cli)." : /auth|login|token|unauthor/i.test(e.message) ? "El CLI de Higgsfield no tiene sesión: corre «higgsfield auth login» en este equipo." : e.message.slice(0, 200) }; }
+  hfCache = { t: Date.now(), v }; return v;
+}
+const argsHF = ({ prompt, segundos, resolucion, vertical, refs = [] }) => ["--prompt", prompt, "--duration", String(segundos), "--resolution", resolucion.toLowerCase(), "--aspect_ratio", vertical ? "9:16" : "16:9", ...refs.flatMap((r) => ["--image", r])];
+export async function costoHiggsfield(o) {
+  try { const out = await hf(["generate", "cost", "wan3_0", ...argsHF({ ...o, refs: [] })]); const m = out.match(/([\d.,]+)\s*credit/i) || out.match(/"?(?:credits|cost|price)"?\D{0,6}([\d.,]+)/i); return m ? Number(m[1].replace(",", "")) : null; }
+  catch { return null; }
+}
+async function clipHiggsfield(o, avisar) {
+  const base = ["generate", "create", "wan3_0"], fin = ["--wait", "--wait-timeout", "45m", "--json"];
+  avisar({ progreso: 0.1, msg: "Higgsfield · Wan 3.0: generando (tarda varios minutos)…" });
+  let out;
+  try { out = await hf([...base, ...argsHF(o), ...fin]); }
+  catch (e) {
+    // si el modelo no acepta imágenes de referencia con --image, se intenta una vez sin ellas (no se cobra un trabajo que falló al crearse)
+    if (o.refs?.length && /image|flag|unknown|param/i.test(e.message)) { avisar({ progreso: 0.15, msg: "Higgsfield no aceptó las referencias: lo pido sin ellas…" }); out = await hf([...base, ...argsHF({ ...o, refs: [] }), ...fin]); }
+    else throw new Error("Higgsfield: " + e.message.slice(-300));
+  }
+  let j; try { j = JSON.parse(out.slice(out.indexOf("{"))); } catch { j = null; }
+  const url = j?.result_url || j?.[0]?.result_url || (out.match(/https?:\/\/\S+\.mp4\S*/) || [])[0];
+  if (!url) throw new Error("Higgsfield terminó pero no devolvió el video: " + out.slice(0, 200));
+  const v = await fetch(url, { signal: AbortSignal.timeout(300000) });
+  if (!v.ok) throw new Error(`No pude bajar el video de Higgsfield (${v.status}).`);
+  return Buffer.from(await v.arrayBuffer());
+}
+
+// un clip de Wan con el motor elegido. refs = rutas locales de imágenes de referencia
+export async function generarClip({ motor = "apimart", modelo = "wan3.0-video", prompt, segundos, resolucion, vertical = true, refs = [], audio = true }, avisar = () => {}) {
+  if (motor === "higgsfield") {
+    const st = await estadoHiggsfield(); if (!st.ok) throw new Error(st.error);
+    return clipHiggsfield({ prompt, segundos, resolucion, vertical, refs }, avisar);
+  }
+  const A = await import("./apimart.js");
+  if (!A.hayAPIMart()) throw new Error("Falta APIMART_API_KEY en el .env.");
+  const urls = []; for (const r of refs) urls.push(await A.subir(r));
+  return A.pedirVideo({ model: modelo, prompt, duration: segundos, resolution: resolucion, size: vertical ? "9:16" : "16:9", audio, watermark: false,
+    ...(urls.length ? { image_urls: urls, generation_type: "reference" } : {}) }, avisar, "Wan 3.0", 45);
+}
 
 // US$ por segundo (APIMart, nivel Gold, 20 nov 2026). Prime viene en la página; el estándar no publica tabla y es más
 // barato: se estima con la tarifa oficial (RMB 0.30 / 0.60 / 1.20 por s ≈ US$ 0.042 / 0.083 / 0.167) como techo.
@@ -27,10 +98,13 @@ export function configWan(p) {
   const resolucion = RESOLUCIONES.includes(w.resolucion) ? w.resolucion : "720P";
   const g = leer(p.id, "guion.json") || {};
   const fin = Math.max(0, ...(g.escenas || []).map((e) => +e.hasta || 0));
-  const segundos = Math.min(30, Math.max(2, Math.round(+w.duracion || fin || 30)));
+  // Corporativo: varias tomas cortas (las que falten); el costo es la suma
+  const tomas = (g.escenas || []).some((e) => typeof e.wan === "string") ? tomasPendientes(p.id) : null;
+  const segundos = tomas ? tomas.reduce((a, x) => a + segundosToma(x.e), 0) : Math.min(30, Math.max(2, Math.round(+w.duracion || fin || 30)));
   const costo = +(segundos * PRECIO[modelo][resolucion]).toFixed(2);
   const tope = +(leerAjustes().wanTopeUSD ?? 8);
-  return { modelo, resolucion, segundos, costo, tope };
+  const motor = w.motor === "higgsfield" || (!w.motor && leerAjustes().wanMotor === "higgsfield") ? "higgsfield" : "apimart";
+  return { modelo, resolucion, segundos, costo, tope: tomas ? Math.max(tope, +(leerAjustes().wanTopeCorporativoUSD ?? 20)) : tope, motor, ...(tomas ? { tomas: tomas.map((x) => ({ n: x.n, segundos: segundosToma(x.e) })) } : {}) };
 }
 
 const dirRefs = (id) => path.join(dirProyecto(id), "refs");
@@ -120,8 +194,7 @@ export async function prepararWan(id, avisar = () => {}) {
     if (yaHay) { avisar({ paso: "voz", progreso: 0.5, msg: "Uso el clip de Wan que ya estaba (no gasto)…" }); return tiemposDelClip(id); }
     throw new Error(`Generar con Wan cuesta ≈ US$ ${c.costo} (${c.segundos} s, ${c.resolucion}, ${MODELOS[c.modelo]}). Confírmalo con «Generar con Wan» en el panel.`);
   }
-  if (c.costo > c.tope) throw new Error(`≈ US$ ${c.costo} pasa el tope de US$ ${c.tope} por video (ajustes.json → wanTopeUSD). Baja la resolución o la duración.`);
-  if (!A.hayAPIMart()) throw new Error("Falta APIMART_API_KEY en el .env.");
+  if (c.motor === "apimart" && c.costo > c.tope) throw new Error(`≈ US$ ${c.costo} pasa el tope de US$ ${c.tope} por video (ajustes.json → wanTopeUSD). Baja la resolución o la duración.`);
   // la confirmación vale para UNA generación
   const p1 = leer(id, "proyecto.json"); p1.wan = { ...(p1.wan || {}), confirmado: false }; guardar(id, "proyecto.json", p1);
 
@@ -131,29 +204,26 @@ export async function prepararWan(id, avisar = () => {}) {
   let hechas = refsDe(id);
   for (const [i, r] of refs.entries()) {
     if (!r?.id || hechas[r.id]) continue;
+    if (!A.hayAPIMart()) { avisar({ paso: "voz", progreso: 0.05, msg: `Sin APIMart no puedo hacer la hoja de ${r.nombre || r.id}: sube la tuya como refs/${r.id}.png. Sigo sin ella.` }); continue; }
     avisar({ paso: "voz", progreso: 0.02 + (0.1 * i) / refs.length, msg: `Hoja de referencia: ${r.nombre || r.id}…` });
     const img = await A.generarImagen(promptHoja(r, g.wan?.estiloVisual), { size: "16:9", resolucion: "2K" });
     fs.writeFileSync(path.join(dirRefs(id), r.id + img.ext), img.bytes);
   }
   hechas = refsDe(id);
   const usadas = refs.filter((r) => hechas[r.id]);
-  const urls = [];
-  for (const r of usadas) urls.push(await A.subir(path.join(dirRefs(id), hechas[r.id])));
 
   // 2) el clip
   const vertical = (p.formato || "9:16") === "9:16";
   const prompt = promptWan(g, usadas, { vertical });
   fs.writeFileSync(path.join(dirProyecto(id), "wan-prompt.txt"), prompt);
-  avisar({ paso: "voz", progreso: 0.15, msg: `Wan 3.0: ${c.segundos} s a ${c.resolucion} (≈ US$ ${c.costo}). Tarda varios minutos…` });
-  const buf = await A.pedirVideo({
-    model: c.modelo, prompt, duration: c.segundos, resolution: c.resolucion, size: vertical ? "9:16" : "16:9", audio: true, watermark: false,
-    ...(urls.length ? { image_urls: urls, generation_type: "reference" } : {}),
-  }, (a) => avisar({ ...a, paso: "voz", progreso: 0.15 + 0.75 * (a.progreso || 0) }), "Wan 3.0", 45);
+  avisar({ paso: "voz", progreso: 0.15, msg: `Wan 3.0 por ${c.motor === "higgsfield" ? "Higgsfield" : "APIMart"}: ${c.segundos} s a ${c.resolucion}. Tarda varios minutos…` });
+  const buf = await generarClip({ motor: c.motor, modelo: c.modelo, prompt, segundos: c.segundos, resolucion: c.resolucion, vertical, refs: usadas.map((r) => path.join(dirRefs(id), hechas[r.id])) },
+    (a) => avisar({ ...a, paso: "voz", progreso: 0.15 + 0.75 * (a.progreso || 0) }));
   fs.mkdirSync(path.dirname(clipWan(id)), { recursive: true });
   if (fs.existsSync(clipWan(id))) fs.renameSync(clipWan(id), clipWan(id).replace(/\.mp4$/, `-${Date.now()}.mp4`)); // el anterior no se borra
   fs.writeFileSync(clipWan(id), buf);
   const p2 = leer(id, "proyecto.json");
-  p2.wan = { ...(p2.wan || {}), generaciones: [...(p2.wan?.generaciones || []), { fecha: new Date().toISOString(), modelo: c.modelo, resolucion: c.resolucion, segundos: c.segundos, costoAprox: c.costo }] };
+  p2.wan = { ...(p2.wan || {}), generaciones: [...(p2.wan?.generaciones || []), { fecha: new Date().toISOString(), motor: c.motor, modelo: c.modelo, resolucion: c.resolucion, segundos: c.segundos, costoAprox: c.costo }] };
   guardar(id, "proyecto.json", p2);
   avisar({ paso: "voz", progreso: 0.93, msg: "Transcribiendo el diálogo para los subtítulos…" });
   return tiemposDelClip(id);

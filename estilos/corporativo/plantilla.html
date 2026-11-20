@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><title>Corporativo (vista previa)</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}canvas{display:block;width:100vw;height:100vh;object-fit:contain}</style>
+</head><body><canvas id="lienzo"></canvas>
+<script src="../_comun/motor.js"></script>
+<script>
+// Vista previa del guion (storyboard): el video real lo arma ffmpeg con el material y las tomas de Wan (core/corporativo.js).
+Motor.iniciar({
+  fuentes: [["Montserrat", "../_comun/fuentes/montserrat-latin-800-normal.woff2", { weight: "800" }]],
+  async preparar(M) {},
+  dibujar(ctx, t, M) {
+    const W = M.W, H = M.H, u = M.u;
+    ctx.fillStyle = "#0b0b0c"; ctx.fillRect(0, 0, W, H);
+    const k = Math.max(0, M.escenaEn(t)), e = M.guion.escenas[k] || {};
+    ctx.textAlign = "center";
+    ctx.fillStyle = e.wan ? "#e0a84a" : "#5fb3ff"; ctx.font = `800 ${30 * u}px Montserrat`;
+    ctx.fillText(e.wan ? "TOMA WAN (IA)" : `MATERIAL: ${e.fuente || "—"}${e.desde != null ? ` ${e.desde}-${e.hasta}s` : ""}`, W / 2, H * 0.14);
+    if (e.sobre) { ctx.fillStyle = "#fff"; ctx.font = `800 ${86 * u}px Montserrat`; ctx.fillText(e.sobre, W / 2, H * 0.48); }
+    if (e.etiqueta) { ctx.fillStyle = "#cfd8de"; ctx.font = `800 ${34 * u}px Montserrat`; ctx.fillText(e.etiqueta, W / 2, H * 0.58); }
+    const pal = (M.tiempos?.escenas?.[k]?.palabras || []).filter((p) => p.t0 <= t + 0.05).slice(-8).map((p) => p.w).join(" ");
+    if (pal) { ctx.fillStyle = "#fff"; ctx.font = `800 ${40 * u}px Montserrat`; ctx.fillText(pal, W / 2, H * 0.88); }
+  },
+});
+</script></body></html>

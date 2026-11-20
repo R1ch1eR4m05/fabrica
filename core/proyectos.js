@@ -70,6 +70,7 @@ export function detalle(id) {
     tiempos: leer(id, "tiempos.json"),
     tieneVoz: existe(id, "voz.mp3"),
     tieneFinal: existe(id, "final.mp4"),
+    material: (() => { try { return fs.readdirSync(path.join(dirProyecto(id), "material")).filter((x) => /\.(mp4|mov|webm|m4v|mkv|jpe?g|png|webp)$/i.test(x)).sort(); } catch { return []; } })(),
     revision: (() => { try { return JSON.parse(fs.readFileSync(path.join(dirProyecto(id), "revision.json"), "utf8")); } catch { return null; } })(),
     imagenesPost: (() => { try { return JSON.parse(fs.readFileSync(path.join(dirProyecto(id), "imagenes", "imagenes.json"), "utf8")); } catch { return null; } })(),
     miniaturas: (() => { try { return JSON.parse(fs.readFileSync(path.join(dirProyecto(id), "miniaturas", "miniaturas.json"), "utf8")); } catch { return null; } })(),

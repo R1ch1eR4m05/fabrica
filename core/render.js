@@ -110,10 +110,17 @@ export async function render(id, avisar = () => {}) {
 
   // estilos de imagen fija y larga duración: render directo con ffmpeg (sin navegador), mucho más rápido
   if (estilo.render === "ffmpeg") {
-    const { prepararHistoria } = await import("./historia.js");
-    await prepararHistoria(id, avisar);
+    let extraASS = "";
+    if (estilo.preparar === "corporativo") { // material real + tomas de Wan, con sobreimpresos
+      const C = await import("./corporativo.js");
+      await C.prepararCorporativo(id, avisar);
+      extraASS = C.sobreimpresos(guion, tiempos, fmt);
+    } else {
+      const { prepararHistoria } = await import("./historia.js");
+      await prepararHistoria(id, avisar);
+    }
     const { renderImagenes } = await import("./render-ffmpeg.js");
-    const soloVideo = await renderImagenes({ id, guion, tiempos, estilo, fmt, tmp, avisar });
+    const soloVideo = await renderImagenes({ id, guion, tiempos, estilo, fmt, tmp, avisar, extraASS });
     avisar({ paso: "render", progreso: 1, msg: "Juntando video y audio…" });
     const final = path.join(dir, "final.mp4");
     await ffmpeg(["-i", soloVideo, "-i", mezcla, "-c:v", "copy", "-c:a", "copy", "-shortest", "-movflags", "+faststart", final]);

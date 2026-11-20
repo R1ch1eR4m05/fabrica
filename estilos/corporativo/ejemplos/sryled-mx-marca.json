@@ -1,0 +1,213 @@
+{
+ "titulo": "SRYLED MX · Video de marca (tipo Absen)",
+ "formato": "16:9",
+ "duracion": "largo",
+ "idea": "Video corporativo de 3 min de SRYLED MX al estilo de Absen «Beyond the Display», con el material real del kit de recursos y tomas de Wan solo en el gancho y los mundos de uso.",
+ "opciones": {
+  "subtitulos": "si"
+ },
+ "guion": {
+  "titulo": "SRYLED MX · La tecnología que se ve, se siente",
+  "wanEstilo": "Cinematic commercial shot, shot on ARRI Alexa with anamorphic lens, shallow depth of field, rich contrast, warm highlights and deep shadows, natural film grain",
+  "escenas": [
+   {
+    "voz": "La tecnología que se ve… se siente.",
+    "wan": "Night baseball stadium seen from the stands, thick colored smoke drifting in the stadium lights, a gigantic outdoor LED screen behind the outfield bursts into bright moving colors and thousands of fans raise their arms, slow cinematic dolly forward toward the screen",
+    "duracionToma": 8,
+    "refs": [
+     "I2.jpg"
+    ]
+   },
+   {
+    "voz": "",
+    "duracion": 3,
+    "fuente": "V8.mp4",
+    "desde": 0,
+    "hasta": 4,
+    "nota": "Hero del sitio (estadio con humo). Si no lo consigues, usa V1."
+   },
+   {
+    "voz": "Todo empieza en Shenzhen. Desde 2013, SRYLED fabrica pantallas LED para el mundo.",
+    "fuente": "V2.mp4",
+    "desde": 5,
+    "hasta": 12,
+    "etiqueta": "SHENZHEN, CHINA · DESDE 2013",
+    "nota": "Ajusta desde/hasta a la mejor toma de la fábrica."
+   },
+   {
+    "voz": "Diez mil metros cuadrados de fábrica, donde cada módulo se ensambla, se calibra y se prueba antes de salir.",
+    "fuente": "I8.jpg",
+    "camara": "derecha",
+    "sobre": "10,000 m² DE FÁBRICA"
+   },
+   {
+    "voz": "Más de doce mil clientes en cien países ya confían en nosotros.",
+    "fuente": "I9.jpg",
+    "camara": "acercar",
+    "sobre": "12,000+ CLIENTES · 100 PAÍSES"
+   },
+   {
+    "voz": "Y un equipo que lleva más de una década viviendo de una sola obsesión: la imagen perfecta.",
+    "fuente": "I10.jpg",
+    "camara": "alejar"
+   },
+   {
+    "voz": "Pero una pantalla no es una ficha técnica. Es lo que pasa frente a ella.",
+    "wan": "Huge outdoor concert at night, the camera glides above the crowd toward the stage where a massive curved LED wall shows abstract light waves in sync with the music, confetti in the air, people singing",
+    "duracionToma": 8
+   },
+   {
+    "voz": "Escenarios que se arman en horas, con pantallas de renta que se curvan hasta cerrar un círculo completo.",
+    "fuente": "V7.mp4",
+    "desde": 0,
+    "hasta": 6,
+    "nota": "Clip de pantalla de renta curva 360° del canal oficial; baja el que mejor se vea."
+   },
+   {
+    "voz": "Pósters LED que se doblan y se llevan a donde esté tu cliente.",
+    "fuente": "V5.mp4",
+    "desde": 0,
+    "hasta": 5
+   },
+   {
+    "voz": "Salas de juntas, lobbies y tiendas que dejan de ser paredes y se vuelven experiencias.",
+    "wan": "Elegant modern corporate lobby at golden hour, a seamless fine-pitch LED video wall shows calm flowing nature imagery, executives walk past and slow down to look, smooth tracking shot",
+    "duracionToma": 7
+   },
+   {
+    "voz": "Y arenas donde nadie se pierde una jugada, desde ningún asiento.",
+    "fuente": "I5.jpg",
+    "camara": "subir",
+    "etiqueta": "ARENA PROFESIONAL · MÉXICO · CUBO P2.6"
+   },
+   {
+    "voz": "",
+    "duracion": 2.5,
+    "fuente": "I6.jpg",
+    "camara": "acercar"
+   },
+   {
+    "voz": "Esto no es una promesa. Es un estadio en Guasave, Sinaloa.",
+    "fuente": "V1.mp4",
+    "desde": 0,
+    "hasta": 7,
+    "sobre": "400 m²",
+    "etiqueta": "KURODA PARK · ALGODONEROS DE GUASAVE"
+   },
+   {
+    "voz": "Más de cuatrocientos metros cuadrados de pantalla exterior P8.",
+    "fuente": "I3.jpg",
+    "camara": "izquierda"
+   },
+   {
+    "voz": "Del pedido a la instalación, en dos meses.",
+    "fuente": "V1.mp4",
+    "desde": 20,
+    "hasta": 27,
+    "sobre": "DEL PEDIDO A LA INSTALACIÓN: 2 MESES",
+    "nota": "Busca en V1 una toma del montaje."
+   },
+   {
+    "voz": "Con el equipo de SRYLED MX en sitio, de principio a fin.",
+    "fuente": "I4.jpg",
+    "camara": "acercar"
+   },
+   {
+    "voz": "Hoy el béisbol también es entretenimiento: repeticiones, estadísticas, música y patrocinadores.",
+    "fuente": "V1.mp4",
+    "desde": 40,
+    "hasta": 47,
+    "etiqueta": "«Hoy el beisbol también es entretenimiento» — Gerente del club",
+    "nota": "Testimonio real del caso; si V1 trae al gerente hablando, usa ese tramo."
+   },
+   {
+    "voz": "Y no tienes que imaginarlo. Puedes verlo en persona.",
+    "fuente": "V3.mp4",
+    "desde": 0,
+    "hasta": 7,
+    "etiqueta": "ALMACÉN EN MÉXICO"
+   },
+   {
+    "voz": "Stock en México, entrega inmediata y un showroom en Morelia donde pruebas la pantalla antes de comprarla.",
+    "fuente": "V3.mp4",
+    "desde": 30,
+    "hasta": 38
+   },
+   {
+    "voz": "Pantallas, iluminación profesional y efectos especiales: todo lo que necesitas para un escenario, con un solo proveedor.",
+    "fuente": "I1.jpg",
+    "camara": "alejar",
+    "sobre": "PANTALLAS · ILUMINACIÓN · SFX"
+   },
+   {
+    "voz": "Porque cuando el show empieza, no puedes esperar a que conteste una fábrica al otro lado del mundo.",
+    "wan": "Backstage of a live event a few minutes before showtime, a calm technician in black clothes checks a laptop next to an LED processor rack, through the gap of the stage curtain a bright LED wall glows, handheld close shot, tense but confident mood",
+    "duracionToma": 7
+   },
+   {
+    "voz": "Soporte técnico local, refacciones en stock, capacitación incluida y garantía de tres años.",
+    "fuente": "I11.jpg",
+    "camara": "derecha",
+    "sobre": "SOPORTE LOCAL · GARANTÍA 3 AÑOS"
+   },
+   {
+    "voz": "Clientes de siete países ya lo comprobaron.",
+    "fuente": "V4.mp4",
+    "desde": 0,
+    "hasta": 6
+   },
+   {
+    "voz": "SRYLED MX. Distribuidores directos de fábrica, sin intermediarios.",
+    "fuente": "V1.mp4",
+    "desde": 55,
+    "hasta": 62,
+    "sobre": "SRYLED MX",
+    "nota": "La toma más bonita del estadio iluminado."
+   },
+   {
+    "voz": "Ven a conocernos. Lo que imaginas, lo encendemos.",
+    "fuente": "I2.jpg",
+    "camara": "alejar",
+    "sobre": "SHOWROOM · EUCALIPTO 238, MORELIA",
+    "etiqueta": "WhatsApp 443 330 3134 · sryled-mx.netlify.app",
+    "tipo": "cierre"
+   }
+  ],
+  "fuentes": [
+   {
+    "dato": "Fundada en 2013 en Shenzhen; fábrica de 10,000 m²; 12,000+ clientes; exporta a 100 países; garantía de 3 años",
+    "url": "https://www.sryleddisplay.com/"
+   },
+   {
+    "dato": "Estadio de 400+ m² P8, Algodoneros de Guasave, del pedido a la instalación en 2 meses; cita del gerente del club",
+    "url": "https://www.sryleddisplay.com/mexico-stadium-led-project-400-sqm-p8-outdoor-led-display/"
+   },
+   {
+    "dato": "Arena profesional de baloncesto en México con cubo P2.6",
+    "url": "https://www.sryleddisplay.com/mexico-professional-basketball-arena-central-hanging-display-system-upgrade/"
+   },
+   {
+    "dato": "Stock en México, showroom en Morelia, soporte local, capacitación y refacciones; WhatsApp",
+    "url": "https://sryled-mx.netlify.app"
+   },
+   {
+    "dato": "Testimonios de clientes de EE. UU., Reino Unido, México, Ghana, Trinidad, Argentina y Canadá",
+    "url": "https://www.youtube.com/watch?v=sc6niLkMvXw"
+   }
+  ],
+  "subir": {
+   "titulos": [
+    "SRYLED MX: de la fábrica en Shenzhen a un estadio de 400 m² en México",
+    "Así se instala una pantalla LED de 400 m² en 2 meses | SRYLED MX",
+    "Pantallas LED con stock y soporte en México | SRYLED MX"
+   ],
+   "descripcion": "De la fábrica en Shenzhen al estadio de los Algodoneros de Guasave: pantallas LED, iluminación profesional y efectos especiales con stock, showroom y soporte técnico en México.\n\nShowroom: Eucalipto 238, La Soledad, Morelia, Michoacán.\nWhatsApp: +52 443 330 3134\nhttps://sryled-mx.netlify.app",
+   "hashtags": [
+    "#PantallasLED",
+    "#SRYLEDMX",
+    "#Eventos",
+    "#LEDdisplay"
+   ]
+  }
+ }
+}

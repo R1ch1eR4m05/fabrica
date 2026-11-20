@@ -493,6 +493,7 @@ async function api(req, res, partes) {
     if (m === "DELETE") {
       if (tipo === "avatar-imagen") { for (const x of fs.existsSync(AM.dirAvatar(id)) ? fs.readdirSync(AM.dirAvatar(id)) : []) if (/^avatar\./.test(x)) fs.rmSync(path.join(AM.dirAvatar(id), x)); return json(res, 200, P.detalle(id)); }
       if (tipo === "producto") { const f = path.join(AM.dirProducto(id), path.basename(q.get("nombre") || "")); if (q.get("nombre") && fs.existsSync(f)) fs.rmSync(f); return json(res, 200, P.detalle(id)); }
+      if (tipo === "material") { const C = await import("./corporativo.js"); const f = path.join(C.dirMaterial(id), path.basename(q.get("nombre") || "")); if (q.get("nombre") && fs.existsSync(f)) fs.rmSync(f); return json(res, 200, P.detalle(id)); }
       if (tipo === "clip" && fs.existsSync(HIS.dirClips(id))) for (const x of fs.readdirSync(HIS.dirClips(id))) if (x.startsWith(`escena-${q.get("n")}.`)) fs.rmSync(path.join(HIS.dirClips(id), x));
       if (base) limpiar(base);
       if (base === "fondo" && P.existe(id, "tiempos.json")) { try { encolar(id, "fondo", (av) => prepararFondo(id, (a) => av({ ...a, paso: "fondo" }))); } catch {} }
@@ -516,6 +517,11 @@ async function api(req, res, partes) {
       destino = path.join(d, pre + (ext || (pre === "fuente" ? ".mp4" : ".jpg")));
     }
     else if (tipo === "producto") { fs.mkdirSync(AM.dirProducto(id), { recursive: true }); destino = path.join(AM.dirProducto(id), `foto-${Date.now()}${ext || ".jpg"}`); }
+    else if (tipo === "material") { // corporativo: videos y fotos reales de la marca, con su nombre (el guion los nombra en "fuente")
+      if (!/^\.(mp4|mov|webm|m4v|mkv|jpe?g|png|webp)$/.test(ext)) return json(res, 400, { error: "Sube video (mp4/mov) o foto (jpg/png/webp)." });
+      const C = await import("./corporativo.js"); fs.mkdirSync(C.dirMaterial(id), { recursive: true });
+      destino = path.join(C.dirMaterial(id), path.basename(nombre).replace(/[^\w.\-() ]+/g, "_"));
+    }
     else if (tipo === "miniatura") { // hecha en otro lado: se ajusta a 1280x720 (o portada 1080x1920 en Shorts) y queda elegida
       if (!/^\.(jpe?g|png|webp)$/.test(ext)) return json(res, 400, { error: "Sube una imagen JPG, PNG o WEBP." });
       fs.mkdirSync(path.join(dir, "miniaturas"), { recursive: true }); destino = path.join(dir, "miniaturas", `subida-original${ext}`);
@@ -630,17 +636,20 @@ async function api(req, res, partes) {
     const W = await import("./wan.js");
     if (m === "POST") {
       const b = await cuerpo(req);
-      p.wan = { ...(p.wan || {}), ...(b.modelo ? { modelo: b.modelo } : {}), ...(b.resolucion ? { resolucion: b.resolucion } : {}), ...(b.duracion ? { duracion: +b.duracion } : {}) };
+      p.wan = { ...(p.wan || {}), ...(b.modelo ? { modelo: b.modelo } : {}), ...(b.resolucion ? { resolucion: b.resolucion } : {}), ...(b.duracion ? { duracion: +b.duracion } : {}), ...(b.motor ? { motor: b.motor } : {}) };
       const c = W.configWan(p);
+      if (b.confirmar && c.motor === "higgsfield") { const st = await W.estadoHiggsfield(); if (!st.ok) return json(res, 400, { error: st.error }); }
       if (b.confirmar) {
-        if (c.costo > c.tope) return json(res, 400, { error: `≈ US$ ${c.costo} pasa el tope de US$ ${c.tope} (ajustes.json → wanTopeUSD).` });
+        if (c.motor === "apimart" && c.costo > c.tope) return json(res, 400, { error: `≈ US$ ${c.costo} pasa el tope de US$ ${c.tope} (ajustes.json → wanTopeUSD).` });
         p.wan.confirmado = true;
       }
       P.guardar(id, "proyecto.json", p);
-      if (b.confirmar) encolar(id, "voz", (av) => W.prepararWan(id, av));
-      return json(res, 200, { ...c, refs: W.refsDe(id) });
+      if (b.confirmar) { if (leerEstilo(p.estilo)?.preparar === "corporativo") encolar(id, "fondo", async (av) => { const C = await import("./corporativo.js"); return C.generarTomas(id, av); }); else encolar(id, "voz", (av) => W.prepararWan(id, av)); }
+      return json(res, 200, { ...c, refs: W.refsDe(id), ...(c.motor === "higgsfield" ? { creditos: await W.costoHiggsfield({ prompt: "x", segundos: c.segundos, resolucion: c.resolucion, vertical: p.formato !== "16:9" }) } : {}) });
     }
-    return json(res, 200, { ...W.configWan(p), refs: W.refsDe(id), clip: fs.existsSync(W.clipWan(id)), modelos: W.MODELOS, resoluciones: W.RESOLUCIONES });
+    const c = W.configWan(p);
+    return json(res, 200, { ...c, refs: W.refsDe(id), clip: fs.existsSync(W.clipWan(id)), modelos: W.MODELOS, resoluciones: W.RESOLUCIONES, higgsfield: await W.estadoHiggsfield(),
+      ...(c.motor === "higgsfield" ? { creditos: await W.costoHiggsfield({ prompt: "x", segundos: c.segundos, resolucion: c.resolucion, vertical: p.formato !== "16:9" }) } : {}) });
   }
   if (accion === "render" && m === "POST") {
     const esMotion = leerEstilo(p.estilo)?.tipo === "motion";
