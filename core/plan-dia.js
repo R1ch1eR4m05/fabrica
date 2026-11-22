@@ -31,11 +31,11 @@ export function informeReciente(nicho = "monarca") {
 }
 
 function pedidoGuion(v, cfg, nicho = "monarca") {
-  const b = v.base, cierre = (cfg.cierres || [])[0] || "Envíale esto a alguien que necesita oírlo hoy.";
+  const b = v.base, cierre = (cfg.cierres || [])[0] || "";
   const comun = `Toma la IDEA de la publicación de referencia, NO su guion ni sus frases: escríbelo original, en español natural de México, para Monarca.
 Idea: ${b.idea || ""}. Frase de partida: ${b.frase || ""}. Tema: ${b.tema || ""}. ${b.adaptacion ? `Adaptación: ${b.adaptacion}.` : ""} ${b.notaAdaptacion ? `Indicación de Richie: ${b.notaAdaptacion}.` : ""}
 Gancho: la primera frase se entiende sola y dura 2 segundos o menos. Títulos (subir.titulos, 3): [número o promesa concreta] + [problema real] + [autor si es de verdad].
-Cierre de voz: "${cierre}" (puedes precisar el final, pero empieza con "Envíale esto a alguien que").${nicho === "monarca" ? `\n${INV.ENFOQUE_MONARCA}\nLa descripción (subir.descripcion) termina con una pregunta que invite a comentar desde la propia casa («¿En tu casa quién lava los platos?»).` : ""}`;
+${cierre ? `Cierre de voz: "${cierre}".` : INV.CIERRE_FUERTE}${nicho === "monarca" ? `\n${INV.ENFOQUE_MONARCA}\nLa descripción (subir.descripcion) termina con una pregunta genuina del tema, para contestar desde la propia casa («¿En tu casa quién lava los platos?»), nunca «comenta SÍ» ni «compártelo».` : ""}`;
   if (v.tipo === "largo") return `${comun}\nVideo LARGO de 10 a 15 minutos derivado del Short ganador: intro con promesa, 3-5 capítulos con una idea por capítulo (campo capitulo), cierre con suscripción y siguiente video de la serie.`;
   if (v.tipo === "experimento") return `${comun}\nEXPERIMENTO de un formato que aún no llega al español (LO QUE VIENE): ${b.idea || b.frase}. Short de 20 a 30 segundos con voz en off.`;
   return `${comun}\nShort/Reel de 20 a 30 segundos: gancho con el conflicto → idea central → ejemplo de hoy → qué hacer → cierre.`;

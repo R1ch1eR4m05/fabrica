@@ -62,7 +62,7 @@ const PLANTILLAS = {
     marca: "Monarca: monólogos sobrios y directos, voz grave de hombre, estatuas y paisajes en un solo tono. Verdades incómodas de la vida diaria en familia y qué hacer hoy.",
     estilos: ["reflexion-estatuas", "filosofia-larga"],
     opciones: { "reflexion-estatuas": { tono: "turquesa", logo: "monarca" }, "filosofia-larga": { subtitulos: "si" } },
-    cierres: ["Envíale esto a alguien que necesita oírlo hoy."],
+    cierres: [], // 22 nov 2026: sin pedir que lo compartan (Meta castiga el «share/tag bait», también en el audio)
     reglas: "Tono sobrio, firme y respetuoso; nada de odio hacia nadie, nada de promesas de dinero o salud, nada de frases atribuidas a filósofos sin verificar.",
     adaptacion: "Las tendencias suelen nacer en cuentas en inglés (stoic, discipline, self-improvement). No traduzcas literal: adapta la idea a hispanos de México y EE. UU. (familia, trabajo, deudas, padres que envejecen, amigos que se van), en español natural de México.",
   },
@@ -108,9 +108,18 @@ function sembrar() {
       c3.migraciones = [...(c3.migraciones || []), "vida-familiar"];
       fs.writeFileSync(f, JSON.stringify(c3, null, 2));
     }
+    // 22 nov 2026: Richie quitó «Envíale esto a alguien que…»: Meta baja el alcance de lo que pide compartir o etiquetar,
+    // también dicho en la voz. Cierre = frase final fuerte del tema; la descripción termina con una pregunta genuina.
+    const c4 = JSON.parse(fs.readFileSync(f, "utf8"));
+    if (!(c4.migraciones || []).includes("sin-pedir-compartir")) {
+      c4.cierres = (c4.cierres || []).filter((x) => !/env[ií]ale|comp[aá]rt|etiquet/i.test(x));
+      c4.migraciones = [...(c4.migraciones || []), "sin-pedir-compartir"];
+      fs.writeFileSync(f, JSON.stringify(c4, null, 2));
+    }
   } catch {}
 }
 export const ENFOQUE_MONARCA = "Enfoque (22 nov 2026, por un reel de 29 M de vistas): la filosofía aplicada a la vida diaria de la familia. Cada video parte de una ESCENA CONCRETA de casa (el niño que no lava su plato, el papá que nunca dice te quiero, la pareja que revisa el celular, el hijo adulto que no se va, la suegra, la mesa en silencio) con una opinión firme que algunos discuten, y sube de tono (la escena → en qué se convierte con los años → qué hacer hoy). Que una mamá o un papá se lo mande a su pareja o a su hijo. Nada de filosofía abstracta.";
+export const CIERRE_FUERTE = "Cierre de voz (Monarca, 22 nov 2026): NO pidas que lo compartan, lo envíen, lo etiqueten ni lo comenten (Meta lo castiga, también en el audio). La última frase es una verdad fuerte del mismo tema que dé ganas de mandarlo sola, p. ej. «Lavar un plato no es un castigo. Es su primer ensayo para la vida.»";
 export const CIERRE_ENVIO = "Envíale esto a alguien que necesita oírlo hoy.";
 // cuentas a seguir (las que no se replican van con riesgo: true y su motivo)
 const SEGUIMIENTO_MONARCA = [

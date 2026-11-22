@@ -67,7 +67,7 @@ export function referencias(md) {
 }
 
 function pedido(cfg, refs, nichoCfg) {
-  const cierre = (nichoCfg.cierres || []).find((c) => /env[ií]ale|comp[aá]rt/i.test(c)) || "Envíale esto a alguien que necesita leerlo hoy.";
+  const cierre = (nichoCfg.cierres || [])[0] || "";
   return `Escribe ${cfg.cantidad} imágenes de frase para Monarca (página de reflexión estoica en español, público hispano de México y EE. UU.).
 Cada imagen nace de UNA publicación del informe que ya funcionó: toma su IDEA, nunca su texto. Pon su enlace exacto en "inspiradaEn" (solo enlaces de la lista de referencias). Puedes usar la misma referencia para 2 imágenes como máximo, con ángulos distintos.
 - "frase": original, 6 a 18 palabras, se entiende sola sin contexto, verdad incómoda o consuelo firme, en segunda persona o impersonal. Nada de clichés de gurú, nada de promesas, nada de política ni religión polémica. Nunca copies frases de otras cuentas.
@@ -75,7 +75,7 @@ Cada imagen nace de UNA publicación del informe que ya funcionó: toma su IDEA,
 - "clave": la palabra más fuerte de la frase.
 - "tema": 2 a 4 palabras.
 - "flowPrompt": en inglés, la imagen de fondo: una estatua clásica o un paisaje que diga lo mismo que la frase, vertical, sujeto centrado con espacio libre arriba y abajo para el texto, sin texto. Estilo: ${ESTILO_BASE}.
-- "copy": 50 a 90 palabras para Facebook e Instagram: primera línea gancho (no repitas la frase tal cual), luego qué significa con un ejemplo de la vida diaria, una acción pequeña para hoy y el cierre "${cierre}" (puedes precisar a quién). Pensado para que la gente la comparta en sus grupos y por WhatsApp. Máximo 2 emojis. Separa líneas con \\n.
+- "copy": 50 a 90 palabras para Facebook e Instagram: primera línea gancho (no repitas la frase tal cual), luego qué significa con un ejemplo de la vida diaria, una acción pequeña para hoy y ${cierre ? `el cierre "${cierre}"` : "al final una pregunta genuina del tema para contestar desde su vida («¿Quién en tu casa…?»). NUNCA pidas compartir, enviar, etiquetar ni «comenta SÍ»: Meta baja el alcance de eso"}. Que den ganas de mandarla por WhatsApp sin pedirlo. Máximo 2 emojis. Separa líneas con \\n.
 - "hashtags": 3 a 5, en español.
 Varía los temas (no 10 veces lo mismo): sufrimiento, límites, disciplina, soledad, tiempo, ira, aceptación, carácter, familia, muerte…
 Devuelve SOLO JSON: {"imagenes":[{"frase","autor","fuente","clave","tema","inspiradaEn":["url"],"flowPrompt","copy","hashtags":[]}]}

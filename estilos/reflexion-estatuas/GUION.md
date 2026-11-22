@@ -7,7 +7,7 @@ Un reel con este mismo estilo (estatua turquesa, letra romana, paisajes) llegó 
 - Parte de una **escena concreta de casa**: hijos, pareja, papás que envejecen, la mesa, el celular en la cena, el dinero del mes, los quehaceres. Nada de filosofía abstracta («la mente es poderosa»).
 - **Opinión firme que algunos discuten**, dicha con respeto (sin culpar ni burlarse de nadie).
 - **Sube de tono**: la escena de hoy → en qué se convierte con los años → qué hacer hoy en tu casa.
-- Piensa en quién lo va a reenviar: la mamá a su pareja, el papá a su hijo. El cierre de voz sigue siendo «Envíale esto a alguien que…» (p. ej. «…a alguien que está criando hijos»), y la descripción termina con una pregunta para comentar desde su casa («¿En tu casa quién lava los platos?»).
+- Piensa en quién lo va a reenviar: la mamá a su pareja, el papá a su hijo. Que lo reenvíen sin pedirlo: la última frase es tan cierta que dan ganas de mandarla. La descripción termina con una pregunta genuina del tema («¿En tu casa quién lava los platos?»).
 - El autor clásico entra como respaldo («Epicteto lo decía…»), solo si la cita es real y verificada.
 
 ## Estructura (20-30 s, 5 a 7 escenas)
@@ -15,7 +15,7 @@ Un reel con este mismo estilo (estatua turquesa, letra romana, paisajes) llegó 
 2. **Idea central (1-2 escenas):** la enseñanza clásica dicha en simple, con su autor si lo es de verdad ("Epicteto lo sabía: no te altera lo que pasa, sino tu juicio.").
 3. **Ejemplo de hoy (1-2 escenas):** cómo se ve esto en una casa de 2026 (la cena, los hijos, la pareja, los papás, las cuentas). Concreto, no abstracto.
 4. **Qué hacer (1 escena):** una acción simple para hoy.
-5. **Cierre con envío privado (última escena):** la voz termina con el cierre autorizado de Monarca: "Envíale esto a alguien que necesita oírlo hoy." (puedes cambiar el final por algo más preciso del tema, p. ej. "…a alguien que no suelta el celular", pero siempre empieza con "Envíale esto a alguien que").
+5. **Cierre fuerte (última escena):** una verdad corta del mismo tema que remate la idea, p. ej. «Lavar un plato no es un castigo. Es su primer ensayo para la vida.» **Nunca** pidas que lo compartan, lo envíen, etiqueten o comenten («Envíale esto a alguien que…», «comenta SÍ»): desde el 22 nov 2026 está prohibido porque Meta baja el alcance de esos videos (lo detecta también en el audio).
 
 ## Metadatos (van en `subir`, la fábrica los valida antes de programar)
 - `subir.titulos`: **3 opciones** con la fórmula [número o promesa concreta] + [problema real] + [autor]: "3 reglas de Epicteto para que tu enojo no sea negocio de otros", "Lo que Séneca haría con tu ansiedad del domingo". Nada de títulos vacíos, genéricos ("Reflexión estoica") ni poéticos sin promesa. La fábrica puntúa y elige (criterio en `core/metadatos.js`).
