@@ -14,7 +14,7 @@ let info = [], directas = [], mascaras = [], capa = null, muestra = null, lugare
 
 Motor.inicioVoz = 0.3;
 Motor.iniciar({
-  fuentes: [["Cinzel", F + "cinzel-latin-700-normal.woff2", { weight: "700" }], ["Cinzel", F + "cinzel-latin-800-normal.woff2", { weight: "800" }]],
+  fuentes: [["Cinzel", F + "cinzel-latin-700-normal.woff2", { weight: "700" }], ["Cinzel", F + "cinzel-latin-800-normal.woff2", { weight: "800" }], ["Montserrat", F + "montserrat-latin-800-normal.woff2", { weight: "800" }]],
   async preparar(M) {
     const op = M.proyecto.opciones || {};
     tono = TONOS[op.tono] || TONOS.turquesa; conLogo = op.logo !== "no";
@@ -174,7 +174,11 @@ function logo(c, M) {
 }
 
 // ---- texto palabra por palabra ----
-// "bloques" (por defecto, nov 2026): de 3 a 6 palabras a la vez (el ojo no se adelanta), la palabra clave en color de acento
+// "bloques" (por defecto desde el 22 nov 2026) = DISCRETO, como los Shorts de estoicismo que más vistas tienen
+// (Stoicus 1.7 M, The Alpha Reset Club 1.2 M, Hacia Lo Estoico, El Camino del Sabio): letra de palo gruesa (Montserrat),
+// chica (~4 % del alto), 2-4 palabras, 1-2 renglones, abajo del rostro (~60 % del alto), blanca con la palabra clave en color.
+// El gancho sigue grande y romano. "grande": el estilo anterior (romana grande, bloques de 3-6 palabras arriba).
+// (antes) "bloques": de 3 a 6 palabras a la vez (el ojo no se adelanta), la palabra clave en color de acento
 // y la palabra que se dice crece un poco al entrar. "frase": el estilo anterior (frase completa tenue hasta 16 palabras).
 // La palabra clave sale de la escena (`clave`: "palabra" o ["dos","palabras"]) o, si no hay, de la palabra con más peso del bloque.
 const ACENTOS = { turquesa: "#f3c66f", ambar: "#fff0c7", plata: "#e9c47c", rojo: "#f3c66f" };
@@ -182,7 +186,7 @@ const VACIAS = new Set("el la los las un una unos unas de del al a en y o u que 
 const limpia = (w) => String(w).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zñ0-9]/g, "");
 function paginas(palabras, modo, primera) {
   const ps = []; let cur = [];
-  const MAX = modo === "frase" ? 16 : 6;
+  const MAX = modo === "frase" ? 16 : modo === "discreto" ? 4 : 6;
   for (const w of palabras) {
     cur.push(w);
     const finFrase = /[.!?…]["»”]?$/.test(w.w), pausa = /[,;:—–]$/.test(w.w);
@@ -211,7 +215,8 @@ function claves(pag, te, M) {
 }
 function texto(c, M, t, te, prof, op = {}) {
   const W = M.W, H = M.H, u = M.u;
-  const modo = (M.proyecto.opciones || {}).subtitulos === "frase" ? "frase" : "bloques";
+  const sub = (M.proyecto.opciones || {}).subtitulos;
+  const modo = sub === "frase" ? "frase" : sub === "grande" ? "bloques" : "discreto";
   const esPrimera = te === M.tiempos.escenas[0];
   const ps = paginas(te.palabras, modo, esPrimera); let pag = null;
   // una escena entera va detrás o entera encima: si algún bloque no cabe detrás, ninguno va detrás
@@ -223,28 +228,32 @@ function texto(c, M, t, te, prof, op = {}) {
   const fin = pag[pag.length - 1].t1, siguiente = ps[ps.indexOf(pag) + 1];
   if (!op.seco && !siguiente && t > Math.max(fin + 0.9, te.finVoz + 0.6)) return false; // al final de la escena se va
   const gancho = esPrimera && pag === ps[0]; // el gancho sale COMPLETO desde el fotograma 0 (quien no te conoce decide en 1 segundo)
-  const ANCHO = W * (M.vertical ? 0.88 : 0.8);
-  const bloques = modo === "bloques";
-  let tam = (gancho ? 124 : bloques ? 118 : 100) * u; c.font = `800 ${tam}px Cinzel`;
-  const todo = pag.map((w) => w.w.toUpperCase()).join(" "), maxL = gancho ? 4 : bloques ? 3 : 5;
-  while (tam > 52 * u && M.lineas(c, todo, ANCHO).length > maxL) { tam -= 4 * u; c.font = `800 ${tam}px Cinzel`; }
+  const disc = modo === "discreto" && !gancho; // el gancho siempre grande y romano
+  const FAM = disc ? "Montserrat" : "Cinzel";
+  const ANCHO = W * (disc ? (M.vertical ? 0.76 : 0.6) : M.vertical ? 0.88 : 0.8);
+  const bloques = modo !== "frase";
+  let tam = (gancho ? 124 : disc ? 66 : bloques ? 118 : 100) * u; c.font = `800 ${tam}px ${FAM}`;
+  const todo = pag.map((w) => w.w.toUpperCase()).join(" "), maxL = gancho ? 4 : disc ? 2 : bloques ? 3 : 5;
+  while (tam > (disc ? 40 : 52) * u && M.lineas(c, todo, ANCHO).length > maxL) { tam -= 4 * u; c.font = `800 ${tam}px ${FAM}`; }
   // arma las líneas con TODAS las palabras del bloque (así nada salta de lugar al aparecer) para un tamaño y un ancho
   const armar = (tm, ancho) => {
-    c.font = `800 ${tm}px Cinzel`; const e = c.measureText(" ").width, out = []; let l = [], an = 0;
+    c.font = `800 ${tm}px ${FAM}`; const e = c.measureText(" ").width, out = []; let l = [], an = 0;
     for (const w of pag) { const s = w.w.toUpperCase(), pw = c.measureText(s).width; if (l.length && an + e + pw > ancho) { out.push({ l, ancho: an }); l = []; an = 0; } an += (l.length ? e : 0) + pw; l.push({ ...w, s, pw }); }
     if (l.length) out.push({ l, ancho: an });
     return { lineas: out, esp: e };
   };
   // columna a un lado de la cara (palabras en vertical: «LA / VERDAD / ES QUE / ¿ESTÁS DE ACUERDO?»): ancho 40 % y letra que quepa
   const COL = W * (M.vertical ? 0.42 : 0.3);
-  const tamColumna = () => { c.font = `800 ${tam}px Cinzel`; const mw = Math.max(...pag.map((w) => c.measureText(w.w.toUpperCase()).width)); let tm = mw > COL ? (tam * COL) / mw : tam; while (tm > 48 * u && armar(tm, COL).lineas.length > 6) tm -= 4 * u; return tm; };
+  const tamColumna = () => { c.font = `800 ${tam}px ${FAM}`; const mw = Math.max(...pag.map((w) => c.measureText(w.w.toUpperCase()).width)); let tm = mw > COL ? (tam * COL) / mw : tam; while (tm > 48 * u && armar(tm, COL).lineas.length > 6) tm -= 4 * u; return tm; };
   // x de cada línea según el acomodo: centrada, columna izquierda o derecha (con un leve escalonado, como si rodeara el rostro)
   const xDe = (modo, ln, k) => modo === "izq" ? W * 0.06 + (k % 2) * W * 0.035 : modo === "der" ? W * 0.94 - ln.ancho - (k % 2) * W * 0.035 : (W - ln.ancho) / 2;
-  const base = M.vertical ? 0.3 : 0.32;
+  const base = disc ? (M.vertical ? 0.6 : 0.64) : M.vertical ? 0.3 : 0.32;
   // texto detrás: busca dónde la estatua tape un poco el texto (se ve la profundidad) sin que deje de leerse
   // opción «Acomodo del texto» = vertical: siempre en columna a un lado del rostro (palabras una bajo otra)
   const vertical = (M.proyecto.opciones || {}).acomodo === "vertical";
   let diseno = vertical ? { modo: "izq", f: 0.3, tam: tamColumna(), detras: false } : { modo: "centro", f: base, tam, detras: false };
+  // discretos: chicos y abajo del rostro, siempre ENCIMA (detrás se perderían); no vetan que el gancho vaya detrás
+  if (prof && disc) { if (op.seco) return true; prof = null; }
   if (prof) {
     const llave = `${prof.i}|${pag[0].t0}`;
     if (!lugares.has(llave)) {
@@ -256,7 +265,7 @@ function texto(c, M, t, te, prof, op = {}) {
         const { lineas: ls } = armar(tm, modo === "centro" ? ANCHO : COL), alx = tm * 1.13, alto = ls.length * alx;
         let mejor = null;
         for (const f of alturas) {
-          const y = H * f; if (y - alto / 2 < H * 0.05 || y + alto / 2 > H * 0.8) continue;
+          const y = H * f; if (y - alto / 2 < H * 0.05 || y + alto / 2 > H * (disc ? 0.74 : 0.8)) continue;
           let cov = 0;
           for (const tt of [t0, t1]) ls.forEach((ln, k) => {
             cov = Math.max(cov, cobertura(M, prof, tt, { x: xDe(modo, ln, k), y: y - alto / 2 + k * alx + alx * 0.12, w: ln.ancho, h: alx * 0.76 }));
@@ -307,13 +316,13 @@ function texto(c, M, t, te, prof, op = {}) {
       const esClave = cl.has(w.t0);
       // la palabra que se dice crece 5 % y regresa en 0.3 s (sin rebotes: que se note sin romper la calma)
       const z = bloques ? 1 + 0.05 * Math.max(0, 1 - Math.abs((t - w.t0) / 0.3 - 0.35) / 0.65) * (t >= w.t0 ? 1 : 0) : 1;
-      const gris = Math.round((gancho ? 200 : bloques ? 190 : 165) + (gancho ? 55 : bloques ? 65 : 90) * a); // en bloques lo que falta por decirse se lee bien (solo más tenue)
+      const gris = Math.round((gancho ? 200 : disc ? 225 : bloques ? 190 : 165) + (gancho ? 55 : disc ? 30 : bloques ? 65 : 90) * a); // en bloques lo que falta por decirse se lee bien (solo más tenue)
       c.save();
       c.translate(x + w.pw / 2, y); c.scale(z, z); c.translate(-(x + w.pw / 2), -y);
       c.shadowColor = "rgba(0,0,0,0.85)"; c.shadowBlur = 14 * u; c.shadowOffsetY = 3 * u; c.globalAlpha = (gancho ? 0.85 + 0.15 * a : 0.5 + 0.5 * a) * entra; // el gancho se lee completo aunque falte decirlo
-      c.lineJoin = "round"; c.lineWidth = 9 * u; c.strokeStyle = "rgba(0,0,0,0.9)"; c.strokeText(w.s, x, y); // contorno negro: se lee con el brillo bajo
+      c.lineJoin = "round"; c.lineWidth = (disc ? 6 : 9) * u; c.strokeStyle = "rgba(0,0,0,0.9)"; c.strokeText(w.s, x, y); // contorno negro: se lee con el brillo bajo
       c.fillStyle = esClave && a > 0 ? mezcla(`rgb(${gris},${gris},${gris})`, acento, a) : `rgb(${gris},${gris},${gris})`; c.fillText(w.s, x, y);
-      if (a > 0.3) { c.shadowColor = esClave ? acento : `rgba(255,255,255,${0.55 * a})`; c.shadowBlur = (esClave ? 28 : 22) * u; c.shadowOffsetY = 0; c.globalAlpha = (esClave ? 0.9 : 1) * entra; c.fillText(w.s, x, y); }
+      if (a > 0.3 && (!disc || esClave)) { c.shadowColor = esClave ? acento : `rgba(255,255,255,${0.55 * a})`; c.shadowBlur = (esClave ? (disc ? 16 : 28) : 22) * u; c.shadowOffsetY = 0; c.globalAlpha = (esClave ? 0.9 : 1) * entra; c.fillText(w.s, x, y); }
       c.restore();
       x += w.pw + esp;
     }

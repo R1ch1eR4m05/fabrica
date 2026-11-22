@@ -82,7 +82,8 @@
       "clave": "subtitulos",
       "nombre": "Subtítulos",
       "valores": {
-        "bloques": "Bloques de 3-6 palabras con palabra clave en color",
+        "bloques": "Discretos: 2-4 palabras chicas abajo del rostro, clave en color (como los más virales)",
+        "grande": "Grandes: bloques de 3-6 palabras en letra romana (estilo anterior)",
         "frase": "Frase completa tenue (estilo anterior)"
       }
     }
