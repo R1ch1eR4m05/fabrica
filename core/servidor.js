@@ -120,12 +120,12 @@ function encolar(id, paso, fn) {
 
 async function siguiente() {
   if (actual || !fila.length) return;
-  const mia = (actual = { ...fila.shift(), desde: Date.now(), cancelado: false });
+  const mia = (actual = { ...fila.shift(), desde: Date.now(), ultimo: Date.now(), cancelado: false });
   const { id, paso, fn } = mia;
   P.marcar(id, paso, "trabajando");
   emitir({ id, paso, estado: "trabajando", progreso: 0, msg: "Trabajando…" });
   try {
-    const r = await fn((a) => { if (mia.cancelado) throw new Error("Cancelado"); emitir({ id, paso, estado: "trabajando", ...a }); });
+    const r = await fn((a) => { if (mia.cancelado) throw new Error("Cancelado"); mia.ultimo = Date.now(); emitir({ id, paso, estado: "trabajando", ...a }); });
     if (mia.cancelado) return;
     P.marcar(id, paso, "listo");
     const faltan = r?.fallos?.length || 0;
@@ -138,6 +138,22 @@ async function siguiente() {
     emitir({ id, paso, estado: "error", msg: e.message });
   } finally { if (actual === mia) { actual = null; siguiente(); } }
 }
+
+// vigilante: si el trabajo en marcha lleva mucho sin avisar nada (Flow colgado, una descarga que nunca termina…),
+// se suelta con error y la fila sigue con el siguiente video, en vez de quedarse todo «en fila» para siempre
+const SIN_AVANCE_MIN = { fondo: 30, voz: 15, render: 25, musica: 10 };
+setInterval(() => {
+  const a = actual; if (!a) return;
+  const lim = (SIN_AVANCE_MIN[a.paso] || 20) * 60000, quieto = Date.now() - (a.ultimo || a.desde);
+  if (quieto < lim) return;
+  a.cancelado = true; actual = null;
+  if (a.paso === "fondo") { try { matarFlow(); } catch {} }
+  const msg = `Se quedó trabado ${Math.round(quieto / 60000)} min sin avanzar: lo solté y sigo con el siguiente. Vuelve a intentar este paso cuando termine la fila.`;
+  console.warn(`[${a.id}/${a.paso}] ${msg}`);
+  P.marcar(a.id, a.paso, "error", { error: msg });
+  emitir({ id: a.id, paso: a.paso, estado: "error", msg });
+  siguiente();
+}, 60000).unref?.();
 
 // suelta lo que esté en marcha y vacía la fila (por si algo se quedó trabado)
 function cancelarTodo() {
