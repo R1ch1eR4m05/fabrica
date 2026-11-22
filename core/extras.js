@@ -8,6 +8,11 @@
 //    rehacerlo) y escribe VIDEO.md → lo usa «clona el estilo» (core/clonar-estilo.js).
 //  · huashu-motion (alchaincyf, MIT): skill de Claude Code para videos de lanzamiento de producto con música compuesta
 //    en código (anuncios de Levania). Se clona en extras/huashu-motion; Claude Code la usa leyendo su SKILL.md.
+//  · reanimate (Niaz Morshed, MIT): skill de Claude Code que graba una animación de referencia (página web, mp4, gif,
+//    Lottie), la reconstruye en código y la compara cuadro por cuadro hasta que coincide. Sirve para copiar el MOVIMIENTO
+//    de un texto o una transición que te guste (p. ej. la entrada de palabras de un reel) en una plantilla o en motion/.
+//    Se clona y su carpeta skills/reanimate se copia a .claude/skills/reanimate (Claude Code la ve como /reanimate).
+//    Necesita Bun (https://bun.sh); en su primer uso baja Chromium de Playwright y un ffmpeg propio (~250 MB). Windows: sin probar por su autor.
 import fs from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
@@ -33,6 +38,11 @@ export const EXTRAS = {
     repo: "https://github.com/alchaincyf/huashu-motion", commit: "f09dd7a29e2c9c574939d54db6c0768aad51232a",
     soloClonar: true,
   },
+  reanimate: {
+    nombre: "reanimate (copiar animaciones cuadro por cuadro)", licencia: "MIT",
+    repo: "https://github.com/NiazMorshed2007/reanimate", commit: "3f7a55a2986a84ca2173e86ee9127eefe31d046d",
+    soloClonar: true, skill: "skills/reanimate", necesita: "bun",
+  },
 };
 
 const correr = (cmd, args, opts = {}) => new Promise((ok) => {
@@ -45,7 +55,7 @@ const cache = {};
 export async function hayExtra(id) {
   if (cache[id] !== undefined) return cache[id];
   const x = EXTRAS[id]; if (!x) return false;
-  if (x.soloClonar) return (cache[id] = fs.existsSync(path.join(DIR_EXTRAS, id, ".git")));
+  if (x.soloClonar) return (cache[id] = fs.existsSync(path.join(DIR_EXTRAS, id, ".git")) && (!x.skill || fs.existsSync(path.join(RAIZ, ".claude", "skills", id, "SKILL.md"))));
   return (cache[id] = (await correr(PY(), x.prueba, { env: { ...process.env, PYTHONIOENCODING: "utf-8" } })).codigo === 0);
 }
 export async function estadoExtras() {
@@ -78,6 +88,16 @@ async function pip(args) {
 export async function instalarExtra(id, avisar = console.log) {
   const x = EXTRAS[id]; if (!x) throw new Error(`No conozco «${id}». Opciones: ${Object.keys(EXTRAS).join(", ")}`);
   const dir = await clonar(id, x, avisar);
+  if (x.skill) { // la skill va a .claude/skills/<id> de la fábrica: Claude Code la carga al abrirse aquí (ignorada por git)
+    const destino = path.join(RAIZ, ".claude", "skills", id);
+    fs.rmSync(destino, { recursive: true, force: true });
+    fs.cpSync(path.join(dir, x.skill), destino, { recursive: true });
+    avisar(`Skill copiada a .claude/skills/${id} (en Claude Code: /${id} …).`);
+  }
+  if (x.necesita) {
+    const r = await correr(x.necesita, ["--version"], { shell: process.platform === "win32" });
+    if (r.codigo !== 0) avisar(`Ojo: ${id} necesita ${x.necesita} y no lo encontré. Instálalo una vez: ${process.platform === "win32" ? 'powershell -c "irm bun.sh/install.ps1 | iex"' : "curl -fsSL https://bun.sh/install | bash"} (o npm i -g bun).`);
+  }
   if (!x.soloClonar) {
     if (x.pip.length) { avisar(`Instalando lo que necesita ${id} (${x.pip.join(", ")})…`); await pip(x.pip); }
     avisar(`Instalando ${id}…`);
