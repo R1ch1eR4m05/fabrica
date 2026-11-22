@@ -56,10 +56,10 @@ const PLANTILLAS = {
   },
   monarca: {
     nombre: "Monarca · reflexión estoica",
-    descripcion: "Hispanos de 20 a 45 años (México y EE. UU.) que buscan disciplina, fortaleza mental y paz: soledad, energía, vejez, dinero, familia, propósito.",
+    descripcion: "Mamás y papás hispanos de 25 a 50 años (México y EE. UU.): la vida diaria de la familia vista con estoicismo (hijos, pareja, padres que envejecen, la casa, el trabajo) para tener disciplina, carácter y paz.",
     hashtags: ["estoicismo", "disciplina", "reflexion", "mentalidadfuerte", "crecimientopersonal"],
-    busquedas: ["reflexiones estoicas", "frases de disciplina"],
-    marca: "Monarca: monólogos sobrios y directos, voz grave de hombre, estatuas y paisajes en un solo tono. Verdades incómodas y qué hacer hoy.",
+    busquedas: ["reflexiones estoicas", "frases de disciplina", "estoicismo familia", "stoic parenting"],
+    marca: "Monarca: monólogos sobrios y directos, voz grave de hombre, estatuas y paisajes en un solo tono. Verdades incómodas de la vida diaria en familia y qué hacer hoy.",
     estilos: ["reflexion-estatuas", "filosofia-larga"],
     opciones: { "reflexion-estatuas": { tono: "turquesa", logo: "monarca" }, "filosofia-larga": { subtitulos: "si" } },
     cierres: ["Envíale esto a alguien que necesita oírlo hoy."],
@@ -99,8 +99,18 @@ function sembrar() {
       c2.migraciones = [...(c2.migraciones || []), "largo-y-seguimiento"];
       fs.writeFileSync(f, JSON.stringify(c2, null, 2));
     }
+    // 22 nov 2026: Richie enfocó Monarca en el lado familiar de la vida diaria (una sola vez; lo que edite después en el panel se respeta)
+    const c3 = JSON.parse(fs.readFileSync(f, "utf8"));
+    if (!(c3.migraciones || []).includes("vida-familiar")) {
+      for (const k of ["descripcion", "marca"]) c3[k] = PLANTILLAS.monarca[k];
+      c3.busquedas = [...new Set([...(c3.busquedas || []), ...PLANTILLAS.monarca.busquedas])];
+      if (!String(c3.adaptacion || "").includes("Enfoque (22 nov 2026")) c3.adaptacion = `${c3.adaptacion || ""} ${ENFOQUE_MONARCA}`.trim();
+      c3.migraciones = [...(c3.migraciones || []), "vida-familiar"];
+      fs.writeFileSync(f, JSON.stringify(c3, null, 2));
+    }
   } catch {}
 }
+export const ENFOQUE_MONARCA = "Enfoque (22 nov 2026, por un reel de 29 M de vistas): la filosofía aplicada a la vida diaria de la familia. Cada video parte de una ESCENA CONCRETA de casa (el niño que no lava su plato, el papá que nunca dice te quiero, la pareja que revisa el celular, el hijo adulto que no se va, la suegra, la mesa en silencio) con una opinión firme que algunos discuten, y sube de tono (la escena → en qué se convierte con los años → qué hacer hoy). Que una mamá o un papá se lo mande a su pareja o a su hijo. Nada de filosofía abstracta.";
 export const CIERRE_ENVIO = "Envíale esto a alguien que necesita oírlo hoy.";
 // cuentas a seguir (las que no se replican van con riesgo: true y su motivo)
 const SEGUIMIENTO_MONARCA = [

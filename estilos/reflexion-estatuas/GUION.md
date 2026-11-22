@@ -2,16 +2,24 @@
 
 Short/Reel de **20 a 30 s** (55 a 80 palabras de voz) en segunda persona ("tú"), voz grave de hombre, tono sobrio y directo. Español de México. Nace siempre de un video viral del formato (estoicismo, taoísmo, filosofía oriental): adapta la idea clásica, nunca copies frases de otros creadores. Cada video pertenece a una **serie** numerada de Monarca (hoy: "Actitudes de Acero"); la fábrica le pone el número.
 
+## Enfoque de Monarca (22 nov 2026): la vida diaria de la familia
+Un reel con este mismo estilo (estatua turquesa, letra romana, paisajes) llegó a 29 M de vistas y 229 mil compartidos en Facebook. Lo que lo hizo crecer fue el TEMA, no el diseño: una escena de casa con una opinión firme («un niño que no lava su plato no tiene un problema de disciplina: tiene un problema de futuro»).
+- Parte de una **escena concreta de casa**: hijos, pareja, papás que envejecen, la mesa, el celular en la cena, el dinero del mes, los quehaceres. Nada de filosofía abstracta («la mente es poderosa»).
+- **Opinión firme que algunos discuten**, dicha con respeto (sin culpar ni burlarse de nadie).
+- **Sube de tono**: la escena de hoy → en qué se convierte con los años → qué hacer hoy en tu casa.
+- Piensa en quién lo va a reenviar: la mamá a su pareja, el papá a su hijo. El cierre de voz sigue siendo «Envíale esto a alguien que…» (p. ej. «…a alguien que está criando hijos»), y la descripción termina con una pregunta para comentar desde su casa («¿En tu casa quién lava los platos?»).
+- El autor clásico entra como respaldo («Epicteto lo decía…»), solo si la cita es real y verificada.
+
 ## Estructura (20-30 s, 5 a 7 escenas)
 1. **Gancho con el conflicto (escena 1, ≤ 2 s):** 4 a 9 palabras que nombran el problema real y se entienden solas; sale completo en pantalla desde el cuadro 0 ("Tu enojo es el negocio de otros.").
 2. **Idea central (1-2 escenas):** la enseñanza clásica dicha en simple, con su autor si lo es de verdad ("Epicteto lo sabía: no te altera lo que pasa, sino tu juicio.").
-3. **Ejemplo de hoy (1-2 escenas):** dónde le pasa esto a alguien en 2026 (el celular, el jefe, la familia, las deudas). Concreto, no abstracto.
+3. **Ejemplo de hoy (1-2 escenas):** cómo se ve esto en una casa de 2026 (la cena, los hijos, la pareja, los papás, las cuentas). Concreto, no abstracto.
 4. **Qué hacer (1 escena):** una acción simple para hoy.
 5. **Cierre con envío privado (última escena):** la voz termina con el cierre autorizado de Monarca: "Envíale esto a alguien que necesita oírlo hoy." (puedes cambiar el final por algo más preciso del tema, p. ej. "…a alguien que no suelta el celular", pero siempre empieza con "Envíale esto a alguien que").
 
 ## Metadatos (van en `subir`, la fábrica los valida antes de programar)
 - `subir.titulos`: **3 opciones** con la fórmula [número o promesa concreta] + [problema real] + [autor]: "3 reglas de Epicteto para que tu enojo no sea negocio de otros", "Lo que Séneca haría con tu ansiedad del domingo". Nada de títulos vacíos, genéricos ("Reflexión estoica") ni poéticos sin promesa. La fábrica puntúa y elige (criterio en `core/metadatos.js`).
-- `subir.descripcion`: 1-2 líneas con la idea y la promesa. `subir.hashtags`: 3 relevantes (sin #).
+- `subir.descripcion`: 1-2 líneas con la idea y la promesa, y al final una pregunta para comentar desde su casa. `subir.hashtags`: 3 relevantes (sin #).
 
 ## Campos
 - `estiloVisual` (inglés, una línea para todas las imágenes), por ejemplo: "Dark cinematic photo of ancient Greek marble statues, dramatic moody low light, misty, high contrast, monochrome, shallow depth of field".

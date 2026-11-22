@@ -30,12 +30,12 @@ export function informeReciente(nicho = "monarca") {
   return fs_[0] ? path.join(INV.DIR_INFORMES, fs_[0]) : null;
 }
 
-function pedidoGuion(v, cfg) {
+function pedidoGuion(v, cfg, nicho = "monarca") {
   const b = v.base, cierre = (cfg.cierres || [])[0] || "Envíale esto a alguien que necesita oírlo hoy.";
   const comun = `Toma la IDEA de la publicación de referencia, NO su guion ni sus frases: escríbelo original, en español natural de México, para Monarca.
 Idea: ${b.idea || ""}. Frase de partida: ${b.frase || ""}. Tema: ${b.tema || ""}. ${b.adaptacion ? `Adaptación: ${b.adaptacion}.` : ""} ${b.notaAdaptacion ? `Indicación de Richie: ${b.notaAdaptacion}.` : ""}
 Gancho: la primera frase se entiende sola y dura 2 segundos o menos. Títulos (subir.titulos, 3): [número o promesa concreta] + [problema real] + [autor si es de verdad].
-Cierre de voz: "${cierre}" (puedes precisar el final, pero empieza con "Envíale esto a alguien que").`;
+Cierre de voz: "${cierre}" (puedes precisar el final, pero empieza con "Envíale esto a alguien que").${nicho === "monarca" ? `\n${INV.ENFOQUE_MONARCA}\nLa descripción (subir.descripcion) termina con una pregunta que invite a comentar desde la propia casa («¿En tu casa quién lava los platos?»).` : ""}`;
   if (v.tipo === "largo") return `${comun}\nVideo LARGO de 10 a 15 minutos derivado del Short ganador: intro con promesa, 3-5 capítulos con una idea por capítulo (campo capitulo), cierre con suscripción y siguiente video de la serie.`;
   if (v.tipo === "experimento") return `${comun}\nEXPERIMENTO de un formato que aún no llega al español (LO QUE VIENE): ${b.idea || b.frase}. Short de 20 a 30 segundos con voz en off.`;
   return `${comun}\nShort/Reel de 20 a 30 segundos: gancho con el conflicto → idea central → ejemplo de hoy → qué hacer → cierre.`;
@@ -58,7 +58,7 @@ export async function armarPlanDia({ archivo, nicho = "monarca", forzar = false,
     v.base.notaAdaptacion = notas[v.base.n] || v.base.notaAdaptacion || "";
     v.inspiracion = (v.base.inspiradaEn || []).concat(v.base.publicacion?.link || []).filter((x, k, a) => x && a.indexOf(x) === k);
     v.flowPrompt = v.base.flowPrompt || ""; v.hashtags = v.base.hashtags || cfg.hashtags?.slice(0, 3) || [];
-    v.pedido = pedidoGuion(v, cfg);
+    v.pedido = pedidoGuion(v, cfg, nicho);
     if (!v.guion && conIA && hayIA()) {
       try { const { escribirGuion } = await import("./ia.js"); v.guion = await escribirGuion({ estilo: v.estilo, formato: v.formato, duracion: v.duracion, titulo: v.base.frase || v.base.idea, idea: v.pedido }); }
       catch (e) { v.errorGuion = e.message; }
