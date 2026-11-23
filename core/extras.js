@@ -30,7 +30,7 @@ export const EXTRAS = {
   },
   "rea-video": {
     nombre: "rea-video (desarmar videos)", licencia: "Apache-2.0",
-    repo: "https://github.com/JuneYaooo/rea-video", commit: "538eb3a757db94826cb90c4297279e50c5dd0f83",
+    repo: "https://github.com/JuneYaooo/rea-video", commit: "c7162340f94b0b6fc61d0bfeb3c6f0fbe8a4f166" /* 23 nov 2026: arreglos de Windows, Gemini directo para mirar el video */,
     pip: [], sinDeps: false, prueba: ["-c", "import rea_video.cli"],
   },
   "huashu-motion": {

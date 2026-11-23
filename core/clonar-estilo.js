@@ -154,18 +154,26 @@ export function guardarEstilo(id, j, pedido = "") {
 }
 
 // ---------------- rea-video (JuneYaooo, Apache-2.0; ver core/extras.js) ----------------
-// Sin VLM por defecto (gratis, local). Si en el .env están REA_VLM_BASE_URL / REA_VLM_API_KEY / REA_VLM_MODEL, mira el video con ese modelo.
+// Mira el video con un modelo (VLM) si hay con qué: REA_VLM_BASE_URL/REA_VLM_API_KEY/REA_VLM_MODEL o, desde la versión
+// del 23 nov 2026, la GEMINI_API_KEY que ya usa la fábrica (le manda el video a Google; gasta cuota de Gemini).
+// REA_VLM=no en el .env lo apaga. Si con modelo falla (cuota, red), se repite local sin modelo.
 async function desarmarConRea(video, salida, avisar) {
   const { hayExtra, PY } = await import("./extras.js");
   if (!(await hayExtra("rea-video"))) return null;
   avisar({ progreso: 0.45, msg: "rea-video está desarmando el video toma por toma (1-3 min)…" });
-  const args = ["-m", "rea_video", "decompose", video, "-o", salida, "--lang", "en", "--no-ocr", "--no-stems", ...(process.env.REA_VLM_BASE_URL ? ["--vlm"] : ["--no-vlm"])];
-  const r = await new Promise((ok) => {
+  const conVlm = process.env.REA_VLM !== "no" && !!(process.env.REA_VLM_BASE_URL || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY);
+  const correrRea = (vlm) => new Promise((ok) => {
+    const args = ["-m", "rea_video", "decompose", video, "-o", salida, "--lang", "en", "--no-ocr", "--no-stems", vlm ? "--vlm" : "--no-vlm"];
     const p = spawn(PY(), args, { env: { ...process.env, PYTHONIOENCODING: "utf-8" } });
     let o = ""; p.stdout.on("data", (d) => (o += d)); p.stderr.on("data", (d) => (o += d));
     const t = setTimeout(() => { try { p.kill(); } catch {} }, 15 * 60e3);
     p.on("error", (e) => { clearTimeout(t); ok({ c: -1, o: e.message }); }); p.on("close", (c) => { clearTimeout(t); ok({ c, o }); });
   });
+  let r = await correrRea(conVlm);
+  if (conVlm && (r.c !== 0 || !fs.existsSync(path.join(salida, "VIDEO.md")))) {
+    avisar({ progreso: 0.5, msg: "rea-video con modelo no pudo (cuota o red); lo repito sin modelo…" });
+    r = await correrRea(false);
+  }
   const md = path.join(salida, "VIDEO.md");
   if (r.c !== 0 || !fs.existsSync(md)) { console.warn("  · rea-video:", r.o.trim().split("\n").slice(-2).join(" ")); return null; }
   return { videoMd: path.relative(path.dirname(salida), md).replace(/\\/g, "/"), reporte: fs.existsSync(path.join(salida, "report.html")) ? "rea/report.html" : null };
