@@ -1496,6 +1496,53 @@ function escuchar() {
 
 $("#btnNuevo").onclick = () => inicio();
 $("#btnInv").onclick = () => investigador();
+$("#btnClonar").onclick = () => clonador();
+
+// ---------- Clonar el estilo de un video (medidas + rea-video toma por toma + prompt maestro) ----------
+let relojClonar = null;
+async function clonador() {
+  S.actual = null; S.vista = "clonar"; parar(); pintarLista(); history.replaceState(null, "", "#clonar");
+  clearTimeout(relojClonar);
+  const d = await api("/api/referencias");
+  const t = d.trabajo;
+  const tarjeta = (r) => `<div class="card" style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b>${h(r.id)}</b><span class="estado">${h(r.medidas.relacion || "")} · ${Math.round(r.medidas.duracion || 0)} s · ${r.medidas.escenas || "?"} tomas (${r.medidas.cortesPorSegundo ?? "?"} cortes/s)</span></div>
+      ${r.resumen ? `<p style="margin:6px 0">${h(r.resumen)}</p>` : `<p class="estado" style="margin:6px 0">${r.listo ? "" : "Medido; falta el análisis final (pídeselo a Claude Code: «termina el estilo de " + h(r.id) + "»)."}</p>`}
+      <div style="display:flex;gap:4px;margin:6px 0">${r.medidas.paleta.map((c) => `<span title="${h(c.hex)} ${c.pct}%" style="width:26px;height:18px;border-radius:4px;background:${h(c.hex)}"></span>`).join("")}</div>
+      <div style="display:flex;gap:4px;overflow-x:auto">${r.cuadros.map((c) => `<img src="/referencias/${encodeURIComponent(r.id)}/${c.split("/").map(encodeURIComponent).join("/")}" style="height:110px;border-radius:6px">`).join("")}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+        ${r.rea ? `<a class="btn" target="_blank" href="/referencias/${encodeURIComponent(r.id)}/rea/report.html">Desarme toma por toma (rea-video)</a>` : r.reaMd ? `<a class="btn" target="_blank" href="/referencias/${encodeURIComponent(r.id)}/rea/VIDEO.md">Desarme (VIDEO.md)</a>` : `<span class="estado">Sin desarme toma por toma (instala rea-video: node fabrica.js instalar-extras rea-video)</span>`}
+        ${r.prompt ? `<a class="btn" target="_blank" href="/referencias/${encodeURIComponent(r.id)}/prompt-maestro.md">Prompt maestro</a><button class="btn" data-copiaprompt="${h(r.id)}">Copiar prompt</button>` : ""}
+      </div></div>`;
+  $("#main").innerHTML = `
+    <div class="card" style="margin-bottom:16px">
+      <h2 style="margin-top:0">Clonar el estilo de un video</h2>
+      <p class="estado">Mide cortes, ritmo, brillo y colores, saca cuadros clave y, con rea-video, lo desarma toma por toma (qué es grabado, IA o animación, cámara y cómo rehacerlo). Solo se copia la forma, nunca textos, marcas ni personajes. Con Gemini en el .env, rea-video mira el video (gasta cuota de Gemini).</p>
+      <label>Enlace del video (YouTube, TikTok, Instagram; Facebook casi nunca se deja bajar)</label>
+      <input id="clEnlace" placeholder="https://…" style="width:100%">
+      <div style="margin:8px 0">o sube el .mp4: <input type="file" id="clArchivo" accept="video/*"></div>
+      <label>Nombre (opcional)</label><input id="clNombre" placeholder="reel-estatuas-29m" style="width:100%">
+      <label>¿Qué quieres cambiar o lograr? (opcional)</label><input id="clPedido" placeholder="mismo ritmo, pero con nuestras estatuas y en español" style="width:100%">
+      <div style="margin-top:10px"><button class="btn primario" id="clIr" ${t?.estado === "trabajando" ? "disabled" : ""}>Analizar el video</button></div>
+      ${t ? `<p class="estado" style="margin-top:10px">${t.estado === "trabajando" ? "⏳ " : t.estado === "error" ? "⚠️ " : "✅ "}${h(t.msg || "")}${t.estado === "trabajando" && t.progreso ? ` (${Math.round(t.progreso * 100)} %)` : ""}</p>` : ""}
+    </div>
+    ${d.lista.length ? d.lista.map(tarjeta).join("") : `<p class="estado">Aún no has clonado ningún video.</p>`}`;
+  $("#clIr").onclick = async () => {
+    const f = $("#clArchivo").files[0], nombre = $("#clNombre").value.trim(), pedido = $("#clPedido").value.trim();
+    try {
+      if (f) {
+        const r = await fetch(`/api/referencias/subir?nombre=${encodeURIComponent(nombre)}&pedido=${encodeURIComponent(pedido)}`, { method: "POST", headers: { "x-nombre": encodeURIComponent(f.name) }, body: f });
+        if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || "No se pudo subir.");
+      } else await api("/api/referencias", "POST", { enlace: $("#clEnlace").value.trim(), nombre, pedido });
+      avisar("Analizando el video… (1-5 min)"); clonador();
+    } catch (e) { avisar(e.message, true); }
+  };
+  for (const b of document.querySelectorAll("[data-copiaprompt]")) b.onclick = async () => {
+    const txt = await (await fetch(`/referencias/${encodeURIComponent(b.dataset.copiaprompt)}/prompt-maestro.md?v=${Date.now()}`)).text();
+    try { await navigator.clipboard.writeText(txt); avisar("Prompt copiado."); } catch { prompt("Copia el prompt:", txt); }
+  };
+  if (t?.estado === "trabajando") relojClonar = setTimeout(() => { if (S.vista === "clonar") clonador(); }, 4000);
+}
 $(".logo").onclick = inicio; $(".logo").style.cursor = "pointer";
-cargar().then(() => { escuchar(); const id = location.hash.slice(1); id === "investigador" ? investigador() : id && S.proyectos.some((p) => p.id === id) ? abrir(id) : inicio(); })
+cargar().then(() => { escuchar(); const id = location.hash.slice(1); id === "investigador" ? investigador() : id === "clonar" ? clonador() : id && S.proyectos.some((p) => p.id === id) ? abrir(id) : inicio(); })
   .catch((e) => avisar("No pude conectar con la fábrica: " + e.message, true));

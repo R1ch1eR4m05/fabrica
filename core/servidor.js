@@ -44,6 +44,7 @@ function correrInvestigacion(nicho) {
 // ---- trabajos (uno a la vez, en fila) ----
 const fila = [];
 let actual = null;
+let clonando = null; // «clonar el estilo» corre aparte de la fila (no usa proyecto)
 const oyentes = new Set();
 const ultimos = {}; // último aviso por proyecto
 
@@ -295,6 +296,41 @@ async function api(req, res, partes) {
         FS.loginCuenta(Number(accion), (r) => emitir({ id: "_flow", paso: "fondo", estado: r.ok ? "listo" : "error", msg: r.ok ? `Sesión guardada en la cuenta ${accion} de Flow.` : `No se detectó la sesión en la cuenta ${accion}: ${r.salida}` }));
         return json(res, 200, { ok: true });
       } catch (e) { return json(res, 400, { error: e.message }); }
+    }
+  }
+  if (recurso === "referencias") { // «clona el estilo»: medir un video (cortes, ritmo, paleta) + rea-video toma por toma + prompt maestro
+    const CL = await import("./clonar-estilo.js");
+    const empezar = (origen, nombre, pedido) => {
+      if (clonando?.estado === "trabajando") throw new Error("Ya estoy analizando otro video; espera a que termine.");
+      clonando = { estado: "trabajando", msg: "Empezando…", progreso: 0, desde: Date.now() };
+      CL.sacarEstilo(origen, { nombre, pedido, avisar: (a) => Object.assign(clonando, typeof a === "string" ? { msg: a } : a) })
+        .then((r) => { clonando = { estado: "listo", id: r.id, pendiente: !!r.pendiente, msg: r.pendiente ? "Medido y desarmado. El análisis final lo hace Claude Code (no hay ANTHROPIC_API_KEY): dile «termina el estilo de " + r.id + "»." : "Listo: prompt maestro guardado." }; })
+        .catch((e) => { clonando = { estado: "error", msg: e.message }; })
+        .finally(() => { if (origen.includes(`${path.sep}_subidas${path.sep}`)) fs.rm(origen, { force: true }, () => {}); }); // la subida ya quedó copiada como referencias/<id>/video.mp4
+    };
+    if (m === "GET" && !id) {
+      const lista = CL.leerEstilosClonados().map((x) => {
+        const d = CL.dirReferencia(x.id), hay = (f) => fs.existsSync(path.join(d, f));
+        let resumen = ""; try { resumen = JSON.parse(fs.readFileSync(path.join(d, "estilo.json"), "utf8")).resumen || ""; } catch {}
+        return { id: x.id, listo: x.listo, resumen, medidas: { relacion: x.medidas.relacion, duracion: x.medidas.duracion, escenas: x.medidas.escenas, cortesPorSegundo: x.medidas.cortesPorSegundo, paleta: (x.medidas.paleta || []).slice(0, 6), origen: x.medidas.origen, fecha: x.medidas.fecha },
+          cuadros: (x.medidas.cuadros || []).slice(0, 8).map((c) => c.archivo), rea: hay("rea/report.html"), reaMd: hay("rea/VIDEO.md"), prompt: hay("prompt-maestro.md") };
+      }).sort((a, b) => String(b.medidas.fecha).localeCompare(String(a.medidas.fecha)));
+      return json(res, 200, { lista, trabajo: clonando });
+    }
+    if (m === "POST" && !id) {
+      const b = await cuerpo(req);
+      if (!/^https?:\/\//i.test(b.enlace || "")) return json(res, 400, { error: "Pega un enlace (YouTube, TikTok, Instagram…) o sube el .mp4." });
+      try { empezar(b.enlace, b.nombre, b.pedido || ""); } catch (e) { return json(res, 409, { error: e.message }); }
+      return json(res, 200, { ok: true });
+    }
+    if (m === "POST" && id === "subir") { // el .mp4 va en el cuerpo; nombre y pedido en la URL
+      const q = new URL(req.url, "http://x").searchParams;
+      const tmp = path.join(CL.dirReferencias, "_subidas"); fs.mkdirSync(tmp, { recursive: true });
+      const f = path.join(tmp, `subida-${Date.now()}.mp4`);
+      await new Promise((ok, mal) => { const w = fs.createWriteStream(f); req.pipe(w); w.on("finish", ok); w.on("error", mal); });
+      const nombre = q.get("nombre") || decodeURIComponent(req.headers["x-nombre"] || "").replace(/\.[^.]+$/, "");
+      try { empezar(f, nombre, q.get("pedido") || ""); } catch (e) { return json(res, 409, { error: e.message }); }
+      return json(res, 200, { ok: true });
     }
   }
   if (recurso === "voz" && id === "pronunciacion") { // palabras que la voz lee mal → cómo decirlas (ajustes.json → pronunciacion)
