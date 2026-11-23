@@ -7,13 +7,13 @@
 // Modelo por defecto: Nano Banana 2 (gemini-3.1-flash-image-preview). Cámbialo con APIMART_MODELO_IMAGEN en el .env.
 import fs from "node:fs";
 import path from "node:path";
-import { CFG } from "./config.js";
+import { CFG, recargarLlaves } from "./config.js";
 import { dirProyecto, leer } from "./proyectos.js";
 import { dirClips, clipDeEscena } from "./historia.js";
 
 const BASE = "https://api.apimart.ai/v1";
 const RATIOS = ["1:1", "3:2", "2:3", "4:3", "3:4", "16:9", "9:16", "5:4", "4:5"];
-export const hayAPIMart = () => !!CFG.apimartKey;
+export const hayAPIMart = () => { recargarLlaves(); return !!CFG.apimartKey; };
 const modelo = () => process.env.APIMART_MODELO_IMAGEN || "gemini-3.1-flash-image-preview";
 const espera = (ms) => new Promise((ok) => setTimeout(ok, ms));
 

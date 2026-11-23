@@ -227,7 +227,7 @@ Se instalan una vez en cada equipo con `node fabrica.js instalar-extras` (o una 
 - Revisados y descartados (nov 2026): lemo-opuscar (sus STYLE.md son CC BY-NC: no comerciales), pixelfx (pixel art, no va con las marcas), Blender MCP y react-three-rapier (3D/física que no se usa), Wan 2.2 / LTX-Video (piden GPU grande; el VPS no tiene). HyperFrames y claude-animated-shorts ya estaban (motion y caricatura).
 
 ## Reglas
-- No pidas llaves por el chat: van en `.env`.
+- No pidas llaves por el chat: van en `.env`. Las llaves de servicios (APIMart, ElevenLabs, Gemini, Pexels, Apify, GHL…) se vuelven a leer del `.env` sin reiniciar (`recargarLlaves` en `core/config.js`, al empezar cada paso de la fila y al checar APIMart; aguanta el BOM del Bloc de notas). Puerto, host y rutas sí necesitan reiniciar.
 - No borres nada de `proyectos/` ni de `listos/` sin que Richie lo pida.
 - Código y textos propios: no copies código ni textos de plantillas de terceros (la "Plantilla gratis de Animaciones" de Skool no permite reutilizarse para esto).
 

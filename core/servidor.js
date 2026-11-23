@@ -121,6 +121,7 @@ function encolar(id, paso, fn) {
 async function siguiente() {
   if (actual || !fila.length) return;
   const mia = (actual = { ...fila.shift(), desde: Date.now(), ultimo: Date.now(), cancelado: false });
+  try { (await import("./config.js")).recargarLlaves(); } catch {} // por si Richie acaba de pegar una llave en el .env
   const { id, paso, fn } = mia;
   P.marcar(id, paso, "trabajando");
   emitir({ id, paso, estado: "trabajando", progreso: 0, msg: "Trabajando…" });

@@ -54,6 +54,25 @@ export const CFG = {
   ffprobe: e.FFPROBE_PATH || ffprobeNpm || "ffprobe",
 };
 
+// Las llaves se vuelven a leer del .env sin reiniciar la fábrica (Richie pega una llave nueva y la usa de inmediato).
+// Solo llaves de servicios: puerto, host y rutas siguen siendo las del arranque.
+const LLAVES = { anthropicKey: "ANTHROPIC_API_KEY", elevenKey: "ELEVENLABS_API_KEY", elevenVoz: "ELEVENLABS_VOICE_ID", googleTtsKey: "GOOGLE_TTS_KEY",
+  pexelsKey: "PEXELS_API_KEY", pixabayKey: "PIXABAY_API_KEY", geminiKey: "GEMINI_API_KEY", apimartKey: "APIMART_API_KEY", apifyToken: "APIFY_TOKEN",
+  ghlToken: "GHL_TOKEN", ghlLocation: "GHL_LOCATION_ID", ghlUsuario: "GHL_USER_ID" };
+let ultimaLectura = 0;
+export function recargarLlaves({ forzar = false } = {}) {
+  const f = path.join(RAIZ, ".env");
+  try {
+    const m = fs.statSync(f).mtimeMs;
+    if (!forzar && m <= ultimaLectura) return;
+    ultimaLectura = m;
+    const { parseEnv } = createRequire(import.meta.url)("node:util");
+    const v = parseEnv(fs.readFileSync(f, "utf8").replace(/^\uFEFF/, "")); // el Bloc de notas de Windows a veces guarda con BOM
+    for (const [k, nombre] of Object.entries(LLAVES)) if (v[nombre] !== undefined) { process.env[nombre] = v[nombre]; CFG[k] = String(v[nombre]).trim(); }
+  } catch {}
+}
+try { ultimaLectura = fs.statSync(path.join(RAIZ, ".env")).mtimeMs; } catch {}
+
 // voz por estilo: VOZ_TERROR_LINTERNA=xxxx en el .env (si no, ELEVENLABS_VOICE_ID)
 export const vozDeEstilo = (id) => process.env["VOZ_" + id.toUpperCase().replace(/[^A-Z0-9]/g, "_")] || CFG.elevenVoz;
 
