@@ -23,6 +23,13 @@ export async function duracion(archivo) {
   return Number(o.trim());
 }
 
+// ancho y alto del primer video (o imagen) del archivo
+export async function medidas(archivo) {
+  const o = await correr(FFPROBE, ["-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height", "-of", "csv=p=0:s=x", archivo]);
+  const [w, h] = o.trim().split("x").map(Number);
+  return { w: w || 0, h: h || 0 };
+}
+
 // Proceso ffmpeg al que se le van pasando imágenes (para el render)
 export function ffmpegTubo(args) {
   const p = spawn(CFG.ffmpeg, ["-v", "error", "-y", ...args], { stdio: ["pipe", "ignore", "pipe"] });

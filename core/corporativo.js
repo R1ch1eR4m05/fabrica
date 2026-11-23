@@ -10,7 +10,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { FORMATOS } from "./config.js";
 import { dirProyecto, leer, guardar } from "./proyectos.js";
-import { ffmpeg, duracion } from "./ff.js";
+import { ffmpeg, duracion, medidas } from "./ff.js";
 import { dirClips, clipDeEscena } from "./historia.js";
 
 export const dirMaterial = (id) => path.join(dirProyecto(id), "material");
@@ -81,10 +81,21 @@ export async function prepararCorporativo(id, avisar = () => {}) {
         const corte = path.join(dirClips(id), `corte-${n}.mp4`);
         const D = await duracion(src).catch(() => 0);
         const a = Math.max(0, +e.desde || 0), b = Math.min(D || Infinity, +e.hasta || (a + 12));
-        if (!fs.existsSync(corte) || fs.statSync(corte).mtimeMs < fs.statSync(src).mtimeMs || JSON.stringify([a, b]) !== (fs.existsSync(corte + ".json") ? fs.readFileSync(corte + ".json", "utf8") : "")) {
-          avisar({ paso: "render", msg: `Escena ${n}: recortando ${path.basename(src)} (${a}-${b.toFixed(1)} s)…` });
-          await ffmpeg(["-ss", String(a), "-i", src, "-t", String(Math.max(0.5, b - a)), "-an", "-vf", `scale=${fmt.w}:${fmt.h}:force_original_aspect_ratio=increase,crop=${fmt.w}:${fmt.h},fps=30`, "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p", corte]);
-          fs.writeFileSync(corte + ".json", JSON.stringify([a, b]));
+        // video vertical en proyecto horizontal (o al revés): si se recorta para llenar se pierde 2/3 de la imagen
+        // (y los letreros quemados de los Shorts), así que va completo al centro sobre su misma imagen desenfocada.
+        // En el guion: "ajuste": "llenar" (recorta) | "fondo" (desenfocado); sin él, se decide por la forma.
+        const m = await medidas(src).catch(() => ({ w: 0, h: 0 }));
+        const dif = m.w && m.h ? Math.abs(Math.log((m.w / m.h) / (fmt.w / fmt.h))) : 0;
+        const ajuste = e.ajuste === "llenar" || e.ajuste === "fondo" ? e.ajuste : dif > 0.35 ? "fondo" : "llenar";
+        const marca = JSON.stringify([a, b, ajuste]);
+        if (!fs.existsSync(corte) || fs.statSync(corte).mtimeMs < fs.statSync(src).mtimeMs || marca !== (fs.existsSync(corte + ".json") ? fs.readFileSync(corte + ".json", "utf8") : "")) {
+          avisar({ paso: "render", msg: `Escena ${n}: recortando ${path.basename(src)} (${a}-${b.toFixed(1)} s${ajuste === "fondo" ? ", con fondo desenfocado" : ""})…` });
+          const W = fmt.w, H = fmt.h;
+          const filtro = ajuste === "fondo"
+            ? ["-filter_complex", `[0:v]split=2[a][b];[a]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},boxblur=40:2,eq=brightness=-0.12:saturation=0.85[bg];[b]scale=${W}:${H}:force_original_aspect_ratio=decrease[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2,fps=30,format=yuv420p[v]`, "-map", "[v]"]
+            : ["-vf", `scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},fps=30`];
+          await ffmpeg(["-ss", String(a), "-i", src, "-t", String(Math.max(0.5, b - a)), "-an", ...filtro, "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p", corte]);
+          fs.writeFileSync(corte + ".json", marca);
         }
         archivo = corte; tipo = "video";
       }
