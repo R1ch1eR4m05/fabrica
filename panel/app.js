@@ -317,6 +317,7 @@ function pintarProyecto() {
             ${p.conVoz !== false && S.info.voz ? `<select id="vModelo" title="Modelo de voz para los videos de este estilo" style="max-width:340px"><option>Modelo de voz…</option></select><button class="mini" id="vComparar" title="Genera el mismo párrafo con cada modelo para oírlos y ver cuánto cuesta cada uno">Comparar modelos</button>` : ""}
           </div>
           <div id="vComparacion"></div>
+          ${p.conVoz !== false && S.info.voz ? `<details style="margin:6px 0"><summary class="estado">Pronunciación (palabras que la voz lee mal)</summary><div class="estado" style="margin:4px 0">Una por renglón: <code>escrita = como se dice</code>. Los subtítulos siguen mostrando la escrita. Vale para todos los videos; luego usa 🎙 en la escena para rehacer solo esa.</div><textarea id="vPron" rows="3" style="width:100%;font:13px ui-monospace,monospace" placeholder="SRYLED = eseerreiled"></textarea><button class="mini" id="vPronG">Guardar pronunciación</button></details>` : ""}
           ${p.conVoz !== false && !S.info.voz ? `<div class="nota">Sin llave de ElevenLabs se genera una <b>voz de prueba muda</b> con tiempos estimados, para ensayar el video. Pon <code>ELEVENLABS_API_KEY</code> y <code>ELEVENLABS_VOICE_ID</code> en el <code>.env</code> para la voz real.${est?.vozSugerida ? "<br>Voz sugerida: " + h(est.vozSugerida) : ""}</div>` : ""}
           <div class="barra oculto" id="bar-voz"><div></div></div>
           ${p.tieneVoz ? `<div style="margin:6px 0 4px"><b>Voz</b></div><audio id="vAudio" controls src="/proyectos/${h(p.id)}/voz.mp3?v=${Date.now()}" style="width:100%"></audio><div class="estado">${p.tiempos ? `${p.tiempos.duracion.toFixed(1)} s${p.tiempos.sinVoz ? " · sin voz, solo música" : p.tiempos.prueba ? " · voz de prueba" : ""}` : ""}</div>` : `<div class="estado">Primero el guion.</div>`}
@@ -435,6 +436,13 @@ function pintarProyecto() {
     $("#fSubir").onclick = () => subir(p.id, "fondo", "video/*,image/*");
     $("#mSubir").onclick = () => subir(p.id, "musica", "audio/*");
     for (const b of document.querySelectorAll("[data-quitar]")) b.onclick = async () => { await api(`/api/proyectos/${p.id}/archivo?tipo=${b.dataset.quitar}`, "DELETE"); abrir(p.id, { mantener: true }); };
+  }
+  if ($("#vPron")) {
+    api("/api/voz/pronunciacion").then((d) => { $("#vPron").value = Object.entries(d.diccionario).map(([k, v]) => `${k} = ${v}`).join("\n"); });
+    $("#vPronG").onclick = async () => {
+      const dic = Object.fromEntries($("#vPron").value.split("\n").map((l) => l.split("=").map((x) => x.trim())).filter((x) => x.length === 2 && x[0] && x[1]));
+      try { await api("/api/voz/pronunciacion", "PUT", { diccionario: dic }); avisar("Pronunciación guardada. Usa 🎙 en la escena que la dice para rehacer solo esa."); } catch (e) { avisar(e.message, true); }
+    };
   }
   $("#vHacer").onclick = () => api(`/api/proyectos/${p.id}/voz`, "POST").catch((e) => avisar(e.message, true));
   eventoEnviarVPS(p);
@@ -1101,7 +1109,7 @@ function pintarEscenas() {
       <select data-k="tipo" title="Tipo">${opciones(est.tipos, e.tipo)}</select>
       <select data-k="visual" title="Fondo" style="${est.visuales?.length ? "" : "visibility:hidden"}">${opciones(est.visuales, e.visual)}</select>
       <textarea data-k="texto" placeholder="Lo que dice la voz">${h(e.texto ?? e.voz ?? "")}</textarea>
-      <div class="acc"><button class="mini" data-a="sube" title="Subir">↑</button><button class="mini" data-a="baja" title="Bajar">↓</button><button class="mini" data-a="borra" title="Quitar">✕</button></div>
+      <div class="acc"><button class="mini" data-a="sube" title="Subir">↑</button><button class="mini" data-a="baja" title="Bajar">↓</button><button class="mini" data-a="borra" title="Quitar">✕</button>${S.actual.tieneVoz && S.actual.conVoz !== false && !est.wan ? `<button class="mini" data-voz="${i}" title="Rehacer solo la voz de esta escena (las demás se quedan como están) y volver a unirla">🎙</button>` : ""}</div>
       <div></div><div></div><div></div>
       <div class="extra">
         <select data-k="sfx" title="Efecto de sonido"><option value="">Sin efecto</option>${S.info.efectos.map((f) => `<option ${[].concat(e.sfx || [])[0] === f ? "selected" : ""}>${f}</option>`).join("")}</select>
@@ -1140,6 +1148,15 @@ function pintarEscenas() {
         js.style.borderColor = "";
         if (!S.sucio) { S.sucio = true; const der = $(".paso .der"); if (der && !$("#gGuardar")) { der.insertAdjacentHTML("afterbegin", `<button class="btn primario peq" id="gGuardar">Guardar cambios</button>`); $("#gGuardar").onclick = guardarGuion; } }
       } catch { js.style.borderColor = "var(--a)"; }
+    };
+    for (const b of row.querySelectorAll("[data-voz]")) b.onclick = async () => {
+      const p = S.actual, conVideo = !!p.tieneFinal;
+      if (!confirm(`¿Rehago solo la voz de la escena ${i + 1}? Las demás se quedan como están${conVideo ? " y luego vuelvo a sacar el video" : ""}. Gasta solo esa escena de ElevenLabs.`)) return;
+      try {
+        if (S.sucio) await guardarGuion();
+        await api(`/api/proyectos/${p.id}/voz`, "POST", { escenas: [i], render: conVideo });
+        avisar(`Rehaciendo la voz de la escena ${i + 1}${conVideo ? " (luego el video)" : ""}.`);
+      } catch (e) { avisar(e.message, true); }
     };
     for (const b of row.querySelectorAll("[data-a]")) b.onclick = () => {
       const a = b.dataset.a, es = g.escenas;

@@ -296,6 +296,11 @@ async function api(req, res, partes) {
       } catch (e) { return json(res, 400, { error: e.message }); }
     }
   }
+  if (recurso === "voz" && id === "pronunciacion") { // palabras que la voz lee mal → cómo decirlas (ajustes.json → pronunciacion)
+    const V = await import("./voz.js");
+    if (m === "GET") return json(res, 200, { diccionario: V.diccionario(), base: V.PRONUNCIACION_BASE });
+    if (m === "PUT") { const b = await cuerpo(req); guardarAjustes({ pronunciacion: b.diccionario || {} }); return json(res, 200, { diccionario: V.diccionario() }); }
+  }
   if (recurso === "ajustes") {
     if (m === "GET") return json(res, 200, { ...leerAjustes(), modelosVoz: MODELOS_VOZ, modeloVozEnv: CFG.elevenModelo, modelosFlowVideo: MODELOS_VIDEO, modelosFlowImagen: MODELOS_IMAGEN });
     if (m === "PUT") return json(res, 200, guardarAjustes(await cuerpo(req)));
@@ -646,6 +651,15 @@ async function api(req, res, partes) {
     encolar(id, "musica", (av) => musicaIA(id, av, { prompt: (b.prompt || "").trim() || undefined, reusar: b.reusar, desdePanel: true }));
     if (b.insertar) { fila.push({ id, paso: "render", fn: (av) => (esMot ? MOT.terminar(id) : renderConQA(id, av, render)) }); P.marcar(id, "render", "en-fila"); } // y se vuelve a sacar el video con la música nueva
     return json(res, 200, { ok: true });
+  }
+  if (accion === "voz" && m === "POST" && (req.headers["content-length"] | 0) > 2) { // con cuerpo: { escenas: [k], render } = rehacer solo esas escenas y unirlas
+    const b = await cuerpo(req).catch(() => ({}));
+    if (Array.isArray(b.escenas) && b.escenas.length) {
+      if (leerEstilo(p.estilo)?.wan) return json(res, 400, { error: "En Cine · Toma continua la voz sale del clip de Wan: no se rehace por escena." });
+      encolar(id, "voz", (av) => hacerVoz(id, av, { soloEscenas: b.escenas }));
+      if (b.render) { fila.push({ id, paso: "render", fn: (av) => renderConQA(id, av, render) }); P.marcar(id, "render", "en-fila"); }
+      return json(res, 200, { ok: true });
+    }
   }
   if (accion === "voz" && m === "POST") { encolar(id, "voz", (av) => (leerEstilo(p.estilo)?.wan ? import("./wan.js").then((W) => W.prepararWan(id, av)) : leerEstilo(p.estilo)?.anuncios && p.opciones?.plantilla === "avatar" ? ANU.prepararAvatar(id, av) : hacerVoz(id, av))); return json(res, 200, { ok: true }); }
   if (accion === "wan") { // Cine · Toma continua: GET = costo estimado y referencias; POST = guardar ajustes y, con confirmar, generar (gasta)

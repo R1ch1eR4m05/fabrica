@@ -214,6 +214,8 @@ Al terminar cada video (y con "Revisar" en el panel o `node fabrica.js revisar <
 
 ## Voz
 - El modelo de voz se elige por estilo en el panel (junto a la voz): Eleven v4, v4 Turbo (mitad de precio), Multilingual v2, Flash v2.5 o Google Chirp 3 HD (`GOOGLE_TTS_KEY`; tiempos de subtítulos estimados).
+- **Rehacer una sola escena** (22 nov 2026): botón 🎙 en cada escena del guion (o `POST /api/proyectos/<id>/voz` con `{ "escenas": [k], "render": true }`): rehace solo esa voz y la une con las demás, que se quedan igual (cada toma se guarda en `proyectos/<id>/voz-escenas/eK.wav|json`; si otra escena cambió de texto, voz o modelo, también se rehace). Si ya había video, lo vuelve a sacar. `hacerVoz(id, avisar, { soloEscenas })`.
+- **Pronunciación**: palabras que la voz lee mal (marcas, siglas) se le mandan a ElevenLabs con otra forma y los subtítulos muestran la escrita (`paraDecir` en `core/voz.js`). Base en código (`SRYLED` → «eseerreiled»), lo de Richie en `ajustes.json` → `pronunciacion` (panel: Voz → «Pronunciación») y por video en `guion.pronunciacion`.
 - "Comparar modelos" (panel) o `node fabrica.js comparar-voces` hace el mismo párrafo con cada uno en `listos/comparar-voces/`.
 
 ## Herramientas extra (código abierto, opcionales) — `core/extras.js`

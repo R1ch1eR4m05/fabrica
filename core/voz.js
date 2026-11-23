@@ -9,6 +9,29 @@ import { leerEstilo } from "./estilos.js";
 import { ffmpeg, duracion } from "./ff.js";
 
 const SR = 44100;
+import crypto from "node:crypto";
+
+// Pronunciación: palabras que la voz lee mal (marcas, siglas). Se le manda a ElevenLabs la forma "dicha",
+// pero los subtítulos siguen mostrando la palabra escrita. Se suman: base → ajustes.json → pronunciacion → guion.pronunciacion.
+export const PRONUNCIACION_BASE = { SRYLED: "eseerreiled" };
+export function diccionario(guion = {}) {
+  return { ...PRONUNCIACION_BASE, ...(leerAjustes().pronunciacion || {}), ...(guion.pronunciacion || {}) };
+}
+const limpiaClave = (w) => String(w).normalize("NFC").toLowerCase();
+// texto → { dicho, mapa }: mapa[j] = posición (i, f) en el texto dicho de la palabra j del texto escrito
+export function paraDecir(texto, dic = {}) {
+  const tabla = new Map(Object.entries(dic).filter(([k, v]) => k && v).map(([k, v]) => [limpiaClave(k), String(v)]));
+  const mapa = []; let dicho = "";
+  for (const p of palabrasCon(texto)) {
+    const m = p.w.match(/^([¿¡"«“(\[]*)(.*?)([.,;:!?…"»”)\]]*)$/u) || [, "", p.w, ""];
+    const nuevo = tabla.get(limpiaClave(m[2]));
+    const w = nuevo ? m[1] + nuevo + m[3] : p.w;
+    if (dicho) dicho += " ";
+    mapa.push({ w: p.w, i: dicho.length, f: dicho.length + w.length - 1 });
+    dicho += w;
+  }
+  return { dicho, mapa };
+}
 
 function palabrasCon(texto) {
   const out = [];
@@ -89,7 +112,9 @@ async function ttsGoogle(texto, salida) {
   return { characters: [...texto], character_start_times_seconds: ini, character_end_times_seconds: fin, estimado: true };
 }
 
-export async function hacerVoz(id, avisar = () => {}) {
+// opciones.soloEscenas = [k, …] (base 0): rehace la voz solo de esas escenas y une el resto con lo que ya estaba
+// (voz-escenas/eK.wav + eK.json). Las que cambiaron de texto, voz o modelo también se rehacen; las que nunca se guardaron, igual.
+export async function hacerVoz(id, avisar = () => {}, opciones = {}) {
   const proyecto = leer(id, "proyecto.json");
   const guion = leer(id, "guion.json");
   if (!guion) throw new Error("Primero hace falta el guion.");
@@ -111,6 +136,10 @@ export async function hacerVoz(id, avisar = () => {}) {
   // versión TikTok/YouTube: las escenas con vozTT usan ese texto (el cierre cambia según la red)
   const tt = (proyecto.opciones || {}).cierre === "tt";
   const escenas = guion.escenas.map((e) => (tt && e.vozTT ? { ...e, voz: e.vozTT } : e));
+  const dic = diccionario(guion);
+  const soloEsc = Array.isArray(opciones.soloEscenas) ? new Set(opciones.soloEscenas.map(Number)) : null;
+  const dirCache = path.join(dir, "voz-escenas"); fs.mkdirSync(dirCache, { recursive: true });
+  let reusadas = 0;
 
   const piezas = [];   // wavs en orden
   const tiempos = [];  // por escena
@@ -121,7 +150,7 @@ export async function hacerVoz(id, avisar = () => {}) {
     const e = escenas[k];
     const texto = textoEscena(e);
     const pal = palabrasCon(texto);
-    avisar({ paso: "voz", progreso: k / escenas.length, msg: `Voz: escena ${k + 1} de ${escenas.length}` });
+    if (!soloEsc || soloEsc.has(k)) avisar({ paso: "voz", progreso: k / escenas.length, msg: `Voz: escena ${k + 1} de ${escenas.length}` });
     let dur, palabras;
     if (dialogos) {
       const clip = HIS.clipDeEscena(id, k + 1);
@@ -143,14 +172,26 @@ export async function hacerVoz(id, avisar = () => {}) {
       const paso = (dur - lect.extra) / pal.length;
       palabras = pal.map((p, j) => ({ w: p.w, t0: t + j * paso, t1: t + (j + 1) * paso }));
     } else {
-      const mp3 = path.join(tmp, `e${k}.mp3`);
-      const al = await sintetizar(modelo, vozId, texto, textoEscena(escenas[k - 1] || {}), textoEscena(escenas[k + 1] || {}), mp3);
-      const wav = path.join(tmp, `e${k}.wav`);
-      await ffmpeg(["-i", mp3, "-ar", String(SR), "-ac", "1", wav]);
-      dur = await duracion(wav);
-      piezas.push(wav);
-      const ini = al.character_start_times_seconds, fin = al.character_end_times_seconds;
-      palabras = pal.map((p) => ({ w: p.w, t0: t + (ini[p.i] ?? 0), t1: t + (fin[Math.min(p.f, fin.length - 1)] ?? dur) }));
+      const { dicho, mapa } = paraDecir(texto, dic);
+      const clave = crypto.createHash("sha1").update([dicho, vozId, modeloBueno || modelo].join("|")).digest("hex").slice(0, 16);
+      const fWav = path.join(dirCache, `e${k}.wav`), fJson = path.join(dirCache, `e${k}.json`);
+      let guardado = null; try { guardado = JSON.parse(fs.readFileSync(fJson, "utf8")); } catch {}
+      if (soloEsc && !soloEsc.has(k) && guardado?.clave === clave && fs.existsSync(fWav)) {
+        // se queda la toma que ya estaba
+        dur = guardado.dur; piezas.push(fWav); reusadas++;
+        palabras = guardado.palabras.map((p) => ({ w: p.w, t0: t + p.t0, t1: t + p.t1 }));
+      } else {
+        if (soloEsc && !soloEsc.has(k)) avisar({ paso: "voz", progreso: k / escenas.length, msg: `Voz: escena ${k + 1} también (${guardado ? "su texto cambió" : "no estaba guardada"})` });
+        const mp3 = path.join(tmp, `e${k}.mp3`);
+        const al = await sintetizar(modelo, vozId, dicho, paraDecir(textoEscena(escenas[k - 1] || {}), dic).dicho, paraDecir(textoEscena(escenas[k + 1] || {}), dic).dicho, mp3);
+        await ffmpeg(["-y", "-i", mp3, "-ar", String(SR), "-ac", "1", fWav]);
+        dur = await duracion(fWav);
+        piezas.push(fWav);
+        const ini = al.character_start_times_seconds, fin = al.character_end_times_seconds;
+        const rel = mapa.map((p) => ({ w: p.w, t0: ini[p.i] ?? 0, t1: fin[Math.min(p.f, fin.length - 1)] ?? dur }));
+        fs.writeFileSync(fJson, JSON.stringify({ clave, texto, dicho, dur, palabras: rel }));
+        palabras = rel.map((p) => ({ w: p.w, t0: t + p.t0, t1: t + p.t1 }));
+      }
     }
     const pausa = dialogos ? 0 : (e.pausa ?? pausaBase);
     tiempos.push({ ini: t, finVoz: t + dur, fin: t + dur + pausa, palabras });
@@ -173,7 +214,7 @@ export async function hacerVoz(id, avisar = () => {}) {
     const { prepararFondo } = await import("./fondos.js");
     await prepararFondo(id, avisar);
   }
-  return { duracion: t, prueba, sinVoz };
+  return { duracion: t, prueba, sinVoz, reusadas };
 }
 
 async function silencio(dir, nombre, seg) {
