@@ -287,13 +287,15 @@ export async function compararVozIds({ voces = [], modelo = "eleven_v4", texto, 
   const dir = path.join(DIR_LISTOS, "comparar-voces");
   fs.mkdirSync(dir, { recursive: true });
   const out = [];
-  for (const [k, v] of voces.entries()) {
+  // varias formas de decir algo en una sola corrida: --texto "ese erre i led México | eseerreiled México" → un audio por voz y por forma
+  const formas = texto.includes(" | ") ? texto.split(" | ").map((x) => x.trim()).filter(Boolean) : [dicho];
+  for (const [k, v] of voces.entries()) for (const [j, forma] of formas.entries()) {
     avisar({ paso: "voz", progreso: k / voces.length, msg: `Voz ${k + 1} de ${voces.length}: ${v}` });
-    const f = path.join(dir, `voz-${k + 1}-${v}.mp3`);
+    const f = path.join(dir, `voz-${k + 1}${formas.length > 1 ? `-forma${j + 1}` : ""}-${v}.mp3`);
     try {
       modeloBueno = modelo;
-      try { await sintetizar(modelo, v, dicho, null, null, f); } finally { modeloBueno = null; }
-      out.push({ voz: v, archivo: f, segundos: Math.round((await duracion(f)) * 10) / 10 });
+      try { await sintetizar(modelo, v, formas.length > 1 ? forma : dicho, null, null, f); } finally { modeloBueno = null; }
+      out.push({ voz: v, forma: formas.length > 1 ? forma : undefined, archivo: f, segundos: Math.round((await duracion(f)) * 10) / 10 });
     } catch (e) { out.push({ voz: v, error: e.message.slice(0, 200) }); }
   }
   fs.writeFileSync(path.join(dir, "voces.json"), JSON.stringify({ texto, modelo, fecha: new Date().toISOString(), voces: out }, null, 2));
