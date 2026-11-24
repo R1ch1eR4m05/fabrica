@@ -125,7 +125,7 @@ export async function mezclar({ estilo, guion, tiempos, voz, salida, tmp, dirPro
       const { planEfectos } = await import("./sfx.js");
       // ráfaga con entrada de la Tierra: el golpe del gancho va en la caída (donde arrancan los cortes), con una subida antes
       let golpeEn = 0;
-      if (guion.modo === "rafaga") for (const [k, e] of (guion.escenas || []).entries()) { if (e.voz || !(e.tomas || []).every((t) => /^(T\d|EXT)/i.test(t.fuente || ""))) { golpeEn = k ? tiempos.escenas?.[k]?.ini || 0 : 0; break; } }
+      if (guion.modo === "rafaga") for (const [k, e] of (guion.escenas || []).entries()) { if (!(e.tomas || []).length || !(e.tomas || []).every((t) => /^(T\d|EXT)/i.test(t.fuente || ""))) { golpeEn = k ? tiempos.escenas?.[k]?.ini || 0 : 0; break; } }
       // ráfaga: efectos más presentes (la música va alta) + golpe en cada número y en el logo
       let plan = s.earshot, extra = [];
       if (guion.modo === "rafaga") {

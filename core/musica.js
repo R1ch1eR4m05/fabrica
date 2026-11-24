@@ -14,7 +14,9 @@ export function promptMusica(id) {
   const p = leer(id, "proyecto.json"), est = leerEstilo(p.estilo) || {};
   const g = leer(id, "guion.json");
   if (g?.modo === "rafaga" && est.musicaIA?.promptRafaga) { // ráfaga: la caída cae justo donde empiezan los cortes rápidos (después de la Tierra y la fachada)
-    let intro = 0; for (const e of g.escenas || []) { if (e.voz || !(e.tomas || []).every((t) => /^(T\d|EXT)/i.test(t.fuente || ""))) break; intro += +e.duracion || 0; }
+    // la intro dura lo que la Tierra + la fachada (aunque lleven voz): hasta el primer bloque con tomas que no son T#/EXT
+    const ti = leer(id, "tiempos.json"); let intro = 0;
+    for (const [k, e] of (g.escenas || []).entries()) { if (!(e.tomas || []).length || !(e.tomas || []).every((t) => /^(T\d|EXT)/i.test(t.fuente || ""))) { intro = ti?.escenas?.[k]?.ini ?? intro; break; } if (!ti) intro += +e.duracion || 0; }
     return est.musicaIA.promptRafaga.replace("{intro}", intro ? `The first ${intro.toFixed(1)} seconds are an airy cinematic intro (a camera falling from space to a city): wind, shimmering pads and a rising riser, no drums. At exactly ${intro.toFixed(1)} seconds: a huge impact and the beat drops.` : "Starts with a short riser and a huge impact, then the beat drops.");
   }
   const base = est.musicaIA?.prompt || "Warm, gentle instrumental background music for a short social media video.";
