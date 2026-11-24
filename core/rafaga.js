@@ -74,7 +74,8 @@ export function planCortes(guion, tiempos, golpes) {
 }
 
 // ---------- un corte → un segmento de video del tamaño exacto ----------
-const cursores = new Map(); // cada video avanza cuando se reusa (no repite el mismo pedazo)
+const cursores = new Map(); // tramos ya usados de cada video (no se repite el mismo pedazo)
+const repetidos = { n: 0, de: {} };
 async function hacerCorte(id, c, fmt, salida, efecto) {
   const W = fmt.w, H = fmt.h, N = Math.max(1, Math.round(c.fin * FPS) - Math.round(c.ini * FPS)), seg = N / FPS; // cuadros absolutos: los redondeos no se acumulan
   const sal = ["-an", "-r", String(FPS), "-frames:v", String(N), "-c:v", "libx264", "-preset", "veryfast", "-crf", "19", "-pix_fmt", "yuv420p", "-video_track_timescale", "15360", "-avoid_negative_ts", "make_zero", salida]; // misma base de tiempo en todos: el concat sin recodificar queda al cuadro
@@ -97,11 +98,16 @@ async function hacerCorte(id, c, fmt, salida, efecto) {
     return ffmpeg(["-loop", "1", "-framerate", String(FPS), "-t", seg.toFixed(3), "-i", src, "-filter_complex", `[0:v]${encuadre},setsar=1,${zp}${destello},format=yuv420p[v]`, "-map", "[v]", ...sal]);
   }
   const dv = await duracion(src).catch(() => 0);
-  const clave = `${src}|${t.desde ?? 0}`;
-  let desde = cursores.has(clave) ? cursores.get(clave) : (+t.desde || 0);
-  const tope = Math.min(dv || Infinity, t.hasta ?? Infinity);
-  if (desde + seg > tope - 0.05) desde = Math.max(0, +t.desde || 0); // se acabó el tramo: vuelve a su inicio
-  cursores.set(clave, desde + seg);
+  // sin repetir (24 nov 2026, Richie: «no me gusta que se repitan tanto»): cada video lleva la lista de tramos ya usados en
+  // todo el montaje; la toma busca el siguiente pedazo libre desde su «desde» (y si no hay, desde el inicio del video)
+  const tope = Math.min(dv || Infinity, t.hasta ?? Infinity), margen = 0.15;
+  const usados = cursores.get(src) || []; cursores.set(src, usados);
+  const libre = (d) => d >= 0 && d + seg <= tope - 0.05 && !usados.some(([a, b]) => d < b + margen && d + seg > a - margen);
+  const buscar = (d0) => { for (let d = d0; d + seg <= tope - 0.05; d += 0.1) if (libre(d)) return d; return null; };
+  let desde = buscar(+t.desde || 0) ?? buscar(0);
+  if (desde == null && !usados.length) desde = Math.max(0, Math.min(+t.desde || 0, (dv || seg) - seg)); // un solo uso más largo que el video: no es repetir
+  if (desde == null) { desde = Math.max(0, Math.min(+t.desde || 0, (dv || seg) - seg)); repetidos.n += seg; repetidos.de[path.basename(src)] = (repetidos.de[path.basename(src)] || 0) + seg; } // ya no queda nada nuevo
+  usados.push([desde, desde + seg]);
   return ffmpeg(["-ss", desde.toFixed(3), "-i", src, "-filter_complex",
     `[0:v]fps=${FPS},${encuadre},setsar=1,${zp},tpad=stop_mode=clone:stop_duration=${seg.toFixed(2)}${destello},format=yuv420p[v]`, "-map", "[v]", ...sal]);
 }
@@ -188,10 +194,20 @@ export async function renderRafaga({ id, guion, tiempos, fmt, tmp, avisar = () =
     if (tomas.length) previas = tomas;
     return { ...e, tomas };
   }) };
+  // cierre SIN logo de verdad (material/logo.png): nada de letras simulando el logo (Richie, 24 nov 2026); el video sigue con tomas y se va a negro
+  const hayLogo = ["logo.png", "logo.webp"].some((f) => fs.existsSync(path.join(dirMaterial(id), f)));
+  if (!hayLogo) {
+    let ultimas = [];
+    guion = { ...guion, escenas: guion.escenas.map((e) => {
+      if (!e.cierre) { if (e.tomas?.length) ultimas = e.tomas; return e; }
+      avisar({ paso: "render", msg: "Sin material/logo.png: el cierre va con video y fundido a negro, sin letras." });
+      const { cierre, sobre, etiqueta, ...resto } = e; return { ...resto, tomas: e.cierreTomas || ultimas, fundido: true };
+    }) };
+  }
   const p = await pulsos(musica, tiempos.duracion);
   const cortes = planCortes(guion, tiempos, p.golpes);
   avisar({ paso: "render", progreso: 0.05, msg: `${cortes.length} cortes a ${Math.round(p.bpm)} BPM${p.deMusica ? "" : " (sin música: pulso de 120)"}` });
-  cursores.clear();
+  cursores.clear(); repetidos.n = 0; repetidos.de = {};
   const segs = []; let hechos = 0; const t0 = Date.now();
   const tareas = cortes.map((c, j) => async () => {
     // efectos: destello blanco al cambiar de bloque, empujón en cada 2.º corte de la ráfaga, negro al cierre
@@ -232,9 +248,10 @@ export async function renderRafaga({ id, guion, tiempos, fmt, tmp, avisar = () =
       `[0:v][bug]overlay=${Math.round(fmt.w * 0.03)}:${Math.round(fmt.h * 0.035)}:enable='lt(t,${tc0.toFixed(2)})'[a];[a][grande]overlay=(W-w)/2:(H-h)/2-${Math.round(fmt.h * 0.04)}:enable='gte(t,${tc0.toFixed(2)})'[b];[b]${subs}[v]`,
       "-map", "[v]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "19", "-pix_fmt", "yuv420p", "-r", String(FPS), video]);
   } else {
-    await ffmpeg(["-i", crudo, "-vf", subs, "-c:v", "libx264", "-preset", "veryfast", "-crf", "19", "-pix_fmt", "yuv420p", "-r", String(FPS), video]);
+    const fundido = (guion.escenas || []).some((e) => e.fundido) ? `,fade=t=out:st=${Math.max(0, tiempos.duracion - 1.4).toFixed(2)}:d=1.4` : "";
+    await ffmpeg(["-i", crudo, "-vf", subs + fundido, "-c:v", "libx264", "-preset", "veryfast", "-crf", "19", "-pix_fmt", "yuv420p", "-r", String(FPS), video]);
   }
-  avisar({ paso: "render", progreso: 0.97, msg: `Montaje listo: ${cortes.length} cortes en ${Math.round(tiempos.duracion)} s` });
+  avisar({ paso: "render", progreso: 0.97, msg: `Montaje listo: ${cortes.length} cortes en ${Math.round(tiempos.duracion)} s${repetidos.n > 0.5 ? ` (se repiten ${repetidos.n.toFixed(1)} s: ${Object.entries(repetidos.de).map(([k, v]) => `${k} ${v.toFixed(1)} s`).join(", ")})` : " (sin repetir material)"}` });
   return video;
 }
 
