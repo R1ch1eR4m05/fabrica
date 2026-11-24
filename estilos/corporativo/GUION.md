@@ -46,3 +46,14 @@ no hace falta mostrar el producto exacto.
 1. «Material real» (paso 2 del panel): subes los videos y fotos con el nombre que usa el guion.
 2. «Generar las tomas con Wan»: muestra cuántas tomas y cuánto cuesta (APIMart en dólares o Higgsfield en créditos) y pide confirmación.
 3. Voz con ElevenLabs → render con ffmpeg: recorta cada video real a su tramo, mueve las fotos, pone las tomas de Wan, sobreimpresos, subtítulos y música.
+
+
+## Modo «ráfaga» (recomendado, 24 nov 2026): video de marca de 60-75 s con el ritmo de Absen
+Medido en «Beyond the Display» de Absen: 71 tomas en 69 s (toma típica de 0.6 s), números enormes encima de la imagen, casi sin narrador, marca en la esquina y logo animado al final. El primer SRYLED (144 s, 30 tomas de 4.8 s) se sentía documental.
+- En guion.json: `"modo": "rafaga"`, `"marca": { "nombre": "SRYLED MX", "color": "#E6194B" }`, `"volumenMusica": 0.6` (la música manda y baja sola cuando habla la voz).
+- Cada escena es un BLOQUE: con `voz` corta (4-6 frases en todo el video, 3-8 palabras cada una) o en silencio con `"voz": ""`, `"duracion"` (3.5-6 s) y `"pausa": 0`.
+- `"tomas": [{ "fuente": "V2.mp4", "desde": 63 }, { "fuente": "I10.jpg" }, …]`: se cortan AL GOLPE de la música, una cada `cada` pulsos (1 = ráfaga, 2 = respira). Un video que se repite avanza solo (no repite el mismo pedazo). Verticales en horizontal: completos sobre su imagen desenfocada (`"ajuste": "llenar"` para recortar).
+- `"numero": { "valor": 12000, "prefijo": "+", "sufijo": " m²", "etiqueta": "CLIENTES EN EL MUNDO" }`: número enorme que cuenta hasta su valor, con barrita del color de la marca y la etiqueta. Solo cifras del kit verificado.
+- `"sobre"`: texto grande; `"cierre": true` (último bloque, sin tomas): fondo negro y el logo entra (material/logo.png si existe; si no, el nombre de la marca en letra gruesa) con `"etiqueta"` debajo.
+- Efectos: destello blanco al cambiar de bloque, empujón en cortes alternos, golpe/whoosh/swell de earshot si está instalado. Nada gasta.
+- Las tomas de Wan se guardan en material/ como W1.mp4, W2.mp4… para usarlas como cualquier otra toma.

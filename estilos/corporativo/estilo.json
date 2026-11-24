@@ -2,11 +2,37 @@
   "nombre": "Corporativo · Material real + cine",
   "descripcion": "Video de marca tipo Absen «Beyond the Display» (1 a 3 min): tus videos y fotos reales montados con narración, música, sobreimpresos y subtítulos, más tomas de cine con Wan 3.0 solo donde no hace falta mostrar el producto real (gancho y mundos de uso).",
   "orden": 10,
-  "formatos": ["16:9", "9:16"],
-  "duraciones": { "corto": "60 a 90 segundos", "largo": "2 a 3 minutos (6-7 bloques)" },
-  "tipos": ["escena", "cierre"],
+  "formatos": [
+    "16:9",
+    "9:16"
+  ],
+  "duraciones": {
+    "corto": "60 a 90 segundos",
+    "largo": "2 a 3 minutos (6-7 bloques)"
+  },
+  "tipos": [
+    "escena",
+    "cierre"
+  ],
   "visuales": [],
-  "camposAvanzados": ["fuente", "desde", "hasta", "wan", "duracionToma", "refs", "sobre", "etiqueta", "camara", "misma"],
+  "camposAvanzados": [
+    "fuente",
+    "desde",
+    "hasta",
+    "wan",
+    "duracionToma",
+    "refs",
+    "sobre",
+    "etiqueta",
+    "camara",
+    "misma",
+    "tomas",
+    "cada",
+    "numero",
+    "cierre",
+    "duracion",
+    "pausa"
+  ],
   "preparar": "corporativo",
   "render": "ffmpeg",
   "sinPexels": true,
@@ -17,9 +43,31 @@
   "colaFinal": 3.0,
   "vozSugerida": "Voz masculina o femenina corporativa, cálida y segura (no locutor de radio).",
   "opciones": [
-    { "clave": "subtitulos", "nombre": "Subtítulos", "valores": { "si": "Con subtítulos", "no": "Sin subtítulos" } }
+    {
+      "clave": "subtitulos",
+      "nombre": "Subtítulos",
+      "valores": {
+        "si": "Con subtítulos",
+        "no": "Sin subtítulos"
+      }
+    }
   ],
-  "sonido": { "ambiente": "suave", "volumenAmbiente": 0.18, "golpesEn": [], "efectosPorTipo": {} },
+  "sonido": {
+    "ambiente": "suave",
+    "volumenAmbiente": 0.18,
+    "golpesEn": [],
+    "efectosPorTipo": {},
+    "earshot": {
+      "gancho": "impact/deep",
+      "cambios": [
+        "whoosh_big/deep",
+        "whoosh_big/gust"
+      ],
+      "cierre": "reverse_swell/dark",
+      "volumen": 0.4,
+      "volumenCambio": 0.22
+    }
+  },
   "musicaIA": {
     "prompt": "Epic modern corporate cinematic underscore for a technology brand film: warm synth pads, pulsing bass, rising strings and big tom hits building to a confident finale, no vocals, leaves room for a narrator.",
     "reusar": false

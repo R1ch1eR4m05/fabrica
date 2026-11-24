@@ -111,6 +111,16 @@ export async function render(id, avisar = () => {}) {
   // estilos de imagen fija y larga duración: render directo con ffmpeg (sin navegador), mucho más rápido
   if (estilo.render === "ffmpeg") {
     let extraASS = "";
+    if (estilo.preparar === "corporativo" && guion.modo === "rafaga") { // video de marca de 60-75 s cortado al golpe de la música (core/rafaga.js)
+      const R = await import("./rafaga.js");
+      const propia = ["musica.mp3", "musica.m4a", "musica.wav"].map((n) => path.join(dir, n)).find((f) => fs.existsSync(f));
+      const soloVideo = await R.renderRafaga({ id, guion, tiempos, fmt, tmp, avisar, musica: propia || sugerida });
+      avisar({ paso: "render", progreso: 1, msg: "Juntando video y audio…" });
+      const final = path.join(dir, "final.mp4");
+      await ffmpeg(["-i", soloVideo, "-i", mezcla, "-c:v", "copy", "-c:a", "copy", "-shortest", "-movflags", "+faststart", final]);
+      await ffmpeg(["-ss", String(estilo.portadaEn ?? 1.2), "-i", final, "-frames:v", "1", "-q:v", "2", path.join(dir, "portada.jpg")]);
+      return await terminar();
+    }
     if (estilo.preparar === "corporativo") { // material real + tomas de Wan, con sobreimpresos
       const C = await import("./corporativo.js");
       await C.prepararCorporativo(id, avisar);

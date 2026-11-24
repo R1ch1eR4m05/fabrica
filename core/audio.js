@@ -72,7 +72,9 @@ export async function mezclar({ estilo, guion, tiempos, voz, salida, tmp, dirPro
   const s = estilo.sonido || {};
   const D = tiempos.duracion;
   const entradas = ["-i", voz];
-  const filtros = ["[0]volume=1.0[v0]"];
+  // ráfaga (video de marca): la música manda y baja sola cuando habla la voz (sidechain)
+  const duck = guion.modo === "rafaga";
+  const filtros = [duck ? "[0]volume=1.0,asplit=2[v0][vsc]" : "[0]volume=1.0[v0]"];
   const etiquetas = ["[v0]"];
   let n = 1;
 
@@ -90,13 +92,15 @@ export async function mezclar({ estilo, guion, tiempos, voz, salida, tmp, dirPro
     let veces = 0;
     try { const da = await duracion(amb); if (da > 0 && da < D) veces = Math.ceil(D / da); } catch {}
     entradas.push(...(veces ? ["-stream_loop", String(veces)] : []), "-i", amb);
-    const vol = (propia || deBiblioteca) ? (tiempos.sinVoz ? s.volumenMusicaSinVoz ?? 0.9 : s.volumenMusica ?? 0.16) : ((tiempos.sinVoz ? s.volumenSinVoz : null) ?? s.volumenAmbiente ?? 0.35);
+    const vol = duck ? (guion.volumenMusica ?? 0.6) : (propia || deBiblioteca) ? (tiempos.sinVoz ? s.volumenMusicaSinVoz ?? 0.9 : s.volumenMusica ?? 0.16) : ((tiempos.sinVoz ? s.volumenSinVoz : null) ?? s.volumenAmbiente ?? 0.35);
     // las pistas reales vienen a volúmenes muy distintos (de -7 a -18 LUFS): se igualan antes de bajarlas
     const iguala = propia || deBiblioteca ? "loudnorm=I=-16:TP=-1.5:LRA=11,aresample=48000," : "";
-    filtros.push(`[${n}]atrim=0:${D.toFixed(2)},${iguala}volume=${vol},afade=t=out:st=${Math.max(0, D - 3).toFixed(2)}:d=3[v${n}]`);
+    if (duck) filtros.push(`[${n}]atrim=0:${D.toFixed(2)},${iguala}volume=${vol},afade=t=out:st=${Math.max(0, D - 3).toFixed(2)}:d=3[m${n}]`, `[m${n}][vsc]sidechaincompress=threshold=0.03:ratio=6:attack=15:release=350:makeup=1[v${n}]`);
+    else filtros.push(`[${n}]atrim=0:${D.toFixed(2)},${iguala}volume=${vol},afade=t=out:st=${Math.max(0, D - 3).toFixed(2)}:d=3[v${n}]`);
     etiquetas.push(`[v${n}]`); n++;
   }
 
+  if (duck && !filtros.some((x) => x.includes("[vsc]sidechaincompress"))) filtros.push("[vsc]anullsink");
   // efectos: los que pide cada escena (sfx) + golpes automáticos por tipo
   const golpesEn = new Set(s.golpesEn || []);
   for (let k = 0; k < guion.escenas.length; k++) {
