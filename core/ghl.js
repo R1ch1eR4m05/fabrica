@@ -96,13 +96,14 @@ export async function subirVideo(id) {
 
 // sube la miniatura a la biblioteca de medios de GHL (para poder pasarle su URL a YouTube). jpg, por si acaso.
 async function subirMiniatura(id) {
-  const p = leer(id, "proyecto.json"), f = path.join(DIR_LISTOS, `${id}-miniatura.jpg`);
-  if (!fs.existsSync(f)) return null;
+  // largo: la miniatura 16:9; Short: su portada 9:16 (24 nov 2026; YouTube elegía un cuadro de en medio sin el gancho)
+  const p = leer(id, "proyecto.json"), f = [`${id}-miniatura.jpg`, `${id}-portada.jpg`].map((x) => path.join(DIR_LISTOS, x)).find((x) => fs.existsSync(x));
+  if (!f) return null;
   const mt = fs.statSync(f).mtimeMs;
   if (p.ghl?.miniatura?.mtime === mt && p.ghl.miniatura.url) return p.ghl.miniatura.url;
   const form = new FormData();
-  form.append("file", new Blob([fs.readFileSync(f)], { type: "image/jpeg" }), `${id}-miniatura.jpg`);
-  form.append("hosted", "false"); form.append("name", `${id}-miniatura.jpg`);
+  form.append("file", new Blob([fs.readFileSync(f)], { type: "image/jpeg" }), path.basename(f));
+  form.append("hosted", "false"); form.append("name", path.basename(f));
   const j = await pedir("POST", "/medias/upload-file", form, { form: true, ms: 120000 });
   p.ghl = { ...(p.ghl || {}), miniatura: { url: j.url, mtime: mt } }; guardar(id, "proyecto.json", p);
   return j.url;

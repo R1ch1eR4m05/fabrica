@@ -144,6 +144,11 @@ async function siguiente() {
 // vigilante: si el trabajo en marcha lleva mucho sin avisar nada (Flow colgado, una descarga que nunca termina…),
 // se suelta con error y la fila sigue con el siguiente video, en vez de quedarse todo «en fila» para siempre
 const SIN_AVANCE_MIN = { fondo: 30, voz: 15, render: 25, musica: 10 };
+// portadas de YouTube (24 nov 2026): cada 30 min busca los videos ya publicados y les pone su portada (core/youtube.js; solo si hay permiso)
+setInterval(async () => {
+  try { const Y = await import("./youtube.js"); if (!Y.hayYoutube()) return; const r = await Y.ponerPortadas(); for (const h of r.hechos) console.log(`  Portada puesta en YouTube: ${h.id} (${h.videoId})`); }
+  catch (e) { console.log("  Portadas de YouTube:", e.message.slice(0, 200)); }
+}, 30 * 60000).unref?.();
 setInterval(() => {
   const a = actual; if (!a) return;
   const lim = (SIN_AVANCE_MIN[a.paso] || 20) * 60000, quieto = Date.now() - (a.ultimo || a.desde);

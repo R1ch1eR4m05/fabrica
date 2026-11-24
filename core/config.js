@@ -45,7 +45,7 @@ export const CFG = {
   // con VPS_SSH (túnel automático, ver core/tunel.js) el VPS se ve en 127.0.0.1:4871
   espejoUrl: e.ESPEJO_URL || (e.VPS_SSH ? `http://127.0.0.1:${e.TUNEL_LOCAL || 4871}` : ""), espejoClave: e.ESPEJO_CLAVE || "",
   laptopUrl: e.LAPTOP_URL || "", laptopClave: e.LAPTOP_CLAVE || "", // en el VPS: para pedirle Flow a la laptop por Tailscale
-  ghlToken: e.GHL_TOKEN || "", ghlLocation: e.GHL_LOCATION_ID || "", ghlUsuario: e.GHL_USER_ID || "",
+  ghlToken: e.GHL_TOKEN || "", ghlLocation: e.GHL_LOCATION_ID || "", ghlUsuario: e.GHL_USER_ID || "", ytClientId: e.YOUTUBE_CLIENT_ID || "", ytClientSecret: e.YOUTUBE_CLIENT_SECRET || "",
   flowUrl: (e.FLOW_MCP_URL || "http://127.0.0.1:8787").replace(/\/$/, ""),
   hilos: Math.max(1, Number(e.RENDER_HILOS || Math.min(4, os.cpus().length))),
   fps: Number(e.FPS || 30),
@@ -58,7 +58,7 @@ export const CFG = {
 // Solo llaves de servicios: puerto, host y rutas siguen siendo las del arranque.
 const LLAVES = { anthropicKey: "ANTHROPIC_API_KEY", elevenKey: "ELEVENLABS_API_KEY", elevenVoz: "ELEVENLABS_VOICE_ID", googleTtsKey: "GOOGLE_TTS_KEY",
   pexelsKey: "PEXELS_API_KEY", pixabayKey: "PIXABAY_API_KEY", geminiKey: "GEMINI_API_KEY", apimartKey: "APIMART_API_KEY", apifyToken: "APIFY_TOKEN",
-  ghlToken: "GHL_TOKEN", ghlLocation: "GHL_LOCATION_ID", ghlUsuario: "GHL_USER_ID" };
+  ghlToken: "GHL_TOKEN", ghlLocation: "GHL_LOCATION_ID", ghlUsuario: "GHL_USER_ID", ytClientId: "YOUTUBE_CLIENT_ID", ytClientSecret: "YOUTUBE_CLIENT_SECRET" };
 let ultimaLectura = 0;
 export function recargarLlaves({ forzar = false } = {}) {
   const f = path.join(RAIZ, ".env");

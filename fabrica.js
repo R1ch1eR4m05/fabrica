@@ -302,6 +302,18 @@ async function main() {
       const r = await MIN.crearMiniaturas(libres[0], { avisar, ia: args.includes("--ia") });
       console.log(`\nListo: ${r.opciones.length} miniaturas en proyectos/${libres[0]}/miniaturas/ (la A ya está en listos/). Texto: ${r.origen}.${r.sinEstudio ? " Usé la receta base: estudia el nicho para afinarla." : ""}`); return;
     }
+    case "youtube-login": { // una vez: permiso para poner las portadas de los Shorts y videos en YouTube
+      const Y = await import("./core/youtube.js"); const canal = await Y.login();
+      console.log(`\nListo: la fábrica ya puede poner portadas en el canal «${canal}». Revisa cada 30 min con el panel abierto, o corre «node fabrica.js portadas-youtube».`); return;
+    }
+    case "portadas-youtube": { // pone ya las portadas de lo publicado (o de un solo proyecto: portadas-youtube <id>)
+      const Y = await import("./core/youtube.js"); const r = await Y.ponerPortadas({ soloId: libres[0], todos: !!opc("todos") });
+      if (r.nota) console.log(r.nota);
+      for (const h of r.hechos) console.log(`✓ ${h.id} → https://youtu.be/${h.videoId} (${h.archivo})`);
+      for (const p of r.pendientes) console.log(`· ${p.id}: ${p.motivo}`);
+      if (!r.hechos.length && !r.pendientes.length && !r.nota) console.log("No hay videos de YouTube pendientes de portada.");
+      return;
+    }
     case "tierra": { // entrada «de la Tierra a tu ciudad» para el Corporativo → material/T1.mp4 (gratis)
       const T = await import("./core/tierra.js");
       if (!libres[0]) { console.log("Uso: node fabrica.js tierra <id> [--lugar MORELIA] [--detalle \"SHOWROOM · EUCALIPTO 238\"] [--lat 19.706] [--lon -101.195] [--estado mic] [--dur 6]   ·   con Google Earth Studio: --earth <zip|carpeta|mp4>"); return; }
