@@ -339,6 +339,12 @@ async function main() {
     }
     case "comparar-voces": {
       const VOZ = await import("./core/voz.js");
+      if (opc("voces")) {
+        const r = await VOZ.compararVozIds({ voces: String(opc("voces")).split(/[,\s]+/).filter(Boolean), modelo: opc("modelo") || "eleven_v4", texto: opc("texto") || libres[0], proyecto: opc("proyecto") }, avisar);
+        console.log(`\nTexto: ${r.texto}\nModelo: ${r.modelo}`);
+        for (const x of r.voces) console.log(`${x.voz}\n   ${x.error ? "✗ " + x.error : `${x.archivo} · ${x.segundos} s`}`);
+        return;
+      }
       const r = await VOZ.compararVoces({ texto: libres[0], estiloId: opc("estilo") }, avisar);
       console.log("");
       for (const x of r.modelos) console.log(`${x.nombre}\n   ${x.error ? "✗ " + x.error : `${x.archivo} · ${x.segundos} s · ${x.costo} · 30 min: ${x.video30}`}`);

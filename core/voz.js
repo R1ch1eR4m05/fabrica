@@ -276,3 +276,26 @@ export async function compararVoces({ texto, vozId, estiloId } = {}, avisar = ()
   fs.writeFileSync(path.join(dir, "comparacion.json"), JSON.stringify({ texto, voz, fecha: new Date().toISOString(), modelos: out }, null, 2));
   return { texto, modelos: out };
 }
+
+// Comparar VOCES (no modelos): la misma frase con cada Voice ID, con un solo modelo (24 nov 2026, video de SRYLED).
+// node fabrica.js comparar-voces --voces id1,id2,… [--modelo eleven_v4] [--texto "…"] [--proyecto <id>]
+export async function compararVozIds({ voces = [], modelo = "eleven_v4", texto, proyecto } = {}, avisar = () => {}) {
+  const { DIR_LISTOS } = await import("./config.js");
+  const g = proyecto ? leer(proyecto, "guion.json") : null;
+  texto = String(texto || (g ? (g.escenas || []).map((e) => textoEscena(e)).filter(Boolean).join(" ") : TEXTO_COMPARAR)).trim().slice(0, 600);
+  const { dicho } = paraDecir(texto, diccionario(g || {}));
+  const dir = path.join(DIR_LISTOS, "comparar-voces");
+  fs.mkdirSync(dir, { recursive: true });
+  const out = [];
+  for (const [k, v] of voces.entries()) {
+    avisar({ paso: "voz", progreso: k / voces.length, msg: `Voz ${k + 1} de ${voces.length}: ${v}` });
+    const f = path.join(dir, `voz-${k + 1}-${v}.mp3`);
+    try {
+      modeloBueno = modelo;
+      try { await sintetizar(modelo, v, dicho, null, null, f); } finally { modeloBueno = null; }
+      out.push({ voz: v, archivo: f, segundos: Math.round((await duracion(f)) * 10) / 10 });
+    } catch (e) { out.push({ voz: v, error: e.message.slice(0, 200) }); }
+  }
+  fs.writeFileSync(path.join(dir, "voces.json"), JSON.stringify({ texto, modelo, fecha: new Date().toISOString(), voces: out }, null, 2));
+  return { texto, modelo, voces: out };
+}
