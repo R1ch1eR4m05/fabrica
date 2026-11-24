@@ -162,6 +162,26 @@ export async function hacerVoz(id, avisar = () => {}, opciones = {}) {
       piezas.push(wav);
       const util = Math.max(0.5, dur - 0.7), paso = util / Math.max(1, pal.length);
       palabras = pal.map((p, j) => ({ w: p.w, t0: t + 0.35 + j * paso, t1: t + 0.35 + (j + 1) * paso }));
+    } else if (e.testimonio) {
+      // testimonio (Corporativo · ráfaga): habla una persona real; su audio sale del video de material/ (desde/hasta) y sus palabras, de Speech to Text
+      const { resolverMaterial } = await import("./corporativo.js");
+      const T = e.testimonio, src = resolverMaterial(id, T.fuente);
+      if (!src) throw new Error(`Falta el video del testimonio en material/: ${T.fuente}`);
+      const a = +T.desde || 0, b = +T.hasta || a + 8;
+      const fWav = path.join(dirCache, `e${k}.wav`), fJson = path.join(dirCache, `e${k}.json`);
+      const clave = ["testimonio", T.fuente, a, b, T.texto || ""].join("|");
+      let guardado = null; try { guardado = JSON.parse(fs.readFileSync(fJson, "utf8")); } catch {}
+      if (!(guardado?.clave === clave && fs.existsSync(fWav))) {
+        await ffmpeg(["-y", "-ss", a.toFixed(3), "-t", (b - a).toFixed(3), "-i", src, "-vn", "-af", "highpass=f=80,loudnorm=I=-16:TP=-1.5:LRA=11", "-ar", String(SR), "-ac", "1", fWav]);
+        const d = await duracion(fWav);
+        let pals = null;
+        if (!T.texto) { const W = await import("./wan.js"); pals = await W.transcribir(fWav); }
+        if (!pals?.length) { const pp = palabrasCon(T.texto || ""); const paso = Math.max(0.3, d - 0.4) / Math.max(1, pp.length); pals = pp.map((p, j) => ({ w: p.w, t0: 0.2 + j * paso, t1: 0.2 + (j + 1) * paso })); }
+        guardado = { clave, dur: d, palabras: pals };
+        fs.writeFileSync(fJson, JSON.stringify(guardado));
+      } else reusadas++;
+      dur = guardado.dur; piezas.push(fWav);
+      palabras = guardado.palabras.map((p) => ({ w: p.w, t0: t + p.t0, t1: t + p.t1 }));
     } else if (!texto) {
       dur = e.duracion ?? 2.5;
       piezas.push(await silencio(tmp, `e${k}`, dur));

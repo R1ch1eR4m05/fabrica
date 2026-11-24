@@ -59,7 +59,7 @@ export function planCortes(guion, tiempos, golpes) {
   for (let k = 0; k < esc.length; k++) {
     const e = guion.escenas[k] || {}, ini = k === 0 ? 0 : esc[k].ini, fin = k < esc.length - 1 ? esc[k + 1].ini : D;
     if (fin - ini < 0.05) continue;
-    const tomas = e.cierre ? [{ negro: true }] : (e.tomas?.length ? e.tomas : e.fuente ? [{ fuente: e.fuente, desde: e.desde, ajuste: e.ajuste }] : [{ negro: true }]);
+    const tomas = e.cierre ? [{ negro: true }] : e.testimonio ? [{ fuente: e.testimonio.fuente, desde: e.testimonio.desde, ajuste: e.testimonio.ajuste, quieto: !e.testimonio.empujon }] : (e.tomas?.length ? e.tomas : e.fuente ? [{ fuente: e.fuente, desde: e.desde, ajuste: e.ajuste }] : [{ negro: true }]);
     const cada = Math.max(1, Math.round(e.cada ?? (tomas.length > 2 ? 1 : 2)));
     const minimo = e.minimo ?? 0.38; // nada más corto que ~11 cuadros
     const marcas = [ini];
@@ -132,6 +132,12 @@ function capas(guion, tiempos, fmt, cortes, conLogo) {
         lin.push(`Dialogue: 3,${tc(ini + 0.2)},${tc(fin)},B,,0,0,0,,{\\an7\\pos(${Math.round(W / 2 - ancho / 2)},${yb})\\fad(150,200)\\1c${acento}\\1a&H00&\\p1}m 0 0 l ${ancho} 0 ${ancho} ${Math.round(6 * u)} 0 ${Math.round(6 * u)}{\\p0}`);
         lin.push(`Dialogue: 3,${tc(ini + 0.25)},${tc(fin)},E,,0,0,0,,{\\an5\\pos(${W / 2},${yb + Math.round(H * 0.06)})\\fad(200,200)\\fsp${Math.round(12 * u)}}${limpia(n.etiqueta)}`);
       }
+    }
+    if (e.testimonio?.nombre) { // rótulo de la persona abajo a la izquierda: barrita de la marca + nombre + cargo
+      const x = Math.round(W * 0.06), y = Math.round(H * 0.8);
+      lin.push(`Dialogue: 2,${tc(ini + 0.3)},${tc(fin - 0.2)},B,,0,0,0,,{\\an7\\pos(${x},${y})\\fad(200,200)\\1c${acento}\\1a&H00&\\p1}m 0 0 l ${Math.round(8 * u)} 0 ${Math.round(8 * u)} ${Math.round(H * 0.085)} 0 ${Math.round(H * 0.085)}{\\p0}`);
+      lin.push(`Dialogue: 3,${tc(ini + 0.35)},${tc(fin - 0.2)},G,,0,0,0,,{\\an7\\pos(${x + Math.round(24 * u)},${y - Math.round(4 * u)})\\fad(200,200)\\fs${Math.round(H * 0.058)}}${limpia(e.testimonio.nombre)}`);
+      if (e.testimonio.cargo) lin.push(`Dialogue: 3,${tc(ini + 0.5)},${tc(fin - 0.2)},E,,0,0,0,,{\\an7\\pos(${x + Math.round(26 * u)},${y + Math.round(H * 0.05)})\\fad(200,200)\\fs${Math.round(H * 0.03)}}${limpia(e.testimonio.cargo)}`);
     }
     if (e.sobre && !e.cierre) lin.push(`Dialogue: 3,${tc(ini)},${tc(fin)},G,,0,0,0,,{\\an5\\pos(${W / 2},${cy})\\fad(120,200)\\t(0,350,\\fscx100\\fscy100)\\fscx112\\fscy112}${limpia(e.sobre)}`);
     if (e.etiqueta && !e.numero && !e.cierre) lin.push(`Dialogue: 3,${tc(ini + 0.2)},${tc(fin)},E,,0,0,0,,{\\an5\\pos(${W / 2},${cy + Math.round(H * (e.sobre ? 0.11 : 0))})\\fad(200,200)\\fsp${Math.round(10 * u)}}${limpia(e.etiqueta)}`);

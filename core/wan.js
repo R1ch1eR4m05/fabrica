@@ -146,7 +146,7 @@ export function promptWan(g, refsUsadas = [], { vertical = true } = {}) {
 }
 
 // tiempos de palabra con ElevenLabs Speech to Text (scribe_v1); si falla, se reparten según la ventana de cada escena
-async function transcribir(audio) {
+export async function transcribir(audio) {
   if (!CFG.elevenKey) return null;
   try {
     const fd = new FormData();
