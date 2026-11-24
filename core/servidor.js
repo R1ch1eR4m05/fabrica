@@ -685,7 +685,7 @@ async function api(req, res, partes) {
     const esMot = leerEstilo(p.estilo)?.tipo === "motion";
     if (!esMot && !P.leer(id, "tiempos.json")) return json(res, 400, { error: "Primero haz la voz: la música se hace del largo exacto del video." });
     if (esMot && !fs.existsSync(path.join(P.dirProyecto(id), "final.mp4"))) return json(res, 400, { error: "Primero renderiza el motion: la música se hace del largo exacto del video." });
-    encolar(id, "musica", (av) => musicaIA(id, av, { prompt: (b.prompt || "").trim() || undefined, reusar: b.reusar, desdePanel: true }));
+    encolar(id, "musica", (av) => musicaIA(id, av, { prompt: (b.propio === false ? "" : (b.prompt || "")).trim() || undefined, reusar: b.reusar, desdePanel: true }) /* propio=false: el del estilo (ráfaga incluida) */);
     if (b.insertar) { fila.push({ id, paso: "render", fn: (av) => (esMot ? MOT.terminar(id) : renderConQA(id, av, render)) }); P.marcar(id, "render", "en-fila"); } // y se vuelve a sacar el video con la música nueva
     return json(res, 200, { ok: true });
   }

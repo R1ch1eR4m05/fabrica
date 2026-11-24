@@ -32,7 +32,7 @@ export async function sonido(id, { dur, apex } = {}) {
 
 // plan de efectos de un video: [{ archivo, inicio (s), volumen }]
 // plan = estilo.sonido.earshot: { gancho, cambios: [ids], cierre, volumen, volumenCambio }
-export async function planEfectos(plan, tiempos, { golpeEn = 0 } = {}) {
+export async function planEfectos(plan, tiempos, { golpeEn = 0, extra = [] } = {}) {
   if (!plan || !(await hayExtra("earshot"))) return [];
   const out = [], esc = tiempos.escenas || [], vol = plan.volumen ?? 0.45;
   const poner = async (id, enCorte, o = {}, v = vol) => {
@@ -51,5 +51,7 @@ export async function planEfectos(plan, tiempos, { golpeEn = 0 } = {}) {
     if (!cambios.length) continue;
     await poner(cambios[(k - 1) % cambios.length], corte, { dur: plan.durCambio ?? 1.2, apex: plan.apexCambio ?? 0.8 }, plan.volumenCambio ?? vol * 0.6);
   }
+  // golpes extra (ráfaga: cada número que cuenta, el logo del cierre)
+  for (const x of extra) await poner(x.id, x.t, { dur: x.dur ?? 1.4 }, x.volumen ?? vol);
   return out;
 }

@@ -126,7 +126,17 @@ export async function mezclar({ estilo, guion, tiempos, voz, salida, tmp, dirPro
       // ráfaga con entrada de la Tierra: el golpe del gancho va en la caída (donde arrancan los cortes), con una subida antes
       let golpeEn = 0;
       if (guion.modo === "rafaga") for (const [k, e] of (guion.escenas || []).entries()) { if (e.voz || !(e.tomas || []).every((t) => /^(T\d|EXT)/i.test(t.fuente || ""))) { golpeEn = k ? tiempos.escenas?.[k]?.ini || 0 : 0; break; } }
-      for (const fx of await planEfectos(s.earshot, tiempos, { golpeEn })) {
+      // ráfaga: efectos más presentes (la música va alta) + golpe en cada número y en el logo
+      let plan = s.earshot, extra = [];
+      if (guion.modo === "rafaga") {
+        plan = { ...s.earshot, ...(s.earshotRafaga || {}) };
+        (guion.escenas || []).forEach((e, k) => {
+          const t0 = tiempos.escenas?.[k]?.ini; if (t0 == null) return;
+          if (e.numero && plan.numero) extra.push({ id: plan.numero, t: t0 + 0.05, volumen: plan.volumenNumero ?? 0.7 });
+          if (e.cierre && plan.logo) extra.push({ id: plan.logo, t: t0 + 0.2, volumen: plan.volumenLogo ?? 0.8, dur: 2 });
+        });
+      }
+      for (const fx of await planEfectos(plan, tiempos, { golpeEn, extra })) {
         entradas.push("-i", fx.archivo);
         const ms = Math.max(0, Math.round(fx.inicio * 1000));
         filtros.push(`[${n}]aresample=${SR},volume=${fx.volumen},adelay=${ms}|${ms}[v${n}]`);

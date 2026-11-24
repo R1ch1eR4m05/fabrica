@@ -1003,19 +1003,20 @@ async function bibliotecaMusica(p) {
 function eventosMusica(p, est) {
   const leer = () => ({ ...Object.fromEntries([...document.querySelectorAll("[data-mu]")].map((x) => [x.dataset.mu, x.value])),
     instrumentos: [...document.querySelectorAll("#muInst input:checked")].map((x) => x.value), extra: $("#muExtra").value.trim() });
-  let editado = false;
+  let editado = false, tocado = false;
   const armar = () => { if (!editado) $("#muPrompt").value = promptDeParametros(leer(), p.tema || p.titulo, p.conVoz !== false); };
-  for (const x of document.querySelectorAll("[data-mu], #muInst input, #muExtra")) x.oninput = x.onchange = armar;
+  for (const x of document.querySelectorAll("[data-mu], #muInst input, #muExtra")) x.oninput = x.onchange = () => { tocado = true; armar(); };
   $("#muPrompt").oninput = () => (editado = true);
   // estilos con prompt propio (Corporativo, ráfaga): se parte del que arma el servidor, no del de piano suave; los selectores lo cambian solo si los mueves
-  if (est.musicaIA?.prompt && !p.musicaParametros) api(`/api/proyectos/${p.id}/musica`).then((r) => { if (!editado && r?.prompt) $("#muPrompt").value = r.prompt; }).catch(() => armar());
+  // (24 nov 2026: antes se saltaba si ya había selectores guardados y SRYLED salió con piano «tierno»; ahora siempre parte del del estilo)
+  if (est.musicaIA?.prompt) api(`/api/proyectos/${p.id}/musica`).then((r) => { if (!editado && r?.prompt) $("#muPrompt").value = r.prompt; }).catch(() => armar());
   else armar();
   bibliotecaMusica(p);
   $("#muGenerar").onclick = async () => {
     const parametros = leer();
     await api(`/api/proyectos/${p.id}`, "PATCH", { musicaParametros: parametros });
     const reusar = $("#muReusar") ? $("#muReusar").checked && !editado : false;
-    api(`/api/proyectos/${p.id}/musica`, "POST", { prompt: $("#muPrompt").value, reusar, insertar: true }).then(() => avisar("Componiendo la música… luego se vuelve a sacar el video.")).catch((e) => avisar(e.message, true));
+    api(`/api/proyectos/${p.id}/musica`, "POST", { prompt: $("#muPrompt").value, propio: editado || tocado, reusar, insertar: true }).then(() => avisar("Componiendo la música… luego se vuelve a sacar el video.")).catch((e) => avisar(e.message, true));
   };
   if ($("#muQuitar")) $("#muQuitar").onclick = async () => { await api(`/api/proyectos/${p.id}/archivo?tipo=musica`, "DELETE"); if (est.tipo === "motion" && p.tieneFinal) await api(`/api/proyectos/${p.id}/remezclar`, "POST"); abrir(p.id, { mantener: true }); };
 }

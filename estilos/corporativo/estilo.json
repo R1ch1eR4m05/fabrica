@@ -66,6 +66,15 @@
       "cierre": "reverse_swell/dark",
       "volumen": 0.4,
       "volumenCambio": 0.22
+    },
+    "earshotRafaga": {
+      "volumen": 0.9,
+      "volumenCambio": 0.6,
+      "durCambio": 1.0,
+      "numero": "impact/deep",
+      "volumenNumero": 0.55,
+      "logo": "impact/deep",
+      "volumenLogo": 0.85
     }
   },
   "musicaIA": {
