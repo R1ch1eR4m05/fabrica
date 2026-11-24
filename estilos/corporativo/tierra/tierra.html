@@ -1,0 +1,163 @@
+<!doctype html>
+<!-- Entrada «de la Tierra a tu ciudad» (como la de Absen, sin Google Earth: sus reglas prohíben usarlo en videos promocionales).
+     Globo con NASA Blue Marble (dominio público) que gira y se acerca a México → destello → mapa de México con estilo de la marca
+     (@svg-maps/mexico, CC BY 4.0) que entra a la ciudad, clava un pin y pone el nombre. Determinista: window.renderAt(t). -->
+<html><head><meta charset="utf-8">
+<style>
+  @font-face { font-family: "MX"; src: url("/estilos/_comun/fuentes/Montserrat-ExtraBold.ttf"); }
+  html, body { margin: 0; background: #050608; overflow: hidden; }
+  #c, #mapa, #capa { position: absolute; inset: 0; width: 100vw; height: 100vh; }
+  #mapa { opacity: 0; }
+  #capa { pointer-events: none; }
+  .t { position: absolute; left: 0; right: 0; text-align: center; color: #fff; font-family: MX, sans-serif; opacity: 0; }
+</style></head>
+<body>
+<canvas id="c"></canvas>
+<svg id="mapa" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice"><g id="rejilla"></g><g id="edos"></g><g id="pin"></g></svg>
+<div id="capa"><div class="t" id="lugar"></div><div class="t" id="detalle"></div><div class="t" id="coords"></div></div>
+<div id="flash" style="position:absolute;inset:0;background:#fff;opacity:0"></div>
+<script>
+const Q = new URLSearchParams(location.search);
+const LAT = +(Q.get("lat") ?? 19.706), LON = +(Q.get("lon") ?? -101.195);
+const LUGAR = Q.get("lugar") || "MORELIA", DETALLE = Q.get("detalle") || "", ESTADO = Q.get("estado") || "mic";
+const COLOR = Q.get("color") || "#E6194B", DUR = +(Q.get("dur") || 7);
+const W = innerWidth, H = innerHeight, u = H / 1080;
+const T_GLOBO = DUR * 0.57; // 4 s de 7: globo; luego mapa
+const cl = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const eio = (x) => (x = cl(x), x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+const eo = (x) => 1 - Math.pow(1 - cl(x), 3);
+const lerp = (a, b, k) => a + (b - a) * k;
+const rad = Math.PI / 180;
+
+// ---------- estrellas (fijas, con semilla) ----------
+let sem = 7; const rnd = () => (sem = (sem * 16807) % 2147483647) / 2147483647;
+const estrellas = Array.from({ length: 700 }, () => [rnd() * W, rnd() * H, rnd() * 1.4 + 0.2, rnd()]);
+
+// ---------- textura del globo ----------
+const cv = document.getElementById("c"); cv.width = W; cv.height = H;
+const ctx = cv.getContext("2d");
+let TEX, TW, TH;
+const img = new Image(); img.src = "earth.jpg";
+img.onload = () => {
+  const o = document.createElement("canvas"); o.width = img.width; o.height = img.height;
+  const g = o.getContext("2d"); g.drawImage(img, 0, 0); TW = img.width; TH = img.height; TEX = g.getImageData(0, 0, TW, TH).data;
+  armarMapa().then(() => { window.__listo = true; }).catch((e) => (window.__error = String(e)));
+};
+img.onerror = () => (window.__error = "no cargó earth.jpg");
+
+function globo(t) {
+  const k = cl(t / T_GLOBO);
+  // gira hacia el punto y se acerca: lento al principio, se acelera al final (como caer desde el espacio)
+  const rot = eio(cl(k / 0.85));
+  const lat0 = lerp(LAT - 12, LAT, rot), lon0 = lerp(LON - 45, LON, rot);
+  const R = H * 0.32 * Math.exp(Math.log(9.5) * Math.pow(k, 2.2)); // 0.32 H → 3 H
+  const cx = W / 2, cy = H / 2;
+  const im = ctx.createImageData(W, H), d = im.data;
+  // estrellas (se alejan un poco al acercarse)
+  for (const [x, y, s, b] of estrellas) {
+    const px = Math.round(cx + (x - cx) * (1 + k * 0.6)), py = Math.round(cy + (y - cy) * (1 + k * 0.6));
+    if (px < 0 || py < 0 || px >= W || py >= H) continue;
+    const i = (py * W + px) * 4, v = 120 + 135 * b * (1 - k * 0.7); d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255;
+  }
+  const sf0 = Math.sin(lat0 * rad), cf0 = Math.cos(lat0 * rad);
+  const y0 = Math.max(0, Math.floor(cy - R)), y1 = Math.min(H - 1, Math.ceil(cy + R));
+  for (let py = y0; py <= y1; py++) {
+    const v = (cy - py) / R; if (Math.abs(v) > 1) continue;
+    const ancho = Math.sqrt(1 - v * v) * R;
+    const x0 = Math.max(0, Math.floor(cx - ancho)), x1 = Math.min(W - 1, Math.ceil(cx + ancho));
+    for (let px = x0; px <= x1; px++) {
+      const uu = (px - cx) / R, r2 = uu * uu + v * v; if (r2 > 1) continue;
+      const rho = Math.sqrt(r2), c = Math.asin(Math.min(1, rho)), sc = Math.sin(c), cc = Math.cos(c);
+      const lat = rho < 1e-9 ? lat0 * rad : Math.asin(cc * sf0 + (v * sc * cf0) / rho);
+      const lon = lon0 * rad + Math.atan2(uu * sc, rho * cc * cf0 - v * sc * sf0);
+      // muestreo bilineal de la textura equirectangular
+      let tx = ((lon / (2 * Math.PI) + 0.5) % 1 + 1) % 1 * TW - 0.5, ty = (0.5 - lat / Math.PI) * TH - 0.5;
+      const ix = Math.floor(tx), iy = Math.max(0, Math.min(TH - 2, Math.floor(ty))), fx = tx - ix, fy = ty - iy;
+      const a = ((iy * TW + ((ix % TW) + TW) % TW) * 4), b = ((iy * TW + ((ix + 1) % TW)) * 4), cI = a + TW * 4, dI = b + TW * 4;
+      const z = Math.sqrt(1 - r2), luz = 0.35 + 0.75 * Math.pow(z, 0.55); // borde más oscuro
+      const i = (py * W + px) * 4;
+      for (let q = 0; q < 3; q++) {
+        const val = (TEX[a + q] * (1 - fx) + TEX[b + q] * fx) * (1 - fy) + (TEX[cI + q] * (1 - fx) + TEX[dI + q] * fx) * fy;
+        d[i + q] = Math.min(255, val * luz * 1.08);
+      }
+      d[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(im, 0, 0);
+  // atmósfera: halo azul fino alrededor del disco
+  const g = ctx.createRadialGradient(cx, cy, R * 0.995, cx, cy, R * 1.035);
+  g.addColorStop(0, "rgba(120,180,255,0.6)"); g.addColorStop(1, "rgba(110,170,255,0)");
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, R * 1.04, 0, 2 * Math.PI); ctx.arc(cx, cy, R * 0.995, 0, 2 * Math.PI, true); ctx.fill();
+  // desenfoque de velocidad (rayas radiales suaves) en el último tramo
+  if (k > 0.8) { ctx.fillStyle = `rgba(255,255,255,${(k - 0.8) * 0.5})`; ctx.fillRect(0, 0, W, H); }
+}
+
+// ---------- mapa de México con estilo de la marca ----------
+const NS = "http://www.w3.org/2000/svg";
+let VB, PUNTO, CAJA_EDO;
+async function armarMapa() {
+  const m = await (await fetch("mexico.json")).json();
+  const svg = document.getElementById("mapa"); VB = m.viewBox.split(" ").map(Number);
+  const edos = document.getElementById("edos");
+  for (const e of m.estados) {
+    const p = document.createElementNS(NS, "path"); p.setAttribute("d", e.path); p.id = "e-" + e.id;
+    p.setAttribute("fill", "#17181c"); p.setAttribute("stroke", "#3a3c44"); p.setAttribute("stroke-width", "0.6"); edos.appendChild(p);
+  }
+  // rejilla técnica de fondo
+  const rej = document.getElementById("rejilla");
+  for (let x = -200; x < 1000; x += 20) { const l = document.createElementNS(NS, "line"); l.setAttribute("x1", x); l.setAttribute("x2", x); l.setAttribute("y1", -200); l.setAttribute("y2", 700); l.setAttribute("stroke", "#ffffff"); l.setAttribute("stroke-opacity", "0.04"); l.setAttribute("stroke-width", "0.4"); rej.appendChild(l); }
+  for (let y = -200; y < 700; y += 20) { const l = document.createElementNS(NS, "line"); l.setAttribute("y1", y); l.setAttribute("y2", y); l.setAttribute("x1", -200); l.setAttribute("x2", 1000); l.setAttribute("stroke", "#ffffff"); l.setAttribute("stroke-opacity", "0.04"); l.setAttribute("stroke-width", "0.4"); rej.appendChild(l); }
+  // de lat/lon a coordenadas del mapa (calibrado con Michoacán, Guanajuato y CDMX; error < 2 px en el centro del país)
+  PUNTO = [411.9 + (LON + 101.9) * 25.7, 377.35 - (LAT - 19.16) * 26.8];
+  const caja = document.getElementById("e-" + ESTADO); CAJA_EDO = caja ? caja.getBBox() : null;
+  const pin = document.getElementById("pin");
+  pin.innerHTML = `<circle id="o1" cx="${PUNTO[0]}" cy="${PUNTO[1]}" r="2" fill="none" stroke="${COLOR}" stroke-width="0.8"/>
+    <circle id="o2" cx="${PUNTO[0]}" cy="${PUNTO[1]}" r="2" fill="none" stroke="${COLOR}" stroke-width="0.8"/>
+    <g id="aguja"><path d="M ${PUNTO[0]} ${PUNTO[1]} c -3 -5 -6 -8 -6 -11.5 a 6 6 0 1 1 12 0 c 0 3.5 -3 6.5 -6 11.5 z" fill="${COLOR}"/><circle cx="${PUNTO[0]}" cy="${PUNTO[1] - 11.5}" r="2.4" fill="#fff"/></g>`;
+  const L = document.getElementById("lugar"), D = document.getElementById("detalle"), C = document.getElementById("coords");
+  L.textContent = LUGAR; D.textContent = DETALLE;
+  C.textContent = `${Math.abs(LAT).toFixed(2)}° ${LAT >= 0 ? "N" : "S"} · ${Math.abs(LON).toFixed(2)}° ${LON >= 0 ? "E" : "O"}`;
+  Object.assign(L.style, { top: `${H * 0.68}px`, fontSize: `${H * 0.105}px`, letterSpacing: `${6 * u}px`, textShadow: "0 4px 30px rgba(0,0,0,.8)" });
+  Object.assign(D.style, { top: `${H * 0.8}px`, fontSize: `${H * 0.034}px`, letterSpacing: `${10 * u}px`, color: "#fff" });
+  Object.assign(C.style, { top: `${H * 0.86}px`, fontSize: `${H * 0.022}px`, letterSpacing: `${6 * u}px`, color: COLOR });
+}
+
+function mapa(t) {
+  const k = cl((t - T_GLOBO) / (DUR - T_GLOBO));
+  const svg = document.getElementById("mapa");
+  svg.style.opacity = cl((t - T_GLOBO + 0.05) / 0.12);
+  // cámara: de todo México a ~110 unidades alrededor del punto (el punto queda un poco arriba del centro, sobre el nombre)
+  const z = eio(cl(k / 0.72));
+  const ancho0 = VB[2] * 1.05, ancho1 = 120, ancho = Math.exp(lerp(Math.log(ancho0), Math.log(ancho1), z));
+  const alto = ancho * H / W;
+  const cx = lerp(VB[0] + VB[2] / 2, PUNTO[0], z), cy = lerp(VB[1] + VB[3] / 2, PUNTO[1] + alto * 0.08, z);
+  svg.setAttribute("viewBox", `${cx - ancho / 2} ${cy - alto / 2} ${ancho} ${alto}`);
+  // el estado se enciende del color de la marca
+  const e = document.getElementById("e-" + ESTADO);
+  if (e) { const a = eo(cl((k - 0.15) / 0.25)); e.setAttribute("fill", mezcla("#17181c", COLOR, a * 0.85)); e.setAttribute("stroke", mezcla("#3a3c44", "#ffffff", a * 0.6)); }
+  // el pin cae y rebota; dos ondas salen del punto
+  const kp = cl((k - 0.42) / 0.14), caer = kp < 1 ? -30 * (1 - eo(kp)) : 0, rebote = kp >= 1 ? Math.max(0, Math.sin((k - 0.56) * 40) * 3 * Math.exp(-(k - 0.56) * 25)) : 0;
+  const ag = document.getElementById("aguja"); ag.setAttribute("opacity", kp > 0 ? 1 : 0); ag.setAttribute("transform", `translate(0 ${caer - rebote})`);
+  for (const [id, d] of [["o1", 0], ["o2", 0.12]]) {
+    const ko = ((k - 0.56 - d) % 0.24 + 0.24) % 0.24 / 0.24, c = document.getElementById(id);
+    c.setAttribute("r", 1 + ko * 14); c.setAttribute("opacity", k > 0.56 + d ? (1 - ko) * 0.9 : 0);
+  }
+  const kt = eo(cl((k - 0.58) / 0.2));
+  for (const [id, dy] of [["lugar", 0], ["detalle", 0.04], ["coords", 0.08]]) {
+    const el = document.getElementById(id), kk = eo(cl((k - 0.58 - dy) / 0.2));
+    el.style.opacity = kk; el.style.transform = `translateY(${(1 - kk) * 30 * u}px)`;
+  }
+}
+function mezcla(a, b, k) {
+  const pa = [1, 3, 5].map((i) => parseInt(a.slice(i, i + 2), 16)), pb = [1, 3, 5].map((i) => parseInt(b.slice(i, i + 2), 16));
+  return "#" + pa.map((v, i) => Math.round(v + (pb[i] - v) * k).toString(16).padStart(2, "0")).join("");
+}
+
+window.renderAt = (t) => {
+  if (t < T_GLOBO + 0.15) { cv.style.opacity = 1; globo(Math.min(t, T_GLOBO)); } else cv.style.opacity = 0;
+  if (t >= T_GLOBO - 0.05) mapa(t); else document.getElementById("mapa").style.opacity = 0;
+  // destello en el cambio de globo a mapa
+  const f = 1 - Math.abs(t - T_GLOBO) / 0.18; document.getElementById("flash").style.opacity = Math.max(0, f) * 0.95;
+};
+</script>
+</body></html>

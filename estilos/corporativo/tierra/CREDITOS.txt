@@ -1,0 +1,4 @@
+earth.jpg — NASA Blue Marble (dominio público, NASA Earth Observatory). Copia tomada de vasturiano/three-globe (example/img/earth-blue-marble.jpg).
+mexico.json — trazos de los estados de «@svg-maps/mexico» de Victor Cazanave, licencia CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/).
+  Atribución para la descripción del video: «Mapa de México: @svg-maps/mexico (Victor Cazanave), CC BY 4.0».
+NO usar Google Earth / Earth Studio: sus reglas prohíben usarlo en videos promocionales o anuncios.

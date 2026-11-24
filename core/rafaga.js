@@ -80,7 +80,8 @@ async function hacerCorte(id, c, fmt, salida, efecto) {
   const sal = ["-an", "-r", String(FPS), "-frames:v", String(N), "-c:v", "libx264", "-preset", "veryfast", "-crf", "19", "-pix_fmt", "yuv420p", "-video_track_timescale", "15360", "-avoid_negative_ts", "make_zero", salida]; // misma base de tiempo en todos: el concat sin recodificar queda al cuadro
   // empujón: entra 9 % más grande y asienta en 6 cuadros (punch); luego acercamiento lento que da vida
   const z = efecto === "punch" ? `if(lt(on,6),1.09-0.015*on,1.0+0.0009*(on-6))` : `1.0+0.0011*on`;
-  const zp = `zoompan=z='${z}':x='(iw-iw/zoom)/2':y='(ih-ih/zoom)/2':d=1:s=${W}x${H}:fps=${FPS}`;
+  const t0 = c.toma || {};
+  const zp = t0.quieto ? `scale=${W}:${H}` : `zoompan=z='${z}':x='(iw-iw/zoom)/2':y='(ih-ih/zoom)/2':d=1:s=${W}x${H}:fps=${FPS}`; // quieto: la toma ya trae su propio movimiento (la Tierra)
   const destello = efecto === "flash" ? ",fade=t=in:st=0:d=0.14:color=white" : efecto === "negro" ? ",fade=t=in:st=0:d=0.2" : "";
   const t = c.toma || {};
   const src = t.negro ? null : resolverMaterial(id, t.fuente);
@@ -163,6 +164,24 @@ Style: M,Montserrat ExtraBold,${Math.round(H * 0.03)},&H30FFFFFF,&H00FFFFFF,&H00
 export async function renderRafaga({ id, guion, tiempos, fmt, tmp, avisar = () => {}, musica }) {
   const dir = dirProyecto(id);
   avisar({ paso: "render", progreso: 0.02, msg: "Buscando los golpes de la música…" });
+  // la entrada «de la Tierra a tu ciudad» se hace sola si el guion la pide (guion.tierra) y aún no existe (core/tierra.js, gratis)
+  if (guion.tierra) {
+    const nombre = guion.tierra.nombre || "T1";
+    if (!resolverMaterial(id, `${nombre}.mp4`)) {
+      avisar({ paso: "render", progreso: 0.01, msg: "Haciendo la entrada de la Tierra…" });
+      const T = await import("./tierra.js"); await T.hacerTierra(id, { ...guion.tierra, nombre, w: fmt.w, h: fmt.h, avisar });
+    }
+  }
+  // tomas que no existen en material/ se quitan; si un bloque se queda sin tomas, sigue con las del bloque anterior
+  let previas = null;
+  guion = { ...guion, escenas: guion.escenas.map((e) => {
+    if (e.cierre || !e.tomas) return e;
+    const ok = e.tomas.filter((t) => t.negro || resolverMaterial(id, t.fuente)).map((t) => (guion.tierra && t.fuente === `${guion.tierra.nombre || "T1"}.mp4` ? { quieto: true, ...t } : t));
+    if (ok.length < e.tomas.length) avisar({ paso: "render", msg: `Ojo: falta en material/: ${e.tomas.filter((t) => !ok.includes(t)).map((t) => t.fuente).join(", ")}` });
+    const tomas = ok.length ? ok : previas || [];
+    if (tomas.length) previas = tomas;
+    return { ...e, tomas };
+  }) };
   const p = await pulsos(musica, tiempos.duracion);
   const cortes = planCortes(guion, tiempos, p.golpes);
   avisar({ paso: "render", progreso: 0.05, msg: `${cortes.length} cortes a ${Math.round(p.bpm)} BPM${p.deMusica ? "" : " (sin música: pulso de 120)"}` });

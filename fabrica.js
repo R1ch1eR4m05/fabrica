@@ -302,6 +302,14 @@ async function main() {
       const r = await MIN.crearMiniaturas(libres[0], { avisar, ia: args.includes("--ia") });
       console.log(`\nListo: ${r.opciones.length} miniaturas en proyectos/${libres[0]}/miniaturas/ (la A ya está en listos/). Texto: ${r.origen}.${r.sinEstudio ? " Usé la receta base: estudia el nicho para afinarla." : ""}`); return;
     }
+    case "tierra": { // entrada «de la Tierra a tu ciudad» para el Corporativo → material/T1.mp4 (gratis)
+      const T = await import("./core/tierra.js");
+      if (!libres[0]) { console.log("Uso: node fabrica.js tierra <id> [--lugar MORELIA] [--detalle \"SHOWROOM · EUCALIPTO 238\"] [--lat 19.706] [--lon -101.195] [--estado mic] [--dur 6]"); return; }
+      const P = await import("./core/proyectos.js"); const g = P.leer(libres[0], "guion.json") || {};
+      const o = { ...(g.tierra || {}) }; for (const k of ["lugar", "detalle", "lat", "lon", "estado", "color", "dur", "nombre"]) if (opc(k)) o[k] = ["lat", "lon", "dur"].includes(k) ? +opc(k) : opc(k);
+      const f = await T.hacerTierra(libres[0], { ...o, avisar });
+      console.log(`\nListo: ${f}\n${T.CREDITO_MAPA}`); return;
+    }
     case "clonar-estilo": {
       const CL = await import("./core/clonar-estilo.js");
       if (!libres[0]) { console.log("Uso: node fabrica.js clonar-estilo <archivo.mp4|enlace> [--nombre id] [--pedido \"texto\"]"); return; }

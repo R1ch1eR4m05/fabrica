@@ -57,3 +57,6 @@ Medido en «Beyond the Display» de Absen: 71 tomas en 69 s (toma típica de 0.6
 - `"sobre"`: texto grande; `"cierre": true` (último bloque, sin tomas): fondo negro y el logo entra (material/logo.png si existe; si no, el nombre de la marca en letra gruesa) con `"etiqueta"` debajo.
 - Efectos: destello blanco al cambiar de bloque, empujón en cortes alternos, golpe/whoosh/swell de earshot si está instalado. Nada gasta.
 - Las tomas de Wan se guardan en material/ como W1.mp4, W2.mp4… para usarlas como cualquier otra toma.
+
+### Entrada «de la Tierra a tu ciudad» (modo ráfaga)
+Pon en el guion `"tierra": { "lugar": "MORELIA", "detalle": "SHOWROOM · EUCALIPTO 238", "lat": 19.706, "lon": -101.195, "estado": "mic", "dur": 7 }` y como primer bloque `{ "voz": "", "duracion": 7, "tomas": [{ "fuente": "T1.mp4" }] }`. El siguiente bloque debe ser la toma REAL del exterior del lugar (celular o dron). Nunca Google Earth. Crédito del mapa en la descripción: «Mapa de México: @svg-maps/mexico (Victor Cazanave), CC BY 4.0. Imagen de la Tierra: NASA Blue Marble.»
