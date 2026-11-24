@@ -13,7 +13,7 @@ import crypto from "node:crypto";
 
 // Pronunciación: palabras que la voz lee mal (marcas, siglas). Se le manda a ElevenLabs la forma "dicha",
 // pero los subtítulos siguen mostrando la palabra escrita. Se suman: base → ajustes.json → pronunciacion → guion.pronunciacion.
-export const PRONUNCIACION_BASE = { SRYLED: "ese erre y led" }; // 24 nov 2026: «eseerreiled» junto lo leía mal Eleven v4
+export const PRONUNCIACION_BASE = { SRYLED: "Ese-erre-i-led" }; // 24 nov 2026: Richie probó 4 formas en v4 Turbo; esta suena seguida y clara
 export function diccionario(guion = {}) {
   return { ...PRONUNCIACION_BASE, ...(leerAjustes().pronunciacion || {}), ...(guion.pronunciacion || {}) };
 }
