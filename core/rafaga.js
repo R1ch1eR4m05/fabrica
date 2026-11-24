@@ -243,10 +243,10 @@ export async function renderRafaga({ id, guion, tiempos, fmt, tmp, avisar = () =
     const cierre = (guion.escenas || []).findIndex((e) => e.cierre), D = tiempos.duracion;
     const tc0 = cierre >= 0 ? tiempos.escenas[cierre].ini : D;
     const lw = Math.round(fmt.w * 0.09), LW = Math.round(fmt.w * 0.36);
-    await ffmpeg(["-i", crudo, "-i", logo, "-i", logo, "-filter_complex",
-      `[1:v]scale=${lw}:-1,format=rgba,colorchannelmixer=aa=0.75[bug];[2:v]scale=${LW}:-1,format=rgba,fade=t=in:st=${(tc0 + 0.2).toFixed(2)}:d=0.8:alpha=1[grande];` +
+    await ffmpeg(["-i", crudo, "-loop", "1", "-i", logo, "-loop", "1", "-i", logo, "-filter_complex",
+      `[1:v]scale=${lw}:-1,format=rgba,colorchannelmixer=aa=0.75[bug];[2:v]scale=${LW}:-1:flags=lanczos,format=rgba,fade=t=in:st=${(tc0 + 0.2).toFixed(2)}:d=0.8:alpha=1[grande];` +
       `[0:v][bug]overlay=${Math.round(fmt.w * 0.03)}:${Math.round(fmt.h * 0.035)}:enable='lt(t,${tc0.toFixed(2)})'[a];[a][grande]overlay=(W-w)/2:(H-h)/2-${Math.round(fmt.h * 0.04)}:enable='gte(t,${tc0.toFixed(2)})'[b];[b]${subs}[v]`,
-      "-map", "[v]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "19", "-pix_fmt", "yuv420p", "-r", String(FPS), video]);
+      "-map", "[v]", "-t", D.toFixed(3), "-c:v", "libx264", "-preset", "veryfast", "-crf", "19", "-pix_fmt", "yuv420p", "-r", String(FPS), video]);
   } else {
     const fundido = (guion.escenas || []).some((e) => e.fundido) ? `,fade=t=out:st=${Math.max(0, tiempos.duracion - 1.4).toFixed(2)}:d=1.4` : "";
     await ffmpeg(["-i", crudo, "-vf", subs + fundido, "-c:v", "libx264", "-preset", "veryfast", "-crf", "19", "-pix_fmt", "yuv420p", "-r", String(FPS), video]);
