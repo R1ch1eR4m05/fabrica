@@ -32,7 +32,7 @@ export async function sonido(id, { dur, apex } = {}) {
 
 // plan de efectos de un video: [{ archivo, inicio (s), volumen }]
 // plan = estilo.sonido.earshot: { gancho, cambios: [ids], cierre, volumen, volumenCambio }
-export async function planEfectos(plan, tiempos) {
+export async function planEfectos(plan, tiempos, { golpeEn = 0 } = {}) {
   if (!plan || !(await hayExtra("earshot"))) return [];
   const out = [], esc = tiempos.escenas || [], vol = plan.volumen ?? 0.45;
   const poner = async (id, enCorte, o = {}, v = vol) => {
@@ -40,11 +40,13 @@ export async function planEfectos(plan, tiempos) {
     out.push({ archivo: s.archivo, inicio: Math.max(0, enCorte - (s.pico || 0)), volumen: v });
   };
   // gancho: el golpe arranca con el video (lo más fuerte en el primer cuadro)
-  if (plan.gancho) await poner(plan.gancho, 0, { dur: plan.durGancho ?? 1.8 });
+  if (plan.gancho) await poner(plan.gancho, golpeEn, { dur: plan.durGancho ?? 1.8 });
+  if (golpeEn > 2 && plan.cierre) await poner(plan.cierre, golpeEn, { dur: 2.2 }, vol * 0.8); // subida que remata en el golpe
   // cambios de escena: se alternan los whooshes; el pico cae en el corte. El último cambio lleva el swell de cierre.
   const cambios = [].concat(plan.cambios || []);
   for (let k = 1; k < esc.length; k++) {
     const corte = esc[k].ini;
+    if (golpeEn && Math.abs(corte - golpeEn) < 0.05) continue; // ahí ya está el golpe
     if (k === esc.length - 1 && plan.cierre) { await poner(plan.cierre, corte, { dur: plan.durCierre ?? 1.6 }, vol * 0.9); continue; }
     if (!cambios.length) continue;
     await poner(cambios[(k - 1) % cambios.length], corte, { dur: plan.durCambio ?? 1.2, apex: plan.apexCambio ?? 0.8 }, plan.volumenCambio ?? vol * 0.6);

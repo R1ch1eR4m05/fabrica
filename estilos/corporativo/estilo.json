@@ -70,6 +70,7 @@
   },
   "musicaIA": {
     "prompt": "Epic modern corporate cinematic underscore for a technology brand film: warm synth pads, pulsing bass, rising strings and big tom hits building to a confident finale, no vocals, leaves room for a narrator.",
-    "reusar": false
+    "reusar": false,
+    "promptRafaga": "High-energy cinematic electronic brand-film track at a steady 124 BPM, like a tech launch trailer. {intro} After the drop: punchy four-on-the-floor kick, tight claps, pulsing sidechained synth bass, bright arpeggios, big tom hits and whoosh transitions every 8 bars, energy building section by section. Leaves space in the mids for a short narrator line now and then. Ends with a final big hit and a clean 2-second ring-out. Instrumental only, no vocals, no lyrics."
   }
 }

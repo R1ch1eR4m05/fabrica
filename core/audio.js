@@ -92,7 +92,7 @@ export async function mezclar({ estilo, guion, tiempos, voz, salida, tmp, dirPro
     let veces = 0;
     try { const da = await duracion(amb); if (da > 0 && da < D) veces = Math.ceil(D / da); } catch {}
     entradas.push(...(veces ? ["-stream_loop", String(veces)] : []), "-i", amb);
-    const vol = duck ? (guion.volumenMusica ?? 0.6) : (propia || deBiblioteca) ? (tiempos.sinVoz ? s.volumenMusicaSinVoz ?? 0.9 : s.volumenMusica ?? 0.16) : ((tiempos.sinVoz ? s.volumenSinVoz : null) ?? s.volumenAmbiente ?? 0.35);
+    const vol = duck ? (guion.volumenMusica ?? 0.85) : (propia || deBiblioteca) ? (tiempos.sinVoz ? s.volumenMusicaSinVoz ?? 0.9 : s.volumenMusica ?? 0.16) : ((tiempos.sinVoz ? s.volumenSinVoz : null) ?? s.volumenAmbiente ?? 0.35);
     // las pistas reales vienen a volúmenes muy distintos (de -7 a -18 LUFS): se igualan antes de bajarlas
     const iguala = propia || deBiblioteca ? "loudnorm=I=-16:TP=-1.5:LRA=11,aresample=48000," : "";
     if (duck) filtros.push(`[${n}]atrim=0:${D.toFixed(2)},${iguala}volume=${vol},afade=t=out:st=${Math.max(0, D - 3).toFixed(2)}:d=3[m${n}]`, `[m${n}][vsc]sidechaincompress=threshold=0.03:ratio=6:attack=15:release=350:makeup=1[v${n}]`);
@@ -123,7 +123,10 @@ export async function mezclar({ estilo, guion, tiempos, voz, salida, tmp, dirPro
   if (s.earshot && opciones.efectos !== "no") {
     try {
       const { planEfectos } = await import("./sfx.js");
-      for (const fx of await planEfectos(s.earshot, tiempos)) {
+      // ráfaga con entrada de la Tierra: el golpe del gancho va en la caída (donde arrancan los cortes), con una subida antes
+      let golpeEn = 0;
+      if (guion.modo === "rafaga") for (const [k, e] of (guion.escenas || []).entries()) { if (e.voz || !(e.tomas || []).every((t) => /^(T\d|EXT)/i.test(t.fuente || ""))) { golpeEn = k ? tiempos.escenas?.[k]?.ini || 0 : 0; break; } }
+      for (const fx of await planEfectos(s.earshot, tiempos, { golpeEn })) {
         entradas.push("-i", fx.archivo);
         const ms = Math.max(0, Math.round(fx.inicio * 1000));
         filtros.push(`[${n}]aresample=${SR},volume=${fx.volumen},adelay=${ms}|${ms}[v${n}]`);
@@ -132,7 +135,8 @@ export async function mezclar({ estilo, guion, tiempos, voz, salida, tmp, dirPro
     } catch (e) { console.warn("  · Efectos de earshot:", e.message); }
   }
 
-  filtros.push(`${etiquetas.join("")}amix=inputs=${etiquetas.length}:normalize=0:duration=first,alimiter=limit=0.95[out]`);
+  // ráfaga: la mezcla se lleva a -14 LUFS (como los videos de marca; antes salía ~-21 y el QA la rechazaba)
+  filtros.push(`${etiquetas.join("")}amix=inputs=${etiquetas.length}:normalize=0:duration=first,${duck ? "loudnorm=I=-14:TP=-1.5:LRA=11,aresample=48000," : ""}alimiter=limit=0.95[out]`);
   await ffmpeg([...entradas, "-filter_complex", filtros.join(";"), "-map", "[out]", "-ac", "2", "-ar", String(SR), "-c:a", "aac", "-b:a", "192k", salida]);
   return salida;
 }

@@ -1007,7 +1007,9 @@ function eventosMusica(p, est) {
   const armar = () => { if (!editado) $("#muPrompt").value = promptDeParametros(leer(), p.tema || p.titulo, p.conVoz !== false); };
   for (const x of document.querySelectorAll("[data-mu], #muInst input, #muExtra")) x.oninput = x.onchange = armar;
   $("#muPrompt").oninput = () => (editado = true);
-  armar();
+  // estilos con prompt propio (Corporativo, ráfaga): se parte del que arma el servidor, no del de piano suave; los selectores lo cambian solo si los mueves
+  if (est.musicaIA?.prompt && !p.musicaParametros) api(`/api/proyectos/${p.id}/musica`).then((r) => { if (!editado && r?.prompt) $("#muPrompt").value = r.prompt; }).catch(() => armar());
+  else armar();
   bibliotecaMusica(p);
   $("#muGenerar").onclick = async () => {
     const parametros = leer();
