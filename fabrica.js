@@ -304,9 +304,10 @@ async function main() {
     }
     case "tierra": { // entrada «de la Tierra a tu ciudad» para el Corporativo → material/T1.mp4 (gratis)
       const T = await import("./core/tierra.js");
-      if (!libres[0]) { console.log("Uso: node fabrica.js tierra <id> [--lugar MORELIA] [--detalle \"SHOWROOM · EUCALIPTO 238\"] [--lat 19.706] [--lon -101.195] [--estado mic] [--dur 6]"); return; }
+      if (!libres[0]) { console.log("Uso: node fabrica.js tierra <id> [--lugar MORELIA] [--detalle \"SHOWROOM · EUCALIPTO 238\"] [--lat 19.706] [--lon -101.195] [--estado mic] [--dur 6]   ·   con Google Earth Studio: --earth <zip|carpeta|mp4>"); return; }
       const P = await import("./core/proyectos.js"); const g = P.leer(libres[0], "guion.json") || {};
       const o = { ...(g.tierra || {}) }; for (const k of ["lugar", "detalle", "lat", "lon", "estado", "color", "dur", "nombre"]) if (opc(k)) o[k] = ["lat", "lon", "dur"].includes(k) ? +opc(k) : opc(k);
+      if (opc("earth")) { const f = await T.desdeEarth(libres[0], opc("earth"), { nombre: o.nombre || "T1" }); console.log(`\nListo: ${f} (render de Google Earth Studio)`); return; }
       const f = await T.hacerTierra(libres[0], { ...o, avisar });
       console.log(`\nListo: ${f}\n${T.CREDITO_MAPA}`); return;
     }
