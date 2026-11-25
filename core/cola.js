@@ -2,7 +2,7 @@
 // y se programan en GHL. Siempre en dos pasos: 1) simular (dry-run, no publica) → plan en listos/cola-<marca>.json;
 // 2) confirmar → programa EXACTAMENTE ese plan. Idempotente: lo que ya está en el registro no se repite.
 // Calendario por defecto (hora de Ciudad de México, sin horario de verano desde 2022 = UTC-6):
-//   Short/Reel: lunes a viernes, DOS por día, a las 13:00 y a las 19:00 (nov 2026) · Video largo: uno por semana, el primer día hábil libre a las 16:00
+//   Short/Reel: lunes a viernes, DOS por día, a las 13:00 y a las 19:00 (nov 2026) · Video largo: tres por semana (lunes, miércoles y viernes) a las 16:00
 //   (antes iba a las 13:00; se movió para no chocar con el Short de esa hora en YouTube y Facebook).
 // Se cambia en ajustes.json → "calendario": { "short": { "dias": [1,2,3,4,5], "horas": ["13:00","19:00"] }, "largo": { "dias": [1,2,3,4,5], "hora": "16:00", "porSemana": 1 } }
 // ("hora": "19:00" sola también sirve: un Short por día).
@@ -15,7 +15,7 @@ import { marcaDe } from "./serie.js";
 import * as GHL from "./ghl.js";
 import { qaVigente, qaVideo } from "./qa.js";
 
-const CAL_BASE = { short: { dias: [1, 2, 3, 4, 5], horas: ["13:00", "19:00"] }, largo: { dias: [1, 2, 3, 4, 5], horas: ["16:00"], porSemana: 1 } };
+const CAL_BASE = { short: { dias: [1, 2, 3, 4, 5], horas: ["13:00", "19:00"] }, largo: { dias: [1, 3, 5], horas: ["16:00"], porSemana: 3 } }; // 25 nov 2026: Richie quiere 3 largos por semana (lun, mié y vie)
 const OFFSET = "-06:00"; // Ciudad de México
 const fPlan = (marca) => path.join(DIR_LISTOS, `cola-${marca}.json`);
 const conHoras = (base, c = {}) => { const horas = Array.isArray(c.horas) && c.horas.length ? c.horas : c.hora ? [c.hora] : base.horas; return { ...base, ...c, horas: [...horas].sort() }; };
