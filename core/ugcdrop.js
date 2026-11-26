@@ -18,6 +18,12 @@ const EXT = /\.(mp4|mov|m4v|webm)$/i;
 export const TEMAS = ["manana", "noche", "tarea", "escuela", "comida", "orden", "hermanos", "casa", "reto", "general"];
 
 // ---------------- datos ----------------
+const OPCIONES_BASE = {"video": {"ancho": 1080, "alto": 1920, "fps": 30, "crf": 20, "preset": "veryfast"}, "escenas": {"recorte_inicio_seg": 0.25, "max_seg_por_escena": 7, "max_seg_gancho": 6}, "texto_gancho": {"segundos": 3.2, "fuente": "estilos/_comun/fuentes/Montserrat-ExtraBold.ttf", "tamano": 64, "color": "#FFFFFF", "fondo": "#C4837A", "posicion_y": 0.17, "max_letras_por_linea": 22}, "cierre": {"segundos": 2.6, "fondo": "#F5EDE3", "color_titulo": "#3B2F2A", "color_cta": "#FFFFFF", "fondo_cta": "#C4837A", "acento": "#8FA68E", "fuente_titulo": "estilos/_comun/fuentes/Montserrat-ExtraBold.ttf", "fuente_texto": "estilos/_comun/fuentes/Montserrat-SemiBold.ttf", "imagen_producto": "ugcdrop/producto.png"}, "etiqueta_ia": {"mostrar": false, "tamano": 30}, "musica": {"usar": true, "carpetas": ["musica/anuncios-ugc", "musica/nichos/levania"], "volumen": 0.12}, "mezcla_lote": {"porcentaje_realista": 70}};
+const mezclar = (a, b) => {
+  const r = { ...a };
+  for (const [k, v] of Object.entries(b || {})) r[k] = v && typeof v === "object" && !Array.isArray(v) && a[k] && typeof a[k] === "object" ? mezclar(a[k], v) : v;
+  return r;
+};
 const leerJSON = (f, def) => (fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, "utf8")) : def);
 function leerTSV(f) {
   const lineas = fs.readFileSync(f, "utf8").split(/\r?\n/).filter((l) => l.trim());
@@ -26,7 +32,8 @@ function leerTSV(f) {
 }
 
 export function cargar() {
-  const ajustes = leerJSON(path.join(DIR_DATOS, "ajustes.json"));
+  // ugcdrop/opciones.json (no "ajustes.json": ese nombre lo ignora .gitignore). Si falta algo, van los valores de fábrica.
+  const ajustes = mezclar(OPCIONES_BASE, leerJSON(path.join(DIR_DATOS, "opciones.json"), {}));
   const { escenas } = leerJSON(path.join(DIR_DATOS, "escenas.json"));
   const porCodigo = Object.fromEntries(escenas.map((e) => [e.codigo, e]));
   const textos = leerJSON(path.join(DIR_DATOS, "textos.json"));
