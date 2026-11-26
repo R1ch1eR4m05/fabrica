@@ -1,0 +1,1165 @@
+{
+ "_nota": "Catálogo de escenas. 'archivo' es la ruta dentro de la carpeta Levania de Drive; si termina en un código (U01), se busca cualquier archivo que empiece con ese código. 'url' es respaldo de descarga directa.",
+ "escenas": [
+  {
+   "codigo": "G1",
+   "estilo": "animado",
+   "tipo": "gancho",
+   "titulo": "Mamá desbordada, ojo temblando",
+   "tema": "manana",
+   "duracion": 6,
+   "archivo": "Videos animados IA/02 Ganchos/H1 Gancho - Mamá desbordada ojo temblando.mp4",
+   "url": null
+  },
+  {
+   "codigo": "G2",
+   "estilo": "animado",
+   "tipo": "gancho",
+   "titulo": "Teo dinosaurio con la olla",
+   "tema": "manana",
+   "duracion": 5,
+   "archivo": "Videos animados IA/02 Ganchos/H1 Gancho - Teo dinosaurio ROAR.mp4",
+   "url": null
+  },
+  {
+   "codigo": "G3",
+   "estilo": "animado",
+   "tipo": "gancho",
+   "titulo": "Mía llorando por su dibujo",
+   "tema": "manana",
+   "duracion": 5,
+   "archivo": "Videos animados IA/02 Ganchos/H1 Gancho - Mía llorando por su dibujo.mp4",
+   "url": null
+  },
+  {
+   "codigo": "G4",
+   "estilo": "animado",
+   "tipo": "gancho",
+   "titulo": "Mamá desesperada a las 10 pm",
+   "tema": "noche",
+   "duracion": 6,
+   "archivo": "Videos animados IA/02 Ganchos/H2 Gancho - Mamá desesperada a las 10pm.mp4",
+   "url": null
+  },
+  {
+   "codigo": "G5",
+   "estilo": "animado",
+   "tipo": "gancho",
+   "titulo": "Guerra de almohadas",
+   "tema": "noche",
+   "duracion": 5,
+   "archivo": "Videos animados IA/02 Ganchos/H2 Gancho - Guerra de almohadas no tengo sueño.mp4",
+   "url": null
+  },
+  {
+   "codigo": "G6",
+   "estilo": "animado",
+   "tipo": "gancho",
+   "titulo": "Teo berrinche, no se quiere bañar",
+   "tema": "noche",
+   "duracion": 5,
+   "archivo": "Videos animados IA/02 Ganchos/H2 Gancho - Teo berrinche no me quiero bañar.mp4",
+   "url": null
+  },
+  {
+   "codigo": "G7",
+   "estilo": "animado",
+   "tipo": "gancho",
+   "titulo": "Mía no le entiende a la tarea",
+   "tema": "tarea",
+   "duracion": 5,
+   "archivo": "Videos animados IA/02 Ganchos/H3 Gancho - Mía no le entiendo a la tarea.mp4",
+   "url": null
+  },
+  {
+   "codigo": "G8",
+   "estilo": "animado",
+   "tipo": "gancho",
+   "titulo": "Teo pinta la pared",
+   "tema": "tarea",
+   "duracion": 5,
+   "archivo": "Videos animados IA/02 Ganchos/H3 Gancho - Teo pinta la pared.mp4",
+   "url": null
+  },
+  {
+   "codigo": "G9",
+   "estilo": "animado",
+   "tipo": "gancho",
+   "titulo": "Mamá: junta en 5 minutos",
+   "tema": "tarea",
+   "duracion": 6,
+   "archivo": "Videos animados IA/02 Ganchos/H3 Gancho - Mamá tengo una junta en 5 minutos.mp4",
+   "url": null
+  },
+  {
+   "codigo": "G10",
+   "estilo": "animado",
+   "tipo": "gancho",
+   "titulo": "Mamá: ¡vamos tarde!",
+   "tema": "escuela",
+   "duracion": 5,
+   "archivo": "Videos animados IA/02 Ganchos/H4 Gancho - Mamá vamos tarde.mp4",
+   "url": null
+  },
+  {
+   "codigo": "G11",
+   "estilo": "animado",
+   "tipo": "gancho",
+   "titulo": "Teo no encuentra su zapato",
+   "tema": "escuela",
+   "duracion": 5,
+   "archivo": "Videos animados IA/02 Ganchos/H4 Gancho - Teo no encuentro mi zapato.mp4",
+   "url": null
+  },
+  {
+   "codigo": "G12",
+   "estilo": "animado",
+   "tipo": "gancho",
+   "titulo": "Mía olvidó su lonchera",
+   "tema": "escuela",
+   "duracion": 5,
+   "archivo": "Videos animados IA/02 Ganchos/H4 Gancho - Mía olvidé mi lonchera.mp4",
+   "url": null
+  },
+  {
+   "codigo": "G13",
+   "estilo": "animado",
+   "tipo": "gancho",
+   "titulo": "Teo: ¡guácala, no me gusta!",
+   "tema": "comida",
+   "duracion": 5,
+   "archivo": "Videos animados IA/02 Ganchos/H5 Gancho - Teo guácala no me gusta.mp4",
+   "url": null
+  },
+  {
+   "codigo": "G14",
+   "estilo": "animado",
+   "tipo": "gancho",
+   "titulo": "Mamá y la olla derramándose",
+   "tema": "comida",
+   "duracion": 6,
+   "archivo": "Videos animados IA/02 Ganchos/H5 Gancho - Mamá y la olla derramándose.mp4",
+   "url": null
+  },
+  {
+   "codigo": "G15",
+   "estilo": "animado",
+   "tipo": "gancho",
+   "titulo": "Mamá pisa un juguete: ¡auch!",
+   "tema": "orden",
+   "duracion": 5,
+   "archivo": "Videos animados IA/02 Ganchos/H6 Gancho - Mamá pisa un juguete auch.mp4",
+   "url": null
+  },
+  {
+   "codigo": "G16",
+   "estilo": "animado",
+   "tipo": "gancho",
+   "titulo": "¡Ahorita, mamá! y tiran la caja",
+   "tema": "orden",
+   "duracion": 5,
+   "archivo": "Videos animados IA/02 Ganchos/H6 Gancho - Ahorita mamá y tiran la caja.mp4",
+   "url": null
+  },
+  {
+   "codigo": "G17",
+   "estilo": "animado",
+   "tipo": "gancho",
+   "titulo": "Pelea: ¡es mío! / ¡no, es mío!",
+   "tema": "hermanos",
+   "duracion": 5,
+   "archivo": "Videos animados IA/02 Ganchos/H7 Gancho - Es mío no es mío.mp4",
+   "url": null
+  },
+  {
+   "codigo": "P1",
+   "estilo": "animado",
+   "tipo": "producto",
+   "titulo": "Mamá pega la checklist en el refri",
+   "tema": "manana",
+   "duracion": 6,
+   "archivo": "Videos animados IA/03 Escenas producto/H1 Producto - Mamá pega checklist en refri.mp4",
+   "url": null
+  },
+  {
+   "codigo": "P2",
+   "estilo": "animado",
+   "tipo": "producto",
+   "titulo": "Manita marca la checklist (comodín)",
+   "tema": "manana",
+   "duracion": 5,
+   "archivo": "Videos animados IA/03 Escenas producto/H1 Producto - Manita marca la checklist.mp4",
+   "url": null
+  },
+  {
+   "codigo": "P3",
+   "estilo": "animado",
+   "tipo": "producto",
+   "titulo": "Niños marcan y chocan las manos",
+   "tema": "manana",
+   "duracion": 6,
+   "archivo": "Videos animados IA/03 Escenas producto/H1 Producto - Niños marcan checklist y chocan manos.mp4",
+   "url": null
+  },
+  {
+   "codigo": "P4",
+   "estilo": "animado",
+   "tipo": "producto",
+   "titulo": "Mamá enseña la checklist en la cama",
+   "tema": "noche",
+   "duracion": 6,
+   "archivo": "Videos animados IA/03 Escenas producto/H2 Producto - Mamá enseña la checklist.mp4",
+   "url": null
+  },
+  {
+   "codigo": "P5",
+   "estilo": "animado",
+   "tipo": "producto",
+   "titulo": "Niños se lavan los dientes",
+   "tema": "noche",
+   "duracion": 5,
+   "archivo": "Videos animados IA/03 Escenas producto/H2 Producto - Niños se lavan los dientes.mp4",
+   "url": null
+  },
+  {
+   "codigo": "P6",
+   "estilo": "animado",
+   "tipo": "producto",
+   "titulo": "Teo marca la checklist en el refri",
+   "tema": "noche",
+   "duracion": 5,
+   "archivo": "Videos animados IA/03 Escenas producto/H2 Producto - Teo marca la checklist en el refri.mp4",
+   "url": null
+  },
+  {
+   "codigo": "P7",
+   "estilo": "animado",
+   "tipo": "producto",
+   "titulo": "Mamá muestra la checklist: primero la tarea",
+   "tema": "tarea",
+   "duracion": 6,
+   "archivo": "Videos animados IA/03 Escenas producto/H3 Producto - Mamá muestra la checklist primero la tarea.mp4",
+   "url": null
+  },
+  {
+   "codigo": "P8",
+   "estilo": "animado",
+   "tipo": "producto",
+   "titulo": "Niños marcan la checklist en la mesa",
+   "tema": "tarea",
+   "duracion": 5,
+   "archivo": "Videos animados IA/03 Escenas producto/H3 Producto - Niños marcan la checklist en la mesa.mp4",
+   "url": null
+  },
+  {
+   "codigo": "P9",
+   "estilo": "animado",
+   "tipo": "producto",
+   "titulo": "Mamá muestra Mi Mochila",
+   "tema": "escuela",
+   "duracion": 6,
+   "archivo": "Videos animados IA/03 Escenas producto/H4 Producto - Mamá muestra checklist Mi Mochila.mp4",
+   "url": null
+  },
+  {
+   "codigo": "P10",
+   "estilo": "animado",
+   "tipo": "producto",
+   "titulo": "Mía empaca y marca Mi Mochila",
+   "tema": "escuela",
+   "duracion": 6,
+   "archivo": "Videos animados IA/03 Escenas producto/H4 Producto - Mía empaca y marca Mi Mochila.mp4",
+   "url": null
+  },
+  {
+   "codigo": "P11",
+   "estilo": "animado",
+   "tipo": "producto",
+   "titulo": "Teo marca Mi Rutina en el refri",
+   "tema": "escuela",
+   "duracion": 5,
+   "archivo": "Videos animados IA/03 Escenas producto/H4 Producto - Teo marca Mi Rutina en el refri.mp4",
+   "url": null
+  },
+  {
+   "codigo": "P12",
+   "estilo": "animado",
+   "tipo": "producto",
+   "titulo": "Mamá: palabras mágicas",
+   "tema": "comida",
+   "duracion": 6,
+   "archivo": "Videos animados IA/03 Escenas producto/H5 Producto - Mamá muestra checklist palabras mágicas.mp4",
+   "url": null
+  },
+  {
+   "codigo": "P13",
+   "estilo": "animado",
+   "tipo": "producto",
+   "titulo": "Ponen la mesa y marcan",
+   "tema": "comida",
+   "duracion": 6,
+   "archivo": "Videos animados IA/03 Escenas producto/H5 Producto - Niños ponen la mesa y marcan.mp4",
+   "url": null
+  },
+  {
+   "codigo": "P14",
+   "estilo": "animado",
+   "tipo": "producto",
+   "titulo": "Mamá muestra checklist del dragón",
+   "tema": "orden",
+   "duracion": 6,
+   "archivo": "Videos animados IA/03 Escenas producto/H6 Producto - Mamá muestra checklist del dragón.mp4",
+   "url": null
+  },
+  {
+   "codigo": "P15",
+   "estilo": "animado",
+   "tipo": "producto",
+   "titulo": "Carrera para guardar juguetes",
+   "tema": "orden",
+   "duracion": 6,
+   "archivo": "Videos animados IA/03 Escenas producto/H6 Producto - Carrera para guardar juguetes.mp4",
+   "url": null
+  },
+  {
+   "codigo": "P16",
+   "estilo": "animado",
+   "tipo": "producto",
+   "titulo": "Mía marca la checklist del dragón",
+   "tema": "orden",
+   "duracion": 5,
+   "archivo": "Videos animados IA/03 Escenas producto/H6 Producto - Mía marca checklist del dragón.mp4",
+   "url": null
+  },
+  {
+   "codigo": "P17",
+   "estilo": "animado",
+   "tipo": "producto",
+   "titulo": "Respiremos juntos",
+   "tema": "hermanos",
+   "duracion": 6,
+   "archivo": "Videos animados IA/03 Escenas producto/H7 Producto - Mantener la calma respiremos juntos.mp4",
+   "url": null
+  },
+  {
+   "codigo": "R1",
+   "estilo": "animado",
+   "tipo": "resultado",
+   "titulo": "Teo tiende su cama",
+   "tema": "manana",
+   "duracion": 5,
+   "archivo": "Videos animados IA/04 Escenas resultado/H1 Resultado - Teo tiende su cama.mp4",
+   "url": null
+  },
+  {
+   "codigo": "R2",
+   "estilo": "animado",
+   "tipo": "resultado",
+   "titulo": "Mamá en calma con café",
+   "tema": "manana",
+   "duracion": 6,
+   "archivo": "Videos animados IA/04 Escenas resultado/H1 Resultado - Mamá en calma con café.mp4",
+   "url": null
+  },
+  {
+   "codigo": "R3",
+   "estilo": "animado",
+   "tipo": "resultado",
+   "titulo": "Abrazo familiar (comodín)",
+   "tema": "manana",
+   "duracion": 6,
+   "archivo": "Videos animados IA/04 Escenas resultado/H1 Resultado - Abrazo familiar.mp4",
+   "url": null
+  },
+  {
+   "codigo": "R4",
+   "estilo": "animado",
+   "tipo": "resultado",
+   "titulo": "Mía: buenas noches, mamá",
+   "tema": "noche",
+   "duracion": 6,
+   "archivo": "Videos animados IA/04 Escenas resultado/H2 Resultado - Mía abraza a mamá buenas noches.mp4",
+   "url": null
+  },
+  {
+   "codigo": "R5",
+   "estilo": "animado",
+   "tipo": "resultado",
+   "titulo": "Mamá cierra la puerta: por fin",
+   "tema": "noche",
+   "duracion": 5,
+   "archivo": "Videos animados IA/04 Escenas resultado/H2 Resultado - Mamá cierra la puerta por fin.mp4",
+   "url": null
+  },
+  {
+   "codigo": "R6",
+   "estilo": "animado",
+   "tipo": "resultado",
+   "titulo": "Mamá con té de noche",
+   "tema": "noche",
+   "duracion": 6,
+   "archivo": "Videos animados IA/04 Escenas resultado/H2 Resultado - Mamá en calma con té de noche.mp4",
+   "url": null
+  },
+  {
+   "codigo": "R7",
+   "estilo": "animado",
+   "tipo": "resultado",
+   "titulo": "Mía: ¡ya le entendí!",
+   "tema": "tarea",
+   "duracion": 5,
+   "archivo": "Videos animados IA/04 Escenas resultado/H3 Resultado - Mía ya le entendí.mp4",
+   "url": null
+  },
+  {
+   "codigo": "R8",
+   "estilo": "animado",
+   "tipo": "resultado",
+   "titulo": "Estrellas doradas y choque de manos",
+   "tema": "tarea",
+   "duracion": 5,
+   "archivo": "Videos animados IA/04 Escenas resultado/H3 Resultado - Estrellas doradas y choque de manos.mp4",
+   "url": null
+  },
+  {
+   "codigo": "R9",
+   "estilo": "animado",
+   "tipo": "resultado",
+   "titulo": "Niños salen a jugar",
+   "tema": "tarea",
+   "duracion": 5,
+   "archivo": "Videos animados IA/04 Escenas resultado/H3 Resultado - Niños salen a jugar al jardín.mp4",
+   "url": null
+  },
+  {
+   "codigo": "R10",
+   "estilo": "animado",
+   "tipo": "resultado",
+   "titulo": "Mamá trabaja tranquila y guiña",
+   "tema": "tarea",
+   "duracion": 6,
+   "archivo": "Videos animados IA/04 Escenas resultado/H3 Resultado - Mamá trabaja tranquila y guiña.mp4",
+   "url": null
+  },
+  {
+   "codigo": "R11",
+   "estilo": "animado",
+   "tipo": "resultado",
+   "titulo": "Listos a tiempo en la puerta",
+   "tema": "escuela",
+   "duracion": 6,
+   "archivo": "Videos animados IA/04 Escenas resultado/H4 Resultado - Listos a tiempo en la puerta.mp4",
+   "url": null
+  },
+  {
+   "codigo": "R12",
+   "estilo": "animado",
+   "tipo": "resultado",
+   "titulo": "Cantando en el coche",
+   "tema": "escuela",
+   "duracion": 5,
+   "archivo": "Videos animados IA/04 Escenas resultado/H4 Resultado - Cantando en el coche.mp4",
+   "url": null
+  },
+  {
+   "codigo": "R13",
+   "estilo": "animado",
+   "tipo": "resultado",
+   "titulo": "Mamá: qué diferencia",
+   "tema": "escuela",
+   "duracion": 6,
+   "archivo": "Videos animados IA/04 Escenas resultado/H4 Resultado - Mamá qué diferencia con café.mp4",
+   "url": null
+  },
+  {
+   "codigo": "R14",
+   "estilo": "animado",
+   "tipo": "resultado",
+   "titulo": "Por favor / de nada",
+   "tema": "comida",
+   "duracion": 5,
+   "archivo": "Videos animados IA/04 Escenas resultado/H5 Resultado - Por favor y de nada.mp4",
+   "url": null
+  },
+  {
+   "codigo": "R15",
+   "estilo": "animado",
+   "tipo": "resultado",
+   "titulo": "Familia come junta riendo",
+   "tema": "comida",
+   "duracion": 6,
+   "archivo": "Videos animados IA/04 Escenas resultado/H5 Resultado - Familia come junta riendo.mp4",
+   "url": null
+  },
+  {
+   "codigo": "R16",
+   "estilo": "animado",
+   "tipo": "resultado",
+   "titulo": "¡Misión cumplida!",
+   "tema": "orden",
+   "duracion": 5,
+   "archivo": "Videos animados IA/04 Escenas resultado/H6 Resultado - Misión cumplida cuarto limpio.mp4",
+   "url": null
+  },
+  {
+   "codigo": "R17",
+   "estilo": "animado",
+   "tipo": "resultado",
+   "titulo": "Mamá aliviada en la alfombra",
+   "tema": "orden",
+   "duracion": 6,
+   "archivo": "Videos animados IA/04 Escenas resultado/H6 Resultado - Mamá en la alfombra aliviada.mp4",
+   "url": null
+  },
+  {
+   "codigo": "R18",
+   "estilo": "animado",
+   "tipo": "resultado",
+   "titulo": "Lo siento, jugamos juntos",
+   "tema": "hermanos",
+   "duracion": 5,
+   "archivo": "Videos animados IA/04 Escenas resultado/H7 Resultado - Lo siento jugamos juntos.mp4",
+   "url": null
+  },
+  {
+   "codigo": "U01",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "Si le repites 20 veces…",
+   "tema": "general",
+   "duracion": null,
+   "archivo": "Videos animados IA/07 UGC realista avatar mama/U01",
+   "url": null
+  },
+  {
+   "codigo": "U02",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "¿Por qué no siguen la rutina?",
+   "tema": "general",
+   "duracion": null,
+   "archivo": "Videos animados IA/07 UGC realista avatar mama/U02",
+   "url": null
+  },
+  {
+   "codigo": "U03",
+   "estilo": "realista",
+   "tipo": "demo",
+   "titulo": "Pega Mi Rutina y explica",
+   "tema": "manana",
+   "duracion": null,
+   "archivo": "Videos animados IA/07 UGC realista avatar mama/U03",
+   "url": null
+  },
+  {
+   "codigo": "U04",
+   "estilo": "realista",
+   "tipo": "demo",
+   "titulo": "Lo imprimí en 2 minutos",
+   "tema": "general",
+   "duracion": null,
+   "archivo": "Videos animados IA/07 UGC realista avatar mama/U04",
+   "url": null
+  },
+  {
+   "codigo": "U05",
+   "estilo": "realista",
+   "tipo": "cierre",
+   "titulo": "Ya se durmieron a las 8:30",
+   "tema": "noche",
+   "duracion": null,
+   "archivo": "Videos animados IA/07 UGC realista avatar mama/U05",
+   "url": null
+  },
+  {
+   "codigo": "U06",
+   "estilo": "realista",
+   "tipo": "demo",
+   "titulo": "Mochila desde la noche",
+   "tema": "escuela",
+   "duracion": null,
+   "archivo": "Videos animados IA/07 UGC realista avatar mama/U06",
+   "url": null
+  },
+  {
+   "codigo": "U07",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "La pregunta que más me hacen",
+   "tema": "general",
+   "duracion": null,
+   "archivo": "Videos animados IA/07 UGC realista avatar mama/U07",
+   "url": null
+  },
+  {
+   "codigo": "U08",
+   "estilo": "realista",
+   "tipo": "demo",
+   "titulo": "Monedas del dragoncito",
+   "tema": "orden",
+   "duracion": null,
+   "archivo": "Videos animados IA/07 UGC realista avatar mama/U08",
+   "url": null
+  },
+  {
+   "codigo": "U09",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "3 errores con las rutinas",
+   "tema": "general",
+   "duracion": null,
+   "archivo": "Videos animados IA/07 UGC realista avatar mama/U09",
+   "url": null
+  },
+  {
+   "codigo": "U10",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "Ya dije 'ponte los zapatos' 14 veces",
+   "tema": "escuela",
+   "duracion": null,
+   "archivo": "Videos animados IA/07 UGC realista avatar mama/U10",
+   "url": null
+  },
+  {
+   "codigo": "U11",
+   "estilo": "realista",
+   "tipo": "demo",
+   "titulo": "Qué incluye el kit",
+   "tema": "general",
+   "duracion": null,
+   "archivo": "Videos animados IA/07 UGC realista avatar mama/U11",
+   "url": null
+  },
+  {
+   "codigo": "U12",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "No eres mala mamá",
+   "tema": "general",
+   "duracion": null,
+   "archivo": "Videos animados IA/07 UGC realista avatar mama/U12",
+   "url": null
+  },
+  {
+   "codigo": "U13",
+   "estilo": "realista",
+   "tipo": "cierre",
+   "titulo": "Ya no eres la alarma de la casa",
+   "tema": "general",
+   "duracion": null,
+   "archivo": "Videos animados IA/07 UGC realista avatar mama/U13",
+   "url": null
+  },
+  {
+   "codigo": "U14",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "Funciona con niños chiquitos",
+   "tema": "general",
+   "duracion": null,
+   "archivo": "Videos animados IA/07 UGC realista avatar mama/U14",
+   "url": null
+  },
+  {
+   "codigo": "U15",
+   "estilo": "realista",
+   "tipo": "cierre",
+   "titulo": "Nadie olvidó la lonchera",
+   "tema": "escuela",
+   "duracion": null,
+   "archivo": "Videos animados IA/07 UGC realista avatar mama/U15",
+   "url": null
+  },
+  {
+   "codigo": "U16",
+   "estilo": "realista",
+   "tipo": "demo",
+   "titulo": "Palabras mágicas",
+   "tema": "comida",
+   "duracion": null,
+   "archivo": "Videos animados IA/07 UGC realista avatar mama/U16",
+   "url": null
+  },
+  {
+   "codigo": "N01",
+   "estilo": "realista",
+   "tipo": "ninos",
+   "titulo": "Niña tiende cama + Mi Rutina",
+   "tema": "manana",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/N01",
+   "url": null
+  },
+  {
+   "codigo": "N02",
+   "estilo": "realista",
+   "tipo": "ninos",
+   "titulo": "Niño dientes + dragón",
+   "tema": "manana",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/N02",
+   "url": null
+  },
+  {
+   "codigo": "N03",
+   "estilo": "realista",
+   "tipo": "ninos",
+   "titulo": "Ponen la mesa",
+   "tema": "comida",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/N03",
+   "url": null
+  },
+  {
+   "codigo": "N04",
+   "estilo": "realista",
+   "tipo": "ninos",
+   "titulo": "Guarda juguetes + dragón",
+   "tema": "orden",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/N04",
+   "url": null
+  },
+  {
+   "codigo": "N05",
+   "estilo": "realista",
+   "tipo": "ninos",
+   "titulo": "Empaca mochila + Mi Mochila",
+   "tema": "escuela",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/N05",
+   "url": null
+  },
+  {
+   "codigo": "N06",
+   "estilo": "realista",
+   "tipo": "ninos",
+   "titulo": "Acomodan zapatos y mochilas",
+   "tema": "escuela",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/N06",
+   "url": null
+  },
+  {
+   "codigo": "N07",
+   "estilo": "realista",
+   "tipo": "ninos",
+   "titulo": "Ropa al cesto",
+   "tema": "orden",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/N07",
+   "url": null
+  },
+  {
+   "codigo": "N08",
+   "estilo": "realista",
+   "tipo": "ninos",
+   "titulo": "'¿Quién te dijo?' '¡Nadie!'",
+   "tema": "general",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/N08",
+   "url": null
+  },
+  {
+   "codigo": "N09",
+   "estilo": "realista",
+   "tipo": "ninos",
+   "titulo": "Riegan plantas",
+   "tema": "casa",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/N09",
+   "url": null
+  },
+  {
+   "codigo": "N10",
+   "estilo": "realista",
+   "tipo": "ninos",
+   "titulo": "Termina tarea y marca",
+   "tema": "tarea",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/N10",
+   "url": null
+  },
+  {
+   "codigo": "N11",
+   "estilo": "realista",
+   "tipo": "ninos",
+   "titulo": "Cereal y lavan su plato",
+   "tema": "comida",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/N11",
+   "url": null
+  },
+  {
+   "codigo": "N12",
+   "estilo": "realista",
+   "tipo": "ninos",
+   "titulo": "Se lavan los dientes en pijama",
+   "tema": "noche",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/N12",
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_132112_8d5bbace-b1fc-4634-8a31-badb4724a786.mp4"
+  },
+  {
+   "codigo": "N13",
+   "estilo": "realista",
+   "tipo": "ninos",
+   "titulo": "Deja su ropa lista y marca noche",
+   "tema": "noche",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/N13",
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_132120_d9adae7f-3536-4e9b-af2b-bd5739a2c8e9.mp4"
+  },
+  {
+   "codigo": "N14",
+   "estilo": "realista",
+   "tipo": "cierre",
+   "titulo": "Marcan la noche: '¡Buenas noches!'",
+   "tema": "noche",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/N14",
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_132113_f38b24ce-ded5-4c29-adea-a0ca50bf66c0.mp4"
+  },
+  {
+   "codigo": "N15",
+   "estilo": "realista",
+   "tipo": "ninos",
+   "titulo": "Acomodan el súper",
+   "tema": "casa",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/N15",
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_211243_0ef92603-ef38-444d-9822-8bb052a0f0db.mp4"
+  },
+  {
+   "codigo": "N16",
+   "estilo": "realista",
+   "tipo": "ninos",
+   "titulo": "Doblan toallas y calcetines",
+   "tema": "casa",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/N16",
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_211242_ef05797e-e6b7-4fda-8603-752e7212675e.mp4"
+  },
+  {
+   "codigo": "N17",
+   "estilo": "realista",
+   "tipo": "ninos",
+   "titulo": "Barren la cocina",
+   "tema": "casa",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/N17",
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_211240_597211c7-569e-49e8-a453-1ffb30839602.mp4"
+  },
+  {
+   "codigo": "M01",
+   "estilo": "realista",
+   "tipo": "cierre",
+   "titulo": "'Miren esto… nadie les dijo nada'",
+   "tema": "general",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/M01",
+   "url": null
+  },
+  {
+   "codigo": "M02",
+   "estilo": "realista",
+   "tipo": "cierre",
+   "titulo": "'¿Quién tendió esta cama?'",
+   "tema": "manana",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/M02",
+   "url": null
+  },
+  {
+   "codigo": "M03",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "Supermercado: darles su propia lista",
+   "tema": "casa",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/M03",
+   "url": null
+  },
+  {
+   "codigo": "M04",
+   "estilo": "realista",
+   "tipo": "cierre",
+   "titulo": "Choque de manos en el refri",
+   "tema": "general",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/M04",
+   "url": null
+  },
+  {
+   "codigo": "M05",
+   "estilo": "realista",
+   "tipo": "cierre",
+   "titulo": "Junta tranquila, niños hacen tarea",
+   "tema": "tarea",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/M05",
+   "url": null
+  },
+  {
+   "codigo": "M06",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "Siete de la noche, todos los días",
+   "tema": "noche",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/M06",
+   "url": null
+  },
+  {
+   "codigo": "M07",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "Si corres todas las mañanas",
+   "tema": "manana",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/M07",
+   "url": null
+  },
+  {
+   "codigo": "M08",
+   "estilo": "realista",
+   "tipo": "cierre",
+   "titulo": "Mamá lee cuento con los niños",
+   "tema": "noche",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/M08",
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_132113_9c28f207-b6d6-40e3-818b-08ad599e0a8d.mp4"
+  },
+  {
+   "codigo": "M09",
+   "estilo": "realista",
+   "tipo": "demo",
+   "titulo": "Rutina de noche en 3 pasos",
+   "tema": "noche",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/M09",
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_132117_26bb9d4a-c52c-4010-a620-f3b4c904da7a.mp4"
+  },
+  {
+   "codigo": "M10",
+   "estilo": "realista",
+   "tipo": "cierre",
+   "titulo": "Tarjeta 'Gracias, mamá'",
+   "tema": "general",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/M10",
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_132115_542334fe-a4d3-4a5b-b614-36bb1533b577.mp4"
+  },
+  {
+   "codigo": "M11",
+   "estilo": "realista",
+   "tipo": "demo",
+   "titulo": "Respuesta: '¿y si no quiere?'",
+   "tema": "general",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/M11",
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_211243_a142adec-bd1a-430a-8a97-0a6fcbaeb511.mp4"
+  },
+  {
+   "codigo": "M12",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "Día 1 del reto",
+   "tema": "reto",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/M12",
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_211244_9217ca3b-2cad-498a-ab36-5c8c395a702d.mp4"
+  },
+  {
+   "codigo": "M13",
+   "estilo": "realista",
+   "tipo": "cierre",
+   "titulo": "Día 7: 'Sí era cierto'",
+   "tema": "reto",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/M13",
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_211242_324d33eb-e758-4803-b5f2-d0cd86ca9fba.mp4"
+  },
+  {
+   "codigo": "A01",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "Niño no quiere ponerse los zapatos",
+   "tema": "escuela",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/A01",
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_131207_f7d162f6-918d-4424-a478-55f2752cfc78.mp4"
+  },
+  {
+   "codigo": "A02",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "'¡Ahorita, mamá!' con la tablet",
+   "tema": "general",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/A02",
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_131214_47458f93-f99b-4b9f-a8d0-abce544a05eb.mp4"
+  },
+  {
+   "codigo": "A03",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "Hermanos pelean por un juguete",
+   "tema": "hermanos",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/A03",
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_131208_7725fd4a-60d6-484b-9a1f-3ff7264e3c16.mp4"
+  },
+  {
+   "codigo": "A04",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "Cuarto desordenado",
+   "tema": "orden",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/A04",
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_131226_68dca84b-a9e3-4639-859e-b326ba996e12.mp4"
+  },
+  {
+   "codigo": "A05",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "Brincan en el sillón a las 9:30",
+   "tema": "noche",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/A05",
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_131212_e1d52024-c975-4a23-acf0-5cc5de263dd9.mp4"
+  },
+  {
+   "codigo": "A06",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "Desayuno tirado: '¡Fue él!'",
+   "tema": "comida",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/A06",
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_131209_d4305bb4-3c16-4fe8-805f-e8e87fff6248.mp4"
+  },
+  {
+   "codigo": "A07",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "'No sé qué hacer' con la tarea",
+   "tema": "tarea",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/A07",
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_131209_b74e6e88-5a18-439e-bd2c-980f2ca797b3.mp4"
+  },
+  {
+   "codigo": "A08",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "Niño huye del cepillo",
+   "tema": "noche",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/A08",
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_131217_812cb387-39f8-4612-bd2e-b2ddd7a0ef31.mp4"
+  },
+  {
+   "codigo": "K01",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "Niña presenta su rutina",
+   "tema": "general",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/K01",
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_211240_c99fa9b0-d782-48ec-a058-9cad8e1c7ff5.mp4"
+  },
+  {
+   "codigo": "K02",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "'¡Ya junté monedas!'",
+   "tema": "orden",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/K02",
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_211244_0d4189f3-6c39-4396-b4b7-4e0e6aa55766.mp4"
+  },
+  {
+   "codigo": "T01",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "Tour de cuartos + apilar hábitos",
+   "tema": "orden",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/T01",
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_231246_4a7ea9da-03b4-47a5-97e3-1b96400fdbce.mp4"
+  },
+  {
+   "codigo": "T02",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "¿Cuánto tarda? 47 segundos",
+   "tema": "manana",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/T02",
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_231246_137ca611-39b6-443e-bcfd-ba25d478fc14.mp4"
+  },
+  {
+   "codigo": "T03",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "Divide 'recoge tu cuarto'",
+   "tema": "orden",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/T03",
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_231246_8e37a08b-b687-4325-b18c-be45e6716f38.mp4"
+  },
+  {
+   "codigo": "T04",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "Reglas raras que sí funcionan",
+   "tema": "general",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/T04",
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_231244_419352f9-454f-4f8f-8add-7a7013954d53.mp4"
+  },
+  {
+   "codigo": "T05",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "Anuncio de tareas con redoble",
+   "tema": "casa",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/T05",
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_231244_705f9f2e-e7c0-43ff-a04c-23c8a8078924.mp4"
+  },
+  {
+   "codigo": "T06",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "Turno de apertura",
+   "tema": "manana",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/T06",
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_231244_28997968-74ce-4d45-8809-04bea00f4cf6.mp4"
+  },
+  {
+   "codigo": "T07",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "Yapper en el coche",
+   "tema": "general",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/T07",
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_231247_4979ddf7-5b7e-4c90-96cf-3898e488f5ad.mp4"
+  },
+  {
+   "codigo": "T08",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "Centro de mando familiar",
+   "tema": "general",
+   "duracion": null,
+   "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/T08",
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_231245_9b1dfc04-390d-4862-952a-65ab22c5dfe8.mp4"
+  }
+ ]
+}

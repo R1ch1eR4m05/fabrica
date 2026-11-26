@@ -1479,6 +1479,12 @@ function escuchar() {
       else if (S.vista === "inv" && ev.msg && ev.estado === "trabajando") avisar(ev.msg);
       return;
     }
+    if (ev.id === "_ugc") { // Anuncios UGC por combinaciones
+      if (ev.estado === "listo") { const r = ev.resultado || {}; avisar(`Listos ${r.hechos?.length || 0} anuncios${r.faltantes?.length ? ` (faltan escenas: ${r.faltantes.join(", ")})` : ""}.`, !!r.faltantes?.length); }
+      if (ev.estado === "error") avisar(ev.msg, true);
+      if (S.vista === "ugc") { if (["listo", "error"].includes(ev.estado)) anunciosUGC(); else if ($("#ugProg")) $("#ugProg").textContent = ev.msg || ""; }
+      return;
+    }
     if (ev.id === "_investigador") {
       if (S.vista === "inv") { mostrarProgreso("investigar", ev); if (ev.estado === "listo") { avisar(ev.msg); investigador(ev.resultado?.archivo); } if (ev.estado === "error") { avisar(ev.msg, true); investigador(); } }
       return;
@@ -1500,6 +1506,53 @@ function escuchar() {
 $("#btnNuevo").onclick = () => inicio();
 $("#btnInv").onclick = () => investigador();
 $("#btnClonar").onclick = () => clonador();
+$("#btnUGC").onclick = () => anunciosUGC();
+
+// ---------- Anuncios UGC por combinaciones (estilo UGCdrop): escenas ya hechas + gancho + cierre → MP4 terminados ----------
+const NOMBRE_TEMA = { manana: "Mañanas", noche: "Noche", tarea: "Tarea", escuela: "Escuela", comida: "Comida", orden: "Orden", hermanos: "Hermanos", casa: "Tareas de casa", reto: "Reto 7 días", general: "General" };
+async function anunciosUGC() {
+  S.actual = null; S.vista = "ugc"; parar(); pintarLista(); history.replaceState(null, "", "#ugc");
+  const d = await api("/api/ugc");
+  const color = { entregado: "", publicado: "background:#2e7d32;color:#fff", ganador: "background:#f9a825;color:#000", descartado: "opacity:.5" };
+  const tarjeta = (a) => `<div class="card" style="padding:8px;${a.estado === "descartado" ? "opacity:.55" : ""}">
+      <video src="${a.url}" controls playsinline preload="metadata" style="width:100%;border-radius:8px;background:#000;aspect-ratio:9/16"></video>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;gap:6px"><b style="font-size:13px">${h(a.id)}</b><span class="estado" style="font-size:11px;padding:2px 6px;border-radius:6px;${color[a.estado] || ""}">${h(a.estado)}</span></div>
+      <p style="font-size:12px;margin:4px 0">«${h(a.textoGancho)}»</p>
+      <p class="estado" style="font-size:11px;margin:2px 0">${h(a.estilo)} · ${h(NOMBRE_TEMA[a.tema] || a.tema)} · ${a.duracion} s · ${h(a.escenas.join(" → "))}</p>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">
+        <button class="btn" data-ugccopy="${h(a.id)}">Copiar copy</button>
+        <a class="btn" href="${a.url}" download>Bajar</a>
+        ${["publicado", "ganador", "descartado"].map((e) => `<button class="btn" data-ugcid="${h(a.id)}" data-ugcest="${e}">${e === "ganador" ? "🏆" : e === "publicado" ? "✅" : "✕"}</button>`).join("")}
+      </div></div>`;
+  $("#main").innerHTML = `
+    <div class="card" style="margin-bottom:16px">
+      <h2 style="margin-top:0">Anuncios UGC (combinaciones)</h2>
+      <p class="estado">Une escenas ya generadas (gancho → demo → niños → cierre), les pone el texto del gancho y el cierre con CTA, y entrega cada anuncio terminado en 9:16 con su copy. Nunca repite: cada combinación sale con otro texto de gancho. Datos en <code>ugcdrop/</code>.</p>
+      <p><b>${d.entregados}</b> entregados · <b>${d.publicados}</b> publicados · <b>${d.ganadores.length}</b> ganadores · quedan <b>${d.quedan}</b> de ${d.posibles} posibles (${d.curadas} combinaciones curadas + ${d.automaticas} automáticas).</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end">
+        <div><label>¿Cuántos?</label><input id="ugN" type="number" min="1" max="30" value="5" style="width:80px"></div>
+        <div><label>Estilo</label><select id="ugEstilo"><option value="">Mezcla (70 % realistas)</option><option value="realista">Solo realistas (UGC)</option><option value="animado">Solo animados 3D</option></select></div>
+        <div><label>Tema</label><select id="ugTema"><option value="">Todos</option>${d.temas.map((t) => `<option value="${t}">${h(NOMBRE_TEMA[t] || t)}</option>`).join("")}</select></div>
+        <button class="btn primario" id="ugIr" ${d.trabajando ? "disabled" : ""}>${d.trabajando ? "Armando…" : "Dame los anuncios"}</button>
+      </div>
+      <p class="estado" id="ugProg" style="margin-top:8px"></p>
+    </div>
+    ${d.lotes.length ? d.lotes.map((l) => `<h3 style="margin:18px 0 8px">${h(l.lote)} <a class="estado" style="font-size:12px" target="_blank" href="/listos/anuncios-ugc/${encodeURIComponent(l.lote)}/copys.txt">copys.txt</a></h3>
+      ${l.faltantes?.length ? `<p class="estado">Se saltaron combinaciones porque faltan estas escenas: ${h(l.faltantes.join(", "))} (ponlas en ugcdrop/escenas/ o revisa LEVANIA_DRIVE en el .env).</p>` : ""}
+      <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">${l.anuncios.map(tarjeta).join("")}</div>`).join("") : `<p class="estado">Aún no hay lotes. Dale «Dame los anuncios».</p>`}`;
+  const todos = d.lotes.flatMap((l) => l.anuncios);
+  $("#ugIr").onclick = async () => {
+    try { await api("/api/ugc", "POST", { accion: "lote", n: Number($("#ugN").value) || 5, estilo: $("#ugEstilo").value, tema: $("#ugTema").value }); avisar("Armando los anuncios…"); $("#ugIr").disabled = true; $("#ugIr").textContent = "Armando…"; }
+    catch (e) { avisar(e.message, true); }
+  };
+  for (const b of document.querySelectorAll("[data-ugcid]")) b.onclick = async () => {
+    try { await api("/api/ugc", "POST", { accion: "marcar", id: b.dataset.ugcid, estado: b.dataset.ugcest }); anunciosUGC(); } catch (e) { avisar(e.message, true); }
+  };
+  for (const b of document.querySelectorAll("[data-ugccopy]")) b.onclick = () => {
+    const a = todos.find((x) => x.id === b.dataset.ugccopy);
+    copiarTexto(`${a.copy}\n\n${a.titular}\n${a.cta}`, "Copy copiado.");
+  };
+}
 
 // ---------- Clonar el estilo de un video (medidas + rea-video toma por toma + prompt maestro) ----------
 let relojClonar = null;
@@ -1547,5 +1600,5 @@ async function clonador() {
   if (t?.estado === "trabajando") relojClonar = setTimeout(() => { if (S.vista === "clonar") clonador(); }, 4000);
 }
 $(".logo").onclick = inicio; $(".logo").style.cursor = "pointer";
-cargar().then(() => { escuchar(); const id = location.hash.slice(1); id === "investigador" ? investigador() : id === "clonar" ? clonador() : id && S.proyectos.some((p) => p.id === id) ? abrir(id) : inicio(); })
+cargar().then(() => { escuchar(); const id = location.hash.slice(1); id === "investigador" ? investigador() : id === "clonar" ? clonador() : id === "ugc" ? anunciosUGC() : id && S.proyectos.some((p) => p.id === id) ? abrir(id) : inicio(); })
   .catch((e) => avisar("No pude conectar con la fábrica: " + e.message, true));

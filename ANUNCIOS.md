@@ -56,3 +56,9 @@ Dile a Claude Code "agrega un formato de anuncio como este" con la captura: agre
 estructura y el ángulo, nunca textos, marcas ni fotos del anuncio original.
 
 Base: ideas de adforge (MIT, https://github.com/JonnyFi/adforge) adaptadas; el código es propio de la fábrica.
+
+## Anuncios UGC por combinaciones (estilo UGCdrop) — `ugcdrop/`, `core/ugcdrop.js`
+Otra forma de hacer anuncios: con escenas de video **ya generadas** (avatar de mamá, niños haciendo tareas, familia 3D) arma
+combinaciones gancho → demo → niños → cierre, les pone el texto del gancho y el cierre con CTA, y entrega MP4 terminados con su copy.
+239 combinaciones curadas + automáticas por tema × hasta 4 textos de gancho ≈ 1,260 anuncios sin repetir.
+Panel: «Anuncios UGC (combinaciones)». Terminal: `node fabrica.js ugc-lote 5`. Todo en `ugcdrop/LEEME.md`.

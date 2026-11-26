@@ -1,0 +1,10 @@
+{
+ "_nota": "Los 5 anuncios del Lote 1 (25 nov 2026, armados a mano en el chat). Se copian al registro la primera vez para no repetirlos.",
+ "entregados": [
+  {"id": "UG064-v1", "combo": "UG064", "variante": 1, "fecha": "2026-11-25", "lote": "Lote 1 (chat)", "estado": "entregado"},
+  {"id": "UG091-v1", "combo": "UG091", "variante": 1, "fecha": "2026-11-25", "lote": "Lote 1 (chat)", "estado": "entregado"},
+  {"id": "UG116-v1", "combo": "UG116", "variante": 1, "fecha": "2026-11-25", "lote": "Lote 1 (chat)", "estado": "entregado"},
+  {"id": "UG073-v1", "combo": "UG073", "variante": 1, "fecha": "2026-11-25", "lote": "Lote 1 (chat)", "estado": "entregado"},
+  {"id": "AN001-v1", "combo": "AN001", "variante": 1, "fecha": "2026-11-25", "lote": "Lote 1 (chat)", "estado": "entregado"}
+ ]
+}

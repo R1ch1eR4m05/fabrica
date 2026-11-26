@@ -19,3 +19,7 @@ extras/
 imagenes-dia/
 
 .claude/skills/reanimate/
+
+# Anuncios UGC (combinaciones): escenas y foto del producto viven en cada compu
+ugcdrop/escenas/
+ugcdrop/producto.png
