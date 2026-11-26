@@ -37,6 +37,11 @@
 //        10 imágenes de frase del informe (Monarca): arma el día; --escritas guarda las que escribió Claude Code; --flow genera los fondos (gasta Flow); --componer pone la frase
 //   node fabrica.js plan-dia [informe.md] [--crear] [--forzar]   informe de la mañana → 5 videos (3 Shorts, 1 largo, 1 experimento) con horario; --crear los crea
 //   node fabrica.js comparar-voces ["texto"] [--estilo id]   mismo texto con cada modelo de voz → listos/comparar-voces/
+//   node fabrica.js ugc-lote [N] [--realista|--animado] [--tema noche] [--combo UG064,AN001] [--prueba]
+//        Anuncios UGC por combinaciones (estilo UGCdrop): N anuncios TERMINADOS (MP4 + copy) → listos/anuncios-ugc/Lote …/
+//   node fabrica.js ugc-escenas                     qué escenas encuentra (carpeta propia, Drive, Higgsfield) y cuáles faltan
+//   node fabrica.js ugc-estado                      cuántos anuncios UGC van, ganadores y cuántos quedan
+//   node fabrica.js ugc-marcar <id> <publicado|ganador|descartado>
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -360,6 +365,38 @@ async function main() {
       const r = await VOZ.compararVoces({ texto: libres[0], estiloId: opc("estilo") }, avisar);
       console.log("");
       for (const x of r.modelos) console.log(`${x.nombre}\n   ${x.error ? "✗ " + x.error : `${x.archivo} · ${x.segundos} s · ${x.costo} · 30 min: ${x.video30}`}`);
+      return;
+    }
+    case "ugc-lote": {
+      const U = await import("./core/ugcdrop.js");
+      const r = await U.armarLote(Number(libres[0]) || 5, {
+        estilo: args.includes("--realista") ? "realista" : args.includes("--animado") ? "animado" : null,
+        tema: opc("tema") || null, combos: opc("combo") ? String(opc("combo")).split(",") : null, prueba: args.includes("--prueba"),
+      }, avisar);
+      if (!r.lote) { for (const a of r.anuncios) console.log(`${a.id}  [${a.estilo}/${a.tema}]  ${a.escenas.join(" → ")}  |  «${a.textoGancho}»`); return; }
+      console.log(`\n\nListo: ${r.hechos.length} anuncios en ${r.carpeta}`);
+      for (const a of r.hechos) console.log(`  ✓ ${a.id}  ${a.duracion} s  «${a.textoGancho}»`);
+      if (r.faltantes.length) console.log(`  (Se saltaron combinaciones porque faltan estas escenas: ${r.faltantes.join(", ")}. Ponlas en ugcdrop/escenas/ o revisa LEVANIA_DRIVE.)`);
+      console.log("Copys para Meta/TikTok en copys.txt; resumen en resumen.csv.");
+      return;
+    }
+    case "ugc-escenas": {
+      const l = (await import("./core/ugcdrop.js")).revisarEscenas();
+      const por = {};
+      for (const e of l) (por[e.donde || "FALTA"] ||= []).push(e.codigo);
+      for (const [d, c] of Object.entries(por)) console.log(`${d === "FALTA" ? "✗ Faltan" : "✓ " + d} (${c.length}): ${c.join(" ")}`);
+      if (por.FALTA) console.log(process.env.LEVANIA_DRIVE ? `\nNo están en ${process.env.LEVANIA_DRIVE}. Revisa la ruta o ponlas en ugcdrop/escenas/ ("U01 lo que sea.mp4").` : "\nPon LEVANIA_DRIVE=G:/Mi unidad/Levania en el .env (Google Drive para escritorio) o suelta las escenas en ugcdrop/escenas/.");
+      return;
+    }
+    case "ugc-estado": {
+      const c = (await import("./core/ugcdrop.js")).contar();
+      console.log(`Combinaciones: ${c.curadas} curadas + ${c.automaticas} automáticas por tema\nAnuncios posibles (combinación × texto de gancho): ${c.posibles}\nEntregados: ${c.entregados} · publicados: ${c.publicados} · ganadores: ${c.ganadores.length} · quedan: ${c.quedan}`);
+      if (c.ganadores.length) console.log("Ganadores: " + c.ganadores.join(", "));
+      return;
+    }
+    case "ugc-marcar": {
+      const x = (await import("./core/ugcdrop.js")).marcar(libres[0], libres[1]);
+      console.log(`${x.id} → ${x.estado}`);
       return;
     }
     default: console.log("Orden desconocida. Mira la cabecera de fabrica.js.");

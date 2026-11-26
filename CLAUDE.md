@@ -127,6 +127,11 @@ Hasta 3 cuentas (Pro), cada una con su perfil de Chrome en la skill: cuenta 1 = 
 - Plantilla `avatar`: video de Richie + foto/descripción del personaje → Kling Motion Control o Seedance 2.5 en APIMart (`cambiarAvatar` en `core/apimart.js`). Solo videos propios/con licencia y personajes ficticios o con permiso.
 - El cerebro manda briefs a `POST /api/anuncios`.
 
+## Anuncios UGC por combinaciones (`ugcdrop/`, `core/ugcdrop.js`) — ver `ugcdrop/LEEME.md`
+- Cuando Richie pida "dame N anuncios" (de Levania, UGC, combinaciones): `node fabrica.js ugc-lote N` (filtros `--realista`, `--animado`, `--tema`, `--combo`). Salen MP4 terminados + `copys.txt` en `listos/anuncios-ugc/Lote AAAA-MM-DD #N/`. Antes del primero, `node fabrica.js ugc-escenas` dice qué escenas faltan.
+- No gasta créditos: solo une escenas ya generadas con ffmpeg. Registro (nunca repetir) en `listos/anuncios-ugc/registro.json`; ganadores con `ugc-marcar <id> ganador`.
+- Escenas nuevas de Higgsfield/Flow: agrégalas a `ugcdrop/escenas.json` (código, tipo, tema, url o archivo) y, si aplica, combinaciones en los `.tsv` y textos de gancho en `textos.json`. Textos en voz de marca, nunca testimonios inventados ni datos sin verificar.
+
 ## Motion graphics ("construye el motion de <id>")
 La skill vive en `motion/` (claude-video, MIT, textos en portugués; tú hablas en español con Richie). `$SKILL` = `<raíz de la fábrica>/motion`.
 1. Lee `proyectos/<id>/BRIEF.md` y `proyectos/<id>/proyecto.json` (campo `motion`). Las etapas A y B ya están hechas: no vuelvas a preguntar lo que ya dice el brief.

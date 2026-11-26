@@ -448,6 +448,22 @@ async function api(req, res, partes) {
     return json(res, 404, { error: "No existe" });
   }
 
+  if (recurso === "ugc") { // Anuncios UGC por combinaciones (core/ugcdrop.js): «Dame N anuncios» → MP4 terminados en listos/anuncios-ugc/
+    const U = await import("./ugcdrop.js");
+    try {
+      if (m === "GET") return json(res, 200, { ...U.contar(), lotes: U.listarLotes(), temas: U.TEMAS, trabajando: actual?.id === "_ugc" || fila.some((t) => t.id === "_ugc") });
+      if (m === "POST") {
+        const b = await cuerpo(req).catch(() => ({}));
+        if (b.accion === "marcar") return json(res, 200, U.marcar(b.id, b.estado));
+        if (b.accion === "lote") {
+          const n = Math.min(30, Math.max(1, Number(b.n) || 5));
+          encolar("_ugc", "render", (av) => U.armarLote(n, { estilo: b.estilo || null, tema: b.tema || null }, av));
+          return json(res, 200, { ok: true });
+        }
+      }
+      return json(res, 400, { error: "Acción no válida." });
+    } catch (e) { return json(res, 400, { error: e.message }); }
+  }
   if (recurso === "anuncios" && m === "POST") { // el cerebro (o n8n) manda un brief y salen los anuncios
     try {
       const b = await cuerpo(req);
