@@ -11,5 +11,6 @@ if "%N%"=="" set N=5
 node fabrica.js ugc-lote %N%
 echo.
 node fabrica.js ugc-estado
+if not exist "%~dp0listos\anuncios-ugc" mkdir "%~dp0listos\anuncios-ugc"
 start "" "%~dp0listos\anuncios-ugc"
 pause

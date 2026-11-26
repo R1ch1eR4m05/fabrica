@@ -47,13 +47,13 @@ Si a una combinación le falta una escena, se salta y el lote toma otra; al fina
 | `escenas.json` | Catálogo: código, estilo (realista/animado), tipo (gancho, demo, ninos, cierre / gancho, producto, resultado), tema, archivo en Drive, url |
 | `combinaciones_ugc.tsv` / `combinaciones_animadas.tsv` | Combinaciones curadas (las mismas de la hoja de Levania) |
 | `textos.json` | Textos de gancho por escena, copy por tema, titulares, CTAs y cierre |
-| `ajustes.json` | Tamaños, colores, tipografías, tiempos, música, mezcla del lote |
+| `opciones.json` | Tamaños, colores, tipografías, tiempos, música, mezcla del lote |
 | `registro-inicial.json` | Los 5 del Lote 1 (armados en el chat) para no repetirlos |
 
 - Escena nueva → agrégala a `escenas.json` con su tema: entra sola en las combinaciones automáticas (gancho del tema → niños del tema → cierre).
 - Cada texto de gancho nuevo en `textos.json` = un anuncio más por cada combinación con esa escena.
 
 ## Reglas
-- La etiqueta de IA no va en el video (regla de la fábrica): márcala en la app al publicar (en TikTok es obligatoria). Si algún día la quieres quemada, `ajustes.json` → `etiqueta_ia.mostrar: true`.
+- La etiqueta de IA no va en el video (regla de la fábrica): márcala en la app al publicar (en TikTok es obligatoria). Si algún día la quieres quemada, `opciones.json` → `etiqueta_ia.mostrar: true`.
 - Los textos son voz de marca, no testimonios: nada de "a mí me funcionó" inventado. Testimonios solo con reseñas reales.
 - No pongas en los textos datos del producto que no estén verificados (edades, "no necesitan saber leer"…).
