@@ -72,10 +72,15 @@ export function generarAutomaticas(escenas, existentes) {
     for (const g of real.filter((e) => e.tipo === "gancho" && e.tema === tema))
       for (const k of real.filter((e) => e.tipo === "ninos" && e.tema === tema))
         for (const c of real.filter((e) => e.tipo === "cierre" && (e.tema === tema || e.tema === "general"))) {
-          const esc = [g.codigo, k.codigo, c.codigo];
-          if (ya.has(esc.join(" "))) continue;
-          ya.add(esc.join(" "));
-          nuevas.push({ id: "AU" + String(n++).padStart(4, "0"), estilo: "realista", escenas: esc, automatica: true });
+          // versión corta (gancho → niños → cierre) y, si hay, versión con demo del tema (gancho → demo → niños → cierre)
+          const demos = real.filter((e) => e.tipo === "demo" && (e.tema === tema || e.tema === "general") && !e.bloqueada);
+          const d = demos.length ? demos[n % demos.length] : null;
+          for (const esc of [[g.codigo, k.codigo, c.codigo], d ? [g.codigo, d.codigo, k.codigo, c.codigo] : null]) {
+            if (!esc || ya.has(esc.join(" "))) continue;
+            ya.add(esc.join(" "));
+            n++;
+            nuevas.push({ id: "AU-" + esc.join("-"), estilo: "realista", escenas: esc, automatica: true }); // id estable: no cambia al agregar escenas
+          }
         }
   }
   return nuevas;
@@ -92,6 +97,7 @@ export function elegirLote(datos, n, op = {}) {
   const { porCodigo: pc, textos, registro, ajustes } = datos;
   let combos = [...datos.combos];
   if (op.automaticas !== false) combos = combos.concat(generarAutomaticas(datos.escenas, combos));
+  if (op.disponibles) combos = combos.filter((c) => c.escenas.every((x) => op.disponibles.has(x)));
   if (op.excluir?.size) combos = combos.filter((c) => !op.excluir.has(c.id));
   if (op.combos?.length) combos = combos.filter((c) => op.combos.includes(c.id));
   if (op.estilo) combos = combos.filter((c) => c.estilo === op.estilo);
@@ -140,7 +146,12 @@ export function contar(datos = cargar()) {
   const posibles = todos.reduce((s, c) => s + textosGancho(c, datos.porCodigo, datos.textos).length, 0);
   const e = datos.registro.entregados;
   const por = (s) => e.filter((x) => x.estado === s).length;
-  return { curadas: datos.combos.length, automaticas: todos.length - datos.combos.length, posibles, entregados: e.length, publicados: por("publicado"), ganadores: e.filter((x) => x.estado === "ganador").map((x) => x.id), quedan: posibles - e.length };
+  const rev = revisarEscenas();
+  const disp = new Set(rev.filter((e) => e.donde).map((e) => e.codigo));
+  const armables = todos.filter((c) => c.escenas.every((x) => disp.has(x))).reduce((s2, c) => s2 + textosGancho(c, datos.porCodigo, datos.textos).length, 0);
+  const porDonde = {};
+  for (const e of rev) porDonde[e.donde || "falta"] = (porDonde[e.donde || "falta"] || 0) + 1;
+  return { curadas: datos.combos.length, automaticas: todos.length - datos.combos.length, posibles, armables, escenas: { total: rev.length, porDonde, faltan: rev.filter((e) => !e.donde).map((e) => e.codigo) }, drive: process.env.LEVANIA_DRIVE || "", entregados: e.length, publicados: por("publicado"), ganadores: e.filter((x) => x.estado === "ganador").map((x) => x.id), quedan: posibles - e.length };
 }
 
 export function marcar(id, estado) {
@@ -193,6 +204,7 @@ export async function resolverEscena(e) {
 export function revisarEscenas() {
   const { escenas } = cargar();
   return escenas.map((e) => {
+    if (e.bloqueada) return { codigo: e.codigo, titulo: e.titulo, estilo: e.estilo, donde: null, bloqueada: e.bloqueada };
     let donde = buscarPorCodigo(DIR_PROPIAS, e.codigo) ? "ugcdrop/escenas" : buscarPorCodigo(DIR_CACHE, e.codigo) ? "caché" : buscarEnDrive(e) ? "Drive" : null;
     if (!donde && e.url) donde = "se baja de Higgsfield";
     return { codigo: e.codigo, titulo: e.titulo, estilo: e.estilo, donde };
@@ -246,7 +258,8 @@ function elegirMusica(aj) {
   return null;
 }
 
-export async function renderAnuncio(a, archivos, salida, { ajustes: aj, textos }) {
+export async function renderAnuncio(a, archivos, salida, datos) {
+  const { ajustes: aj, textos } = datos;
   const { ancho: W, alto: H, fps } = aj.video;
   const tmp = path.join(DIR_TMP, a.id);
   fs.mkdirSync(tmp, { recursive: true });
@@ -256,7 +269,9 @@ export async function renderAnuncio(a, archivos, salida, { ajustes: aj, textos }
   // 1. escenas: recorte, 9:16, fps y audio parejos
   for (const [i, arch] of archivos.entries()) {
     const s = await sonda(arch);
-    const ini = Math.min(aj.escenas.recorte_inicio_seg, Math.max(0, s.duracion - 1));
+    const esc = datos?.porCodigo?.[a.escenas[i]] || {};
+    // "desde" en escenas.json: empieza la escena en ese segundo (p. ej. para usar solo la parte buena de un clip)
+    const ini = esc.desde != null ? Math.min(esc.desde, Math.max(0, s.duracion - 1)) : Math.min(aj.escenas.recorte_inicio_seg, Math.max(0, s.duracion - 1));
     const dur = Math.max(0.5, Math.min(i === 0 ? aj.escenas.max_seg_gancho : aj.escenas.max_seg_por_escena, s.duracion - ini - 0.05));
     total += dur;
     args.push("-ss", ini.toFixed(2), "-t", dur.toFixed(2), "-i", arch); nIn++;
@@ -325,6 +340,16 @@ const csv = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
 
 export async function armarLote(n = 5, op = {}, avisar = () => {}) {
   const datos = cargar();
+  // solo combinaciones cuyas escenas existen (carpeta propia, caché, Drive o enlace de Higgsfield)
+  const revision = revisarEscenas();
+  const disponibles = new Set(revision.filter((e) => e.donde).map((e) => e.codigo));
+  op = { ...op, disponibles };
+  if (!elegirLote(datos, 1, op).length) {
+    const faltan = revision.filter((e) => !e.donde).map((e) => e.codigo);
+    throw new Error(`No hay combinaciones nuevas con las escenas que encuentro (${disponibles.size} de ${revision.length}). ` +
+      (process.env.LEVANIA_DRIVE ? `Revisa que LEVANIA_DRIVE (${process.env.LEVANIA_DRIVE}) sea la carpeta Levania de tu Drive.` : "Pon LEVANIA_DRIVE en el .env (carpeta Levania de Google Drive para escritorio) o suelta las escenas en ugcdrop/escenas/.") +
+      ` Faltan: ${faltan.slice(0, 30).join(" ")}${faltan.length > 30 ? "…" : ""}`);
+  }
   if (op.prueba) {
     const anuncios = elegirLote(datos, n, op);
     if (!anuncios.length) throw new Error("No quedan combinaciones nuevas con esos filtros.");

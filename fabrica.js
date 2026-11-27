@@ -383,14 +383,16 @@ async function main() {
     case "ugc-escenas": {
       const l = (await import("./core/ugcdrop.js")).revisarEscenas();
       const por = {};
-      for (const e of l) (por[e.donde || "FALTA"] ||= []).push(e.codigo);
-      for (const [d, c] of Object.entries(por)) console.log(`${d === "FALTA" ? "✗ Faltan" : "✓ " + d} (${c.length}): ${c.join(" ")}`);
+      for (const e of l) (por[e.bloqueada ? "⛔ bloqueadas (tienen un error, rehacer)" : e.donde || "FALTA"] ||= []).push(e.codigo);
+      for (const [d, c] of Object.entries(por)) console.log(`${d === "FALTA" ? "✗ Faltan" : d.startsWith("⛔") ? d : "✓ " + d} (${c.length}): ${c.join(" ")}`);
       if (por.FALTA) console.log(process.env.LEVANIA_DRIVE ? `\nNo están en ${process.env.LEVANIA_DRIVE}. Revisa la ruta o ponlas en ugcdrop/escenas/ ("U01 lo que sea.mp4").` : "\nPon LEVANIA_DRIVE=G:/Mi unidad/Levania en el .env (Google Drive para escritorio) o suelta las escenas en ugcdrop/escenas/.");
       return;
     }
     case "ugc-estado": {
       const c = (await import("./core/ugcdrop.js")).contar();
-      console.log(`Combinaciones: ${c.curadas} curadas + ${c.automaticas} automáticas por tema\nAnuncios posibles (combinación × texto de gancho): ${c.posibles}\nEntregados: ${c.entregados} · publicados: ${c.publicados} · ganadores: ${c.ganadores.length} · quedan: ${c.quedan}`);
+      console.log(`Escenas: ${c.escenas.total - c.escenas.faltan.length} de ${c.escenas.total} encontradas (${Object.entries(c.escenas.porDonde).map(([k, v]) => `${k}: ${v}`).join(", ")})`);
+      console.log(`Anuncios que ya se pueden armar: ${c.armables} · posibles con todas las escenas: ${c.posibles}`);
+      console.log(`Entregados: ${c.entregados} · publicados: ${c.publicados} · ganadores: ${c.ganadores.length}`);
       if (c.ganadores.length) console.log("Ganadores: " + c.ganadores.join(", "));
       return;
     }

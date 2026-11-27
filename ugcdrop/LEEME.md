@@ -53,6 +53,17 @@ Si a una combinación le falta una escena, se salta y el lote toma otra; al fina
 - Escena nueva → agrégala a `escenas.json` con su tema: entra sola en las combinaciones automáticas (gancho del tema → niños del tema → cierre).
 - Cada texto de gancho nuevo en `textos.json` = un anuncio más por cada combinación con esa escena.
 
+## Revisión de cada escena nueva (antes de agregarla)
+Mirar 5-6 cuadros de cada clip (sobre todo cuando marcan la checklist) y rechazar si:
+- **Marcan fuera de la casilla**: la palomita o el color va SOLO dentro del circulito/cuadrito de check, nunca sobre las palabras ni los dibujos.
+- **Marcan la tarea equivocada**: si dice «ya tendí mi cama», la marca va en «Hacer mi cama».
+- **Llenan mal la tabla por días** (Mi Mochila, dragón): cada columna es un día; las marcas de hoy van de arriba hacia abajo en la MISMA columna.
+- **Incoherencias de acción**: p. ej. lavar el plato antes de terminarse el cereal, guardar algo que nunca sacaron.
+- **Texto en espejo** (pasa en tomas tipo selfie) o un segundo celular en la mano cuando se supone que ella graba.
+- Caras o manos deformes, niños en cama/pijama sin necesidad, texto inventado en pantalla.
+Si una escena ya agregada tiene un error, ponle `"bloqueada": "por qué"` en `escenas.json`: deja de usarse hasta rehacerla.
+En los prompts de Seedance: «marks ONLY inside the small empty circle at the right of that task, never on the words», «one column = one day», «text readable, not mirrored», «camera on a tripod, no phone in her hands».
+
 ## Reglas
 - La etiqueta de IA no va en el video (regla de la fábrica): márcala en la app al publicar (en TikTok es obligatoria). Si algún día la quieres quemada, `opciones.json` → `etiqueta_ia.mostrar: true`.
 - Los textos son voz de marca, no testimonios: nada de "a mí me funcionó" inventado. Testimonios solo con reseñas reales.

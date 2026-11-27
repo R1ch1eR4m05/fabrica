@@ -1528,12 +1528,14 @@ async function anunciosUGC() {
     <div class="card" style="margin-bottom:16px">
       <h2 style="margin-top:0">Anuncios UGC (combinaciones)</h2>
       <p class="estado">Une escenas ya generadas (gancho → demo → niños → cierre), les pone el texto del gancho y el cierre con CTA, y entrega cada anuncio terminado en 9:16 con su copy. Nunca repite: cada combinación sale con otro texto de gancho. Datos en <code>ugcdrop/</code>.</p>
-      <p><b>${d.entregados}</b> entregados · <b>${d.publicados}</b> publicados · <b>${d.ganadores.length}</b> ganadores · quedan <b>${d.quedan}</b> de ${d.posibles} posibles (${d.curadas} combinaciones curadas + ${d.automaticas} automáticas).</p>
+      <p><b>${d.armables}</b> anuncios listos para armar con las escenas que encontré · <b>${d.entregados}</b> entregados · <b>${d.publicados}</b> publicados · <b>${d.ganadores.length}</b> ganadores · ${d.posibles} posibles con todas las escenas.</p>
+      <p class="estado">Escenas: <b>${d.escenas.total - d.escenas.faltan.length}</b> de ${d.escenas.total} (${Object.entries(d.escenas.porDonde).filter(([k]) => k !== "falta").map(([k, v]) => `${h(k)}: ${v}`).join(" · ")}).
+        ${d.escenas.faltan.length ? `<br>Faltan ${d.escenas.faltan.length}: ${h(d.escenas.faltan.join(" "))}. ${d.drive ? `Las busco en <code>${h(d.drive)}</code>: revisa que sea tu carpeta «Levania» de Google Drive.` : `Para usarlas pon <code>LEVANIA_DRIVE=G:/Mi unidad/Levania</code> en el .env (tu carpeta Levania de Google Drive para escritorio) y reinicia la fábrica, o suéltalas en <code>ugcdrop/escenas/</code> con el código al inicio del nombre.`}` : ""}</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end">
         <div><label>¿Cuántos?</label><input id="ugN" type="number" min="1" max="30" value="5" style="width:80px"></div>
         <div><label>Estilo</label><select id="ugEstilo"><option value="">Mezcla (70 % realistas)</option><option value="realista">Solo realistas (UGC)</option><option value="animado">Solo animados 3D</option></select></div>
         <div><label>Tema</label><select id="ugTema"><option value="">Todos</option>${d.temas.map((t) => `<option value="${t}">${h(NOMBRE_TEMA[t] || t)}</option>`).join("")}</select></div>
-        <button class="btn primario" id="ugIr" ${d.trabajando ? "disabled" : ""}>${d.trabajando ? "Armando…" : "Dame los anuncios"}</button>
+        <button class="btn primario" id="ugIr" ${d.trabajando || !d.armables ? "disabled" : ""}>${d.trabajando ? "Armando…" : "Dame los anuncios"}</button>
       </div>
       <p class="estado" id="ugProg" style="margin-top:8px"></p>
     </div>

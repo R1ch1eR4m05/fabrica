@@ -1,5 +1,5 @@
 {
- "_nota": "Catálogo de escenas. 'archivo' es la ruta dentro de la carpeta Levania de Drive; si termina en un código (U01), se busca cualquier archivo que empiece con ese código. 'url' es respaldo de descarga directa.",
+ "_nota": "Catálogo de escenas. 'archivo' es la ruta dentro de la carpeta Levania de Drive; si termina en un código (U01), se busca cualquier archivo que empiece con ese código. 'url' es respaldo de descarga directa. 'bloqueada' = la escena tiene un error (no se usa hasta rehacerla). 'revisada' = pasó la revisión cuadro por cuadro.",
  "escenas": [
   {
    "codigo": "G1",
@@ -789,7 +789,8 @@
    "tema": "comida",
    "duracion": null,
    "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/N11",
-   "url": null
+   "url": null,
+   "bloqueada": "El niño lava su plato antes de terminarse el cereal (incoherente). Rehacer antes de usar."
   },
   {
    "codigo": "N12",
@@ -1160,6 +1161,238 @@
    "duracion": null,
    "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/T08",
    "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_231245_9b1dfc04-390d-4862-952a-65ab22c5dfe8.mp4"
+  },
+  {
+   "codigo": "N19",
+   "estilo": "realista",
+   "tipo": "ninos",
+   "titulo": "Guarda juguetes y colorea un círculo del dragón",
+   "tema": "orden",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_020132_06a0118c-390c-4f5d-bc7c-050aa8b8f713.mp4",
+   "revisada": "2026-11-26: marca dentro de la casilla, sin incoherencias"
+  },
+  {
+   "codigo": "N20",
+   "estilo": "realista",
+   "tipo": "ninos",
+   "titulo": "Empaca mochila y palomea Mi Mochila (columna del día)",
+   "tema": "escuela",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_020131_f1796198-936b-4153-a9cb-6e658f091354.mp4",
+   "revisada": "2026-11-26: marca dentro de la casilla, sin incoherencias"
+  },
+  {
+   "codigo": "M14",
+   "estilo": "realista",
+   "tipo": "cierre",
+   "titulo": "Mamá con café caliente; niños marcan al fondo",
+   "tema": "manana",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_020132_99458792-c6ce-4ed2-b5fc-8d2709e494c1.mp4",
+   "revisada": "2026-11-26: marca dentro de la casilla, sin incoherencias"
+  },
+  {
+   "codigo": "U17",
+   "estilo": "realista",
+   "tipo": "demo",
+   "titulo": "Muestra Mi Rutina en el refri y señala las casillas",
+   "tema": "manana",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_020907_bf225ece-1286-488c-9d66-8bbe7adb245b.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro"
+  },
+  {
+   "codigo": "A09",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "Montaña de tenis en la entrada: «ninguno es mío»",
+   "tema": "orden",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_020908_696e851f-b9b5-4f2b-af38-f2a529a3ceb4.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro"
+  },
+  {
+   "codigo": "U18",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "En el coche: «si solo te hacen caso a la tercera…»",
+   "tema": "general",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_020906_94023006-634b-4a46-a62e-e3432a13595b.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro"
+  },
+  {
+   "codigo": "T09",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "El niño le recuerda a mamá marcar su checklist",
+   "tema": "general",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_020906_d2b66f84-f098-4d38-a3ed-afbdc044d43b.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro"
+  },
+  {
+   "codigo": "N21",
+   "estilo": "realista",
+   "tipo": "ninos",
+   "titulo": "Se acaba el cereal y después lava su plato",
+   "tema": "comida",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_021458_2af3b081-b4f7-4e70-a934-c1fb53d34949.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro"
+  },
+  {
+   "codigo": "N22",
+   "estilo": "realista",
+   "tipo": "ninos",
+   "titulo": "Termina la tarea y palomea Mis Tareas (columna del día)",
+   "tema": "tarea",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_021459_5bf941f1-984d-47ed-89f7-2391c65fe615.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro"
+  },
+  {
+   "codigo": "N18",
+   "estilo": "realista",
+   "tipo": "ninos",
+   "titulo": "Palomea «Cepillarme los dientes» en Mi Rutina",
+   "tema": "manana",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_021459_67c5705f-564d-4ac9-946f-5c17b925f77e.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro (solo desde 3.4 s: la parte donde palomea; antes se enjuaga sin cepillo)",
+   "desde": 3.4
+  },
+  {
+   "codigo": "A10",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "«¿Y por qué siempre yo?» (brazos cruzados)",
+   "tema": "orden",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_021459_afc726c0-e594-459e-83ef-1cdb7586a81c.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro"
+  },
+  {
+   "codigo": "U19",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "Susurra de noche: «ya están dormidos, sin un grito»",
+   "tema": "noche",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_022148_d66ee93d-29b2-433e-9b23-300d2254989c.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro"
+  },
+  {
+   "codigo": "U20",
+   "estilo": "realista",
+   "tipo": "demo",
+   "titulo": "Explica Mi Mochila: cada columna es un día",
+   "tema": "escuela",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_022147_3edd734e-8d22-45ae-bf61-2b4a5151b8c5.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro"
+  },
+  {
+   "codigo": "N23",
+   "estilo": "realista",
+   "tipo": "ninos",
+   "titulo": "Ponen la mesa solos: «¡Mesa lista!»",
+   "tema": "comida",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_022148_830aecb4-4ac7-4029-84d2-16c7fd47e159.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro"
+  },
+  {
+   "codigo": "N24",
+   "estilo": "realista",
+   "tipo": "ninos",
+   "titulo": "Riega sus plantitas",
+   "tema": "casa",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_022147_77067308-d32e-4a74-90ae-0963d8dfb8f6.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro"
+  },
+  {
+   "codigo": "M15",
+   "estilo": "realista",
+   "tipo": "cierre",
+   "titulo": "Abrazo de grupo: «tiempo con ellos»",
+   "tema": "general",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_022147_d5401fbb-9eb7-4fa4-bf52-00868479eb8b.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro"
+  },
+  {
+   "codigo": "A11",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "«¡No encuentro mi otro tenis!» (un solo zapato)",
+   "tema": "escuela",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_023123_f167fe40-58a8-45a6-974f-4f0819ebc13b.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro"
+  },
+  {
+   "codigo": "T10",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "3 cosas que hacen solos antes de las 8",
+   "tema": "manana",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_023123_49155bff-1cac-49ee-99fd-f865fc8d5f9d.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro"
+  },
+  {
+   "codigo": "N25",
+   "estilo": "realista",
+   "tipo": "ninos",
+   "titulo": "Ropa al cesto y colorea un círculo de Mis Tareas",
+   "tema": "orden",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_023123_358d9a49-5a76-46ac-8ac4-5140f9ae21bd.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro"
+  },
+  {
+   "codigo": "N26",
+   "estilo": "realista",
+   "tipo": "ninos",
+   "titulo": "El niño tiende su cama «yo solito»",
+   "tema": "manana",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_023123_f20d29cb-2436-4295-97d2-2025b336f411.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro"
+  },
+  {
+   "codigo": "M16",
+   "estilo": "realista",
+   "tipo": "cierre",
+   "titulo": "Mamá lee tranquila mientras juegan",
+   "tema": "general",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_023124_a202715c-d620-444f-9e47-d5801713653d.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro"
   }
  ]
 }

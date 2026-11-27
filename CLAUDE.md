@@ -131,6 +131,7 @@ Hasta 3 cuentas (Pro), cada una con su perfil de Chrome en la skill: cuenta 1 = 
 - Cuando Richie pida "dame N anuncios" (de Levania, UGC, combinaciones): `node fabrica.js ugc-lote N` (filtros `--realista`, `--animado`, `--tema`, `--combo`). Salen MP4 terminados + `copys.txt` en `listos/anuncios-ugc/Lote AAAA-MM-DD #N/`. Antes del primero, `node fabrica.js ugc-escenas` dice qué escenas faltan.
 - No gasta créditos: solo une escenas ya generadas con ffmpeg. Registro (nunca repetir) en `listos/anuncios-ugc/registro.json`; ganadores con `ugc-marcar <id> ganador`.
 - Escenas nuevas de Higgsfield/Flow: agrégalas a `ugcdrop/escenas.json` (código, tipo, tema, url o archivo) y, si aplica, combinaciones en los `.tsv` y textos de gancho en `textos.json`. Textos en voz de marca, nunca testimonios inventados ni datos sin verificar.
+- Antes de agregar una escena, revísala cuadro por cuadro con la lista de `ugcdrop/LEEME.md` → «Revisión de cada escena nueva» (marca dentro de la casilla correcta, columna del día, sin incoherencias, sin texto en espejo). Las que fallan se rehacen o se marcan `"bloqueada"`.
 
 ## Motion graphics ("construye el motion de <id>")
 La skill vive en `motion/` (claude-video, MIT, textos en portugués; tú hablas en español con Richie). `$SKILL` = `<raíz de la fábrica>/motion`.

@@ -9,8 +9,14 @@ echo.
 set /p N=Cuantos anuncios quieres? (Enter = 5): 
 if "%N%"=="" set N=5
 node fabrica.js ugc-lote %N%
+set ERR=%errorlevel%
 echo.
 node fabrica.js ugc-estado
-if not exist "%~dp0listos\anuncios-ugc" mkdir "%~dp0listos\anuncios-ugc"
-start "" "%~dp0listos\anuncios-ugc"
+if "%ERR%"=="0" (
+  if not exist "%~dp0listos\anuncios-ugc" mkdir "%~dp0listos\anuncios-ugc"
+  start "" "%~dp0listos\anuncios-ugc"
+) else (
+  echo.
+  echo  No salio ningun anuncio: lee el mensaje de arriba. Tambien puedes usar el panel: boton "Anuncios UGC".
+)
 pause
