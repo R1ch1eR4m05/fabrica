@@ -61,6 +61,12 @@ function bloquearAuto(codigo, motivo) {
 // ---------------- qué armar ----------------
 const sinEmoji = (t) => t.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu, "").replace(/\s+/g, " ").trim();
 const temaDe = (c, pc) => c.escenas.map((x) => pc[x].tema).find((t) => t && t !== "general") || "general";
+// ángulo del anuncio: el de la escena más "especial" (objeción, papá, reacción…); si ninguna trae, el del gancho; si no, clásico
+export const ANGULOS = ["dolor", "objecion", "papa", "reaccion", "nino", "clasico"];
+const PRIORIDAD_ANGULO = ["papa", "objecion", "reaccion", "nino", "dolor"];
+export const anguloDe = (c, pc) => PRIORIDAD_ANGULO.find((a) => c.escenas.some((x) => pc[x]?.angulo === a)) || "clasico";
+// una misma persona en todo el anuncio: nunca dos papás distintos (o dos actores con distinto "persona")
+const personasOk = (esc, pc) => new Set(esc.map((x) => pc[x]?.persona).filter(Boolean)).size <= 1;
 
 function textosGancho(c, pc, textos) {
   const l = [];
@@ -74,6 +80,7 @@ function textosGancho(c, pc, textos) {
 export function generarAutomaticas(escenas, existentes) {
   const ya = new Set(existentes.map((c) => c.escenas.join(" ")));
   const real = escenas.filter((e) => e.estilo === "realista" && !e.bloqueada && !e.solo_curadas && !BLOQ_AUTO()[e.codigo]);
+  const pc = Object.fromEntries(escenas.map((e) => [e.codigo, e]));
   const nuevas = [];
   let n = 1;
   for (const tema of [...new Set(real.map((e) => e.tema).filter((t) => t !== "general"))]) {
@@ -83,8 +90,14 @@ export function generarAutomaticas(escenas, existentes) {
           // versión corta (gancho → niños → cierre) y, si hay, versión con demo del tema (gancho → demo → niños → cierre)
           const demos = real.filter((e) => e.tipo === "demo" && (e.tema === tema || e.tema === "general"));
           const d = demos.length ? demos[n % demos.length] : null;
+          // con gancho de dolor, además la versión que responde la objeción (si hay escena de objeción)
+          const obj = g.angulo === "dolor" ? real.filter((e) => e.angulo === "objecion") : [];
+          if (obj.length) {
+            const esc = [g.codigo, obj[n % obj.length].codigo, k.codigo, c.codigo];
+            if (!ya.has(esc.join(" ")) && personasOk(esc, pc)) { ya.add(esc.join(" ")); n++; nuevas.push({ id: "AU-" + esc.join("-"), estilo: "realista", escenas: esc, automatica: true }); }
+          }
           for (const esc of [[g.codigo, k.codigo, c.codigo], d ? [g.codigo, d.codigo, k.codigo, c.codigo] : null]) {
-            if (!esc || ya.has(esc.join(" "))) continue;
+            if (!esc || ya.has(esc.join(" ")) || !personasOk(esc, pc)) continue;
             ya.add(esc.join(" "));
             n++;
             nuevas.push({ id: "AU-" + esc.join("-"), estilo: "realista", escenas: esc, automatica: true }); // id estable: no cambia al agregar escenas
@@ -110,26 +123,27 @@ export function elegirLote(datos, n, op = {}) {
   if (op.combos?.length) combos = combos.filter((c) => op.combos.includes(c.id));
   if (op.estilo) combos = combos.filter((c) => c.estilo === op.estilo);
   if (op.tema) combos = combos.filter((c) => temaDe(c, pc) === op.tema);
+  if (op.angulo) combos = combos.filter((c) => anguloDe(c, pc) === op.angulo);
 
   const usados = {};
   for (const e of registro.entregados) usados[e.combo] = (usados[e.combo] || 0) + 1;
   const cand = [];
   for (const c of combos) {
     const vs = textosGancho(c, pc, textos), v = usados[c.id] || 0;
-    if (v < vs.length) cand.push({ combo: c, variante: v, texto: vs[v], tema: temaDe(c, pc), curada: !c.automatica });
+    if (v < vs.length) cand.push({ combo: c, variante: v, texto: vs[v], tema: temaDe(c, pc), angulo: anguloDe(c, pc), curada: !c.automatica });
   }
   barajar(cand, op.semilla);
   cand.sort((a, b) => a.variante - b.variante || b.curada - a.curada); // nuevas curadas → nuevas automáticas → otro texto de gancho
 
   const metaReal = op.estilo ? n : Math.round((n * ajustes.mezcla_lote.porcentaje_realista) / 100);
-  const elegidos = [], ganchos = new Set(), temas = {};
+  const elegidos = [], ganchos = new Set(), temas = {}, angulos = {};
   const tope = Math.max(1, Math.ceil(n / 4));
   const tomar = (filtro, limite, libre = false) => {
     for (const x of cand) {
       if (elegidos.length >= limite) break;
       if (elegidos.includes(x) || !filtro(x)) continue;
-      if (!libre && (ganchos.has(x.combo.escenas[0]) || (temas[x.tema] || 0) >= tope)) continue; // variedad dentro del lote
-      elegidos.push(x); ganchos.add(x.combo.escenas[0]); temas[x.tema] = (temas[x.tema] || 0) + 1;
+      if (!libre && (ganchos.has(x.combo.escenas[0]) || (temas[x.tema] || 0) >= tope || (x.combo.estilo === "realista" && (angulos[x.angulo] || 0) >= tope))) continue; // variedad dentro del lote (tema y ángulo)
+      elegidos.push(x); ganchos.add(x.combo.escenas[0]); temas[x.tema] = (temas[x.tema] || 0) + 1; if (x.combo.estilo === "realista") angulos[x.angulo] = (angulos[x.angulo] || 0) + 1;
     }
   };
   tomar((x) => x.combo.estilo === "realista", metaReal);
@@ -144,7 +158,7 @@ export function elegirLote(datos, n, op = {}) {
   return elegidos.map((x) => {
     const copys = textos.copy_por_tema[x.tema] || textos.copy_por_tema.general;
     return {
-      id: `${x.combo.id}-v${x.variante + 1}`, combo: x.combo.id, variante: x.variante + 1, estilo: x.combo.estilo, tema: x.tema,
+      id: `${x.combo.id}-v${x.variante + 1}`, combo: x.combo.id, variante: x.variante + 1, estilo: x.combo.estilo, tema: x.tema, angulo: x.angulo,
       escenas: x.combo.escenas, textoGancho: x.texto,
       copy: copys[x.variante % copys.length], titular: textos.titulares[iTit++ % textos.titulares.length],
       cta: final.modo === "texto" ? final.texto : final.modo === "rotar" ? textos.cierre.ctas[x.variante % textos.cierre.ctas.length] : "",

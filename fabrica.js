@@ -37,7 +37,7 @@
 //        10 imágenes de frase del informe (Monarca): arma el día; --escritas guarda las que escribió Claude Code; --flow genera los fondos (gasta Flow); --componer pone la frase
 //   node fabrica.js plan-dia [informe.md] [--crear] [--forzar]   informe de la mañana → 5 videos (3 Shorts, 1 largo, 1 experimento) con horario; --crear los crea
 //   node fabrica.js comparar-voces ["texto"] [--estilo id]   mismo texto con cada modelo de voz → listos/comparar-voces/
-//   node fabrica.js ugc-lote [N] [--realista|--animado] [--tema noche] [--combo UG064,AN001] [--prueba]
+//   node fabrica.js ugc-lote [N] [--realista|--animado] [--tema noche] [--angulo dolor|objecion|papa|reaccion|nino|clasico] [--combo UG064,AN001] [--prueba]
 //        Final: [--final "Link en el perfil"] [--solo-marca] [--sin-final]   (sin nada: rota los CTA de textos.json)
 //   node fabrica.js ugc-audio                       escucha todas las escenas (ElevenLabs) y bloquea las que no están en español
 //        Anuncios UGC por combinaciones (estilo UGCdrop): N anuncios TERMINADOS (MP4 + copy) → listos/anuncios-ugc/Lote …/
@@ -373,10 +373,10 @@ async function main() {
       const U = await import("./core/ugcdrop.js");
       const r = await U.armarLote(Number(libres[0]) || 5, {
         estilo: args.includes("--realista") ? "realista" : args.includes("--animado") ? "animado" : null,
-        tema: opc("tema") || null, combos: opc("combo") ? String(opc("combo")).split(",") : null, prueba: args.includes("--prueba"),
+        tema: opc("tema") || null, angulo: opc("angulo") || null, combos: opc("combo") ? String(opc("combo")).split(",") : null, prueba: args.includes("--prueba"),
         final: args.includes("--sin-final") ? { modo: "ninguno" } : args.includes("--solo-marca") ? { modo: "marca" } : opc("final") ? { modo: "texto", texto: String(opc("final")) } : undefined,
       }, avisar);
-      if (!r.lote) { for (const a of r.anuncios) console.log(`${a.id}  [${a.estilo}/${a.tema}]  ${a.escenas.join(" → ")}  |  «${a.textoGancho}»`); return; }
+      if (!r.lote) { for (const a of r.anuncios) console.log(`${a.id}  [${a.estilo}/${a.tema}/${a.angulo}]  ${a.escenas.join(" → ")}  |  «${a.textoGancho}»`); return; }
       console.log(`\n\nListo: ${r.hechos.length} anuncios en ${r.carpeta}`);
       for (const a of r.hechos) console.log(`  ✓ ${a.id}  ${a.duracion} s  «${a.textoGancho}»`);
       if (r.bloqueadasAudio?.length) console.log(`  (Bloqueé por audio en otro idioma: ${r.bloqueadasAudio.join(", ")}; se usaron otras combinaciones.)`);

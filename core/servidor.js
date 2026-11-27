@@ -459,7 +459,7 @@ async function api(req, res, partes) {
         if (b.accion === "lote") {
           const n = Math.min(30, Math.max(1, Number(b.n) || 5));
           const final = b.final === "ninguno" ? { modo: "ninguno" } : b.final === "marca" ? { modo: "marca" } : b.final === "texto" ? { modo: "texto", texto: String(b.textoFinal || "") } : { modo: "rotar" };
-          encolar("_ugc", "render", (av) => U.armarLote(n, { estilo: b.estilo || null, tema: b.tema || null, final }, av));
+          encolar("_ugc", "render", (av) => U.armarLote(n, { estilo: b.estilo || null, tema: b.tema || null, angulo: b.angulo || null, final }, av));
           return json(res, 200, { ok: true });
         }
       }

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { cargar, elegirLote, contar, generarAutomaticas } from "../core/ugcdrop.js";
+import { cargar, elegirLote, contar, generarAutomaticas, anguloDe } from "../core/ugcdrop.js";
 
 const datosLimpios = () => ({ ...cargar(), registro: { entregados: [] } });
 
@@ -39,4 +39,13 @@ test("las automáticas no duplican las curadas y el conteo cuadra", () => {
   for (const c of generarAutomaticas(d.escenas, d.combos)) assert.ok(!curadas.has(c.escenas.join(" ")));
   const c = contar({ ...d, registro: { entregados: [] } });
   assert.ok(c.posibles > 1000);
+});
+
+test("ángulos: hay anuncios de objeción y nunca dos papás distintos en uno", () => {
+  const d = datosLimpios();
+  const auto = generarAutomaticas(d.escenas, d.combos);
+  assert.ok(auto.some((c) => anguloDe(c, d.porCodigo) === "objecion"));
+  for (const c of auto) assert.ok(new Set(c.escenas.map((x) => d.porCodigo[x].persona).filter(Boolean)).size <= 1, c.id);
+  const lote = elegirLote(d, 3, { angulo: "papa", semilla: 3 });
+  for (const a of lote) assert.equal(a.angulo, "papa");
 });

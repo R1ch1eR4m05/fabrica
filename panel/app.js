@@ -1536,6 +1536,7 @@ async function anunciosUGC() {
         <div><label>¿Cuántos?</label><input id="ugN" type="number" min="1" max="30" value="5" style="width:80px"></div>
         <div><label>Estilo</label><select id="ugEstilo"><option value="">Mezcla (70 % realistas)</option><option value="realista">Solo realistas (UGC)</option><option value="animado">Solo animados 3D</option></select></div>
         <div><label>Tema</label><select id="ugTema"><option value="">Todos</option>${d.temas.map((t) => `<option value="${t}">${h(NOMBRE_TEMA[t] || t)}</option>`).join("")}</select></div>
+        <div><label>Ángulo</label><select id="ugAngulo"><option value="">Mezclados</option><option value="dolor">Dolor (la mañana caótica)</option><option value="objecion">Objeción («no es otra app»)</option><option value="papa">Papá</option><option value="reaccion">Reacción de mamá</option><option value="nino">El niño presume</option><option value="clasico">Clásico</option></select></div>
         <div><label>Final del video</label><select id="ugFinal"><option value="rotar">CTA que va rotando (Comenta RUTINA, Link en el perfil…)</option><option value="texto">Otro texto…</option><option value="marca">Solo la marca (sin CTA)</option><option value="ninguno">Sin final</option></select></div>
         <div id="ugTextoFinalCaja" style="display:none"><label>Texto del final</label><input id="ugTextoFinal" placeholder="p. ej. Link en el perfil" style="width:220px"></div>
         <button class="btn primario" id="ugIr" ${d.trabajando || !d.armables ? "disabled" : ""}>${d.trabajando ? "Armando…" : "Dame los anuncios"}</button>
@@ -1549,7 +1550,7 @@ async function anunciosUGC() {
       <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">${l.anuncios.map(tarjeta).join("")}</div>`).join("") : `<p class="estado">Aún no hay lotes. Dale «Dame los anuncios».</p>`}`;
   const todos = d.lotes.flatMap((l) => l.anuncios);
   $("#ugIr").onclick = async () => {
-    try { await api("/api/ugc", "POST", { accion: "lote", n: Number($("#ugN").value) || 5, estilo: $("#ugEstilo").value, tema: $("#ugTema").value, final: $("#ugFinal").value, textoFinal: $("#ugTextoFinal").value }); avisar("Armando los anuncios…"); $("#ugIr").disabled = true; $("#ugIr").textContent = "Armando…"; }
+    try { await api("/api/ugc", "POST", { accion: "lote", n: Number($("#ugN").value) || 5, estilo: $("#ugEstilo").value, tema: $("#ugTema").value, angulo: $("#ugAngulo").value, final: $("#ugFinal").value, textoFinal: $("#ugTextoFinal").value }); avisar("Armando los anuncios…"); $("#ugIr").disabled = true; $("#ugIr").textContent = "Armando…"; }
     catch (e) { avisar(e.message, true); }
   };
   try { const f = JSON.parse(localStorage.getItem("ugcFinal") || "{}"); if (f.final) $("#ugFinal").value = f.final; if (f.texto) $("#ugTextoFinal").value = f.texto; } catch {}

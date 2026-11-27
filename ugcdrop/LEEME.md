@@ -55,6 +55,13 @@ Si a una combinación le falta una escena, se salta y el lote toma otra; al fina
 - Escena nueva → agrégala a `escenas.json` con su tema: entra sola en las combinaciones automáticas (gancho del tema → niños del tema → cierre).
 - Cada texto de gancho nuevo en `textos.json` = un anuncio más por cada combinación con esa escena.
 
+## Ángulos del anuncio
+Cada escena puede traer `angulo` en `escenas.json`: `dolor` (gancho de la mañana caótica, todas las A), `objecion` («no es otra app, es papel»: U22, U27), `papa` (A20, U28), `reaccion` (mamá se sorprende: M25) y `nino` (el niño presume: N37, N38). El anuncio toma el ángulo de su escena más especial; si ninguna trae, es `clasico`.
+- Con gancho de dolor también se arma la versión **dolor → objeción → niños → cierre**.
+- En un lote de 5 no van más de 2 anuncios realistas del mismo ángulo.
+- `persona` (p. ej. `papa-1`, `papa-2`): nunca dos personas distintas con el mismo papel en un anuncio.
+- Pedir uno solo: `node fabrica.js ugc-lote 5 --angulo papa` o el selector «Ángulo» del panel.
+
 ## Final del video
 En el panel, «Final del video»: CTA que va rotando (los de `textos.json` → `cierre.ctas`), otro texto que escribas, solo la marca (Kit Mamá en Calma sin CTA) o sin final. El valor por defecto está en `opciones.json` → `final`.
 
