@@ -92,6 +92,7 @@ export function elegirLote(datos, n, op = {}) {
   const { porCodigo: pc, textos, registro, ajustes } = datos;
   let combos = [...datos.combos];
   if (op.automaticas !== false) combos = combos.concat(generarAutomaticas(datos.escenas, combos));
+  if (op.disponibles) combos = combos.filter((c) => c.escenas.every((x) => op.disponibles.has(x)));
   if (op.excluir?.size) combos = combos.filter((c) => !op.excluir.has(c.id));
   if (op.combos?.length) combos = combos.filter((c) => op.combos.includes(c.id));
   if (op.estilo) combos = combos.filter((c) => c.estilo === op.estilo);
@@ -140,7 +141,12 @@ export function contar(datos = cargar()) {
   const posibles = todos.reduce((s, c) => s + textosGancho(c, datos.porCodigo, datos.textos).length, 0);
   const e = datos.registro.entregados;
   const por = (s) => e.filter((x) => x.estado === s).length;
-  return { curadas: datos.combos.length, automaticas: todos.length - datos.combos.length, posibles, entregados: e.length, publicados: por("publicado"), ganadores: e.filter((x) => x.estado === "ganador").map((x) => x.id), quedan: posibles - e.length };
+  const rev = revisarEscenas();
+  const disp = new Set(rev.filter((e) => e.donde).map((e) => e.codigo));
+  const armables = todos.filter((c) => c.escenas.every((x) => disp.has(x))).reduce((s2, c) => s2 + textosGancho(c, datos.porCodigo, datos.textos).length, 0);
+  const porDonde = {};
+  for (const e of rev) porDonde[e.donde || "falta"] = (porDonde[e.donde || "falta"] || 0) + 1;
+  return { curadas: datos.combos.length, automaticas: todos.length - datos.combos.length, posibles, armables, escenas: { total: rev.length, porDonde, faltan: rev.filter((e) => !e.donde).map((e) => e.codigo) }, drive: process.env.LEVANIA_DRIVE || "", entregados: e.length, publicados: por("publicado"), ganadores: e.filter((x) => x.estado === "ganador").map((x) => x.id), quedan: posibles - e.length };
 }
 
 export function marcar(id, estado) {
@@ -193,6 +199,7 @@ export async function resolverEscena(e) {
 export function revisarEscenas() {
   const { escenas } = cargar();
   return escenas.map((e) => {
+    if (e.bloqueada) return { codigo: e.codigo, titulo: e.titulo, estilo: e.estilo, donde: null, bloqueada: e.bloqueada };
     let donde = buscarPorCodigo(DIR_PROPIAS, e.codigo) ? "ugcdrop/escenas" : buscarPorCodigo(DIR_CACHE, e.codigo) ? "caché" : buscarEnDrive(e) ? "Drive" : null;
     if (!donde && e.url) donde = "se baja de Higgsfield";
     return { codigo: e.codigo, titulo: e.titulo, estilo: e.estilo, donde };
@@ -325,6 +332,16 @@ const csv = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
 
 export async function armarLote(n = 5, op = {}, avisar = () => {}) {
   const datos = cargar();
+  // solo combinaciones cuyas escenas existen (carpeta propia, caché, Drive o enlace de Higgsfield)
+  const revision = revisarEscenas();
+  const disponibles = new Set(revision.filter((e) => e.donde).map((e) => e.codigo));
+  op = { ...op, disponibles };
+  if (!elegirLote(datos, 1, op).length) {
+    const faltan = revision.filter((e) => !e.donde).map((e) => e.codigo);
+    throw new Error(`No hay combinaciones nuevas con las escenas que encuentro (${disponibles.size} de ${revision.length}). ` +
+      (process.env.LEVANIA_DRIVE ? `Revisa que LEVANIA_DRIVE (${process.env.LEVANIA_DRIVE}) sea la carpeta Levania de tu Drive.` : "Pon LEVANIA_DRIVE en el .env (carpeta Levania de Google Drive para escritorio) o suelta las escenas en ugcdrop/escenas/.") +
+      ` Faltan: ${faltan.slice(0, 30).join(" ")}${faltan.length > 30 ? "…" : ""}`);
+  }
   if (op.prueba) {
     const anuncios = elegirLote(datos, n, op);
     if (!anuncios.length) throw new Error("No quedan combinaciones nuevas con esos filtros.");

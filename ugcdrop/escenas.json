@@ -1,5 +1,5 @@
 {
- "_nota": "Catálogo de escenas. 'archivo' es la ruta dentro de la carpeta Levania de Drive; si termina en un código (U01), se busca cualquier archivo que empiece con ese código. 'url' es respaldo de descarga directa.",
+ "_nota": "Catálogo de escenas. 'archivo' es la ruta dentro de la carpeta Levania de Drive; si termina en un código (U01), se busca cualquier archivo que empiece con ese código. 'url' es respaldo de descarga directa. 'bloqueada' = la escena tiene un error (no se usa hasta rehacerla). 'revisada' = pasó la revisión cuadro por cuadro.",
  "escenas": [
   {
    "codigo": "G1",
@@ -789,7 +789,8 @@
    "tema": "comida",
    "duracion": null,
    "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/N11",
-   "url": null
+   "url": null,
+   "bloqueada": "El niño lava su plato antes de terminarse el cereal (incoherente). Rehacer antes de usar."
   },
   {
    "codigo": "N12",
@@ -1160,6 +1161,39 @@
    "duracion": null,
    "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/T08",
    "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_231245_9b1dfc04-390d-4862-952a-65ab22c5dfe8.mp4"
+  },
+  {
+   "codigo": "N19",
+   "estilo": "realista",
+   "tipo": "ninos",
+   "titulo": "Guarda juguetes y colorea un círculo del dragón",
+   "tema": "orden",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_020132_06a0118c-390c-4f5d-bc7c-050aa8b8f713.mp4",
+   "revisada": "2026-11-26: marca dentro de la casilla, sin incoherencias"
+  },
+  {
+   "codigo": "N20",
+   "estilo": "realista",
+   "tipo": "ninos",
+   "titulo": "Empaca mochila y palomea Mi Mochila (columna del día)",
+   "tema": "escuela",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_020131_f1796198-936b-4153-a9cb-6e658f091354.mp4",
+   "revisada": "2026-11-26: marca dentro de la casilla, sin incoherencias"
+  },
+  {
+   "codigo": "M14",
+   "estilo": "realista",
+   "tipo": "cierre",
+   "titulo": "Mamá con café caliente; niños marcan al fondo",
+   "tema": "manana",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_020132_99458792-c6ce-4ed2-b5fc-8d2709e494c1.mp4",
+   "revisada": "2026-11-26: marca dentro de la casilla, sin incoherencias"
   }
  ]
 }
