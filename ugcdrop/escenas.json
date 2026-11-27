@@ -1238,6 +1238,51 @@
    "archivo": null,
    "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_020906_d2b66f84-f098-4d38-a3ed-afbdc044d43b.mp4",
    "revisada": "2026-11-26: revisada cuadro por cuadro"
+  },
+  {
+   "codigo": "N21",
+   "estilo": "realista",
+   "tipo": "ninos",
+   "titulo": "Se acaba el cereal y después lava su plato",
+   "tema": "comida",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_021458_2af3b081-b4f7-4e70-a934-c1fb53d34949.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro"
+  },
+  {
+   "codigo": "N22",
+   "estilo": "realista",
+   "tipo": "ninos",
+   "titulo": "Termina la tarea y palomea Mis Tareas (columna del día)",
+   "tema": "tarea",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_021459_5bf941f1-984d-47ed-89f7-2391c65fe615.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro"
+  },
+  {
+   "codigo": "N18",
+   "estilo": "realista",
+   "tipo": "ninos",
+   "titulo": "Palomea «Cepillarme los dientes» en Mi Rutina",
+   "tema": "manana",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_021459_67c5705f-564d-4ac9-946f-5c17b925f77e.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro (solo desde 3.4 s: la parte donde palomea; antes se enjuaga sin cepillo)",
+   "desde": 3.4
+  },
+  {
+   "codigo": "A10",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "«¿Y por qué siempre yo?» (brazos cruzados)",
+   "tema": "orden",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_021459_afc726c0-e594-459e-83ef-1cdb7586a81c.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro"
   }
  ]
 }

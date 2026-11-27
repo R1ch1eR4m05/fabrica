@@ -258,7 +258,8 @@ function elegirMusica(aj) {
   return null;
 }
 
-export async function renderAnuncio(a, archivos, salida, { ajustes: aj, textos }) {
+export async function renderAnuncio(a, archivos, salida, datos) {
+  const { ajustes: aj, textos } = datos;
   const { ancho: W, alto: H, fps } = aj.video;
   const tmp = path.join(DIR_TMP, a.id);
   fs.mkdirSync(tmp, { recursive: true });
@@ -268,7 +269,9 @@ export async function renderAnuncio(a, archivos, salida, { ajustes: aj, textos }
   // 1. escenas: recorte, 9:16, fps y audio parejos
   for (const [i, arch] of archivos.entries()) {
     const s = await sonda(arch);
-    const ini = Math.min(aj.escenas.recorte_inicio_seg, Math.max(0, s.duracion - 1));
+    const esc = datos?.porCodigo?.[a.escenas[i]] || {};
+    // "desde" en escenas.json: empieza la escena en ese segundo (p. ej. para usar solo la parte buena de un clip)
+    const ini = esc.desde != null ? Math.min(esc.desde, Math.max(0, s.duracion - 1)) : Math.min(aj.escenas.recorte_inicio_seg, Math.max(0, s.duracion - 1));
     const dur = Math.max(0.5, Math.min(i === 0 ? aj.escenas.max_seg_gancho : aj.escenas.max_seg_por_escena, s.duracion - ini - 0.05));
     total += dur;
     args.push("-ss", ini.toFixed(2), "-t", dur.toFixed(2), "-i", arch); nIn++;
