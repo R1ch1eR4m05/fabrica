@@ -2100,6 +2100,55 @@
    "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_083042_d342b2c1-7ffd-4d35-9805-1dbea82081ba.mp4",
    "revisada": "2026-11-26: revisada cuadro por cuadro",
    "angulo": "reaccion"
+  },
+  {
+   "codigo": "A27",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "Apaga la tele y empieza la pelea: «Todas las noches la misma pelea por la tele»",
+   "tema": "noche",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_084014_76fd34ce-3744-4ef7-bd54-d0854cebaa1b.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro",
+   "angulo": "dolor"
+  },
+  {
+   "codigo": "N44",
+   "estilo": "realista",
+   "tipo": "ninos",
+   "titulo": "Con la toalla: «¡Ya me bañé y ya me puse la pijama, yo solito!»",
+   "tema": "noche",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_084006_127ce837-7565-45be-b0a1-3fe1309cf9fe.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro",
+   "angulo": "nino"
+  },
+  {
+   "codigo": "M32",
+   "estilo": "realista",
+   "tipo": "cierre",
+   "titulo": "Encuentra la mesa puesta: «Yo ni les pedí que pusieran la mesa…»",
+   "tema": "comida",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_084006_e146a7fa-d423-4531-a857-a48aafa0298e.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro",
+   "angulo": "reaccion"
+  },
+  {
+   "codigo": "M33",
+   "estilo": "realista",
+   "tipo": "cierre",
+   "titulo": "Papá en la puerta: «Siete y media y ya estamos listos»",
+   "tema": "escuela",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_084006_a66aa7bf-7efa-4a80-9b24-f8d6099be8b7.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro",
+   "angulo": "papa",
+   "persona": "papa-5"
   }
  ]
 }
