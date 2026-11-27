@@ -1,75 +1,309 @@
 {
   "_nota": "Banco de textos. Cada anuncio toma un texto de gancho distinto cada vez que se repite la misma combinación de escenas, así una combinación da varios anuncios. Agrega o cambia frases libremente.",
-
   "ganchos_por_escena": {
-    "U01": ["Si le repites 20 veces lo mismo… esto es para ti", "¿Cansada de repetir todo 20 veces?", "Deja de repetir. Haz esto."],
-    "U02": ["¿Por qué tus hijos no siguen la rutina?", "La razón por la que no siguen la rutina", "No es flojera. Es esto."],
-    "U07": ["La pregunta que más me hacen las mamás", "Me preguntan esto todos los días", "¿Sí funciona? Mira."],
-    "U09": ["3 errores que arruinan las rutinas", "¿Cometes estos 3 errores con tus hijos?", "Error #1: decirles todo tú"],
-    "U10": ["'Ponte los zapatos' 14 veces cada mañana", "Si cada mañana es una batalla…", "Mañanas sin gritos, ¿se puede?"],
-    "U12": ["No eres mala mamá. Te falta un sistema", "Mamá, no estás fallando", "Si te sientes culpable por gritar… lee esto"],
-    "U14": ["¿Sirve con niños chiquitos?", "Rutinas con dibujos para los más pequeños", "Para los más chiquitos de la casa"],
-    "M03": ["Dales su propia lista y mira qué pasa", "El truco del súper que cambia todo", "Niños que ayudan sin que se los pidas"],
-    "M06": ["7 de la noche, todos los días", "La hora más difícil del día", "Si las noches son un caos…"],
-    "M07": ["Si corres todas las mañanas…", "Mañanas a las carreras, ¿te suena?", "Así se ven nuestras mañanas ahora"],
-    "M12": ["Día 1 del reto de 7 días", "Reto: 7 días con una checklist", "Pegué esto en el refri. Día 1"],
-    "A01": ["Cuando no se quiere poner los zapatos…", "Llegamos tarde por esto todos los días", "¿Te pasa en las mañanas?"],
-    "A02": ["'¡Ahorita, mamá!'", "Si en tu casa 'ahorita' significa nunca…", "Ahorita = nunca"],
-    "A03": ["¿Pelean por todo?", "Hermanos peleando todo el día…", "Cuando los dos quieren lo mismo"],
-    "A04": ["¿Su cuarto siempre se ve así?", "Cuarto desordenado otra vez…", "Antes vs después del sistema"],
-    "A05": ["9:30 pm y siguen con pila", "¿Ya es hora de dormir y siguen brincando?", "Las noches no tienen que ser así"],
-    "A06": ["'¡Fue él!'", "El desayuno de todos los días…", "Mañanas así, ¿te suenan?"],
-    "A07": ["'No sé qué hacer' (con la tarea)", "Si la tarea termina en llanto…", "Tarea sin pleitos, ¿se puede?"],
-    "A08": ["Cuando ven el cepillo de dientes…", "La batalla de los dientes, todas las noches", "¿Tu hijo huye del cepillo?"],
-    "K01": ["Ella misma presenta su rutina", "Cuando tu hija te explica su rutina", "Su rutina, explicada por ella"],
-    "K02": ["'¡Ya junté monedas!'", "Monedas por tareas: así funciona", "Ahora quieren hacer sus tareas"],
-    "T01": ["El truco de los cuartos ordenados: apilar hábitos", "Tour de cuartos (sí, están ordenados)", "Así mantienen su cuarto en orden"],
-    "T02": ["¿Cuánto tarda en tender su cama? 47 segundos", "Cuánto tarda de verdad cada tarea", "47 segundos. Eso era todo."],
-    "T03": ["'Recoge tu cuarto' es demasiado para un niño", "Divide la tarea grande en pasitos", "El secreto: tareas pequeñas"],
-    "T04": ["Reglas raras de mi casa que sí funcionan", "3 reglas raras que funcionan", "Regla #3: la lista manda, no mamá"],
-    "T05": ["Anunciamos las tareas con redoble", "Cómo hacer que quieran sus tareas", "Las tareas, versión show"],
-    "T06": ["El turno de apertura de mis hijos", "15 minutos y todos listos", "Turno de apertura: versión niños"],
-    "T07": ["Hablemos de rutinas (desde el coche)", "Algo que me hubiera gustado saber antes", "Lo que nadie te dice de las rutinas"],
-    "T08": ["Armamos el centro de mando familiar", "Unboxing: nuestro centro de mando", "Imprimir, pegar, listo"],
-    "G1": ["Si tus mañanas se ven así…", "Mamá al borde, nivel: lunes", "¿Así empiezan tus días?"],
-    "G2": ["Las mañanas no tienen que ser una guerra", "Mañanas con dinosaurio incluido", "Si tu casa es un zoológico a las 7 am…"],
-    "G3": ["Lo que cambió en nuestra casa con 1 hoja", "Del llanto a la calma", "Menos dramas en las mañanas"],
-    "G4": ["¿Son las 10 pm y siguen despiertos?", "La hora de dormir, sin guerra", "Por fin… dormidos a su hora"],
-    "G5": ["La rutina de noche que sí funciona", "'¡No tengo sueño!'", "Guerra de almohadas a las 10 pm…"],
-    "G6": ["Del berrinche al 'buenas noches, mamá'", "'¡No me quiero bañar!'", "Berrinches a la hora del baño"],
-    "G7": ["Si la tarea termina en llanto… mira esto", "Tarea sin lágrimas", "'¡No le entiendo!'"],
-    "G8": ["Primero la tarea, luego a jugar", "Cuando no estás viendo 5 minutos…", "Niños aburridos = paredes pintadas"],
-    "G9": ["Mamá que trabaja desde casa, esto es para ti", "Junta en 5 minutos y los niños…", "Trabajar con niños en casa, sin caos"],
-    "G10": ["¿Siempre llegan tarde a la escuela?", "'¡Vamos tarde!' todos los días", "Mañanas sin prisas, sí se puede"],
-    "G11": ["'¡No encuentro mi zapato!'", "La mochila se prepara desde la noche", "Llegar tarde por un zapato…"],
-    "G12": ["'¡Olvidé mi lonchera!'", "Nunca más olvidar la lonchera", "La mochila se prepara desde la noche"],
-    "G13": ["¿Tus hijos no dicen 'por favor'?", "Comidas en paz con niños", "'¡Guácala!'"],
-    "G14": ["Las palabras mágicas cambiaron nuestra mesa", "Cocinar con niños alrededor…", "Comidas en paz, ¿se puede?"],
-    "G15": ["¿Tu sala siempre está llena de juguetes?", "¡Auch! (otra vez)", "Casa ordenada sin gritar"],
-    "G16": ["'¡Ahorita, mamá!'", "Guardar juguetes se volvió su juego favorito", "Ahorita = nunca"],
-    "G17": ["¿Pelean todo el día?", "'¡Es mío!' '¡No, es mío!'", "Hermanos en paz, sí se puede"]
+    "U01": [
+      "Si le repites 20 veces lo mismo… esto es para ti",
+      "¿Cansada de repetir todo 20 veces?",
+      "Deja de repetir. Haz esto."
+    ],
+    "U02": [
+      "¿Por qué tus hijos no siguen la rutina?",
+      "La razón por la que no siguen la rutina",
+      "No es flojera. Es esto."
+    ],
+    "U07": [
+      "La pregunta que más me hacen las mamás",
+      "Me preguntan esto todos los días",
+      "¿Sí funciona? Mira."
+    ],
+    "U09": [
+      "3 errores que arruinan las rutinas",
+      "¿Cometes estos 3 errores con tus hijos?",
+      "Error #1: decirles todo tú"
+    ],
+    "U10": [
+      "'Ponte los zapatos' 14 veces cada mañana",
+      "Si cada mañana es una batalla…",
+      "Mañanas sin gritos, ¿se puede?"
+    ],
+    "U12": [
+      "No eres mala mamá. Te falta un sistema",
+      "Mamá, no estás fallando",
+      "Si te sientes culpable por gritar… lee esto"
+    ],
+    "U14": [
+      "¿Sirve con niños chiquitos?",
+      "Rutinas con dibujos para los más pequeños",
+      "Para los más chiquitos de la casa"
+    ],
+    "M03": [
+      "Dales su propia lista y mira qué pasa",
+      "El truco del súper que cambia todo",
+      "Niños que ayudan sin que se los pidas"
+    ],
+    "M06": [
+      "7 de la noche, todos los días",
+      "La hora más difícil del día",
+      "Si las noches son un caos…"
+    ],
+    "M07": [
+      "Si corres todas las mañanas…",
+      "Mañanas a las carreras, ¿te suena?",
+      "Así se ven nuestras mañanas ahora"
+    ],
+    "M12": [
+      "Día 1 del reto de 7 días",
+      "Reto: 7 días con una checklist",
+      "Pegué esto en el refri. Día 1"
+    ],
+    "A01": [
+      "Cuando no se quiere poner los zapatos…",
+      "Llegamos tarde por esto todos los días",
+      "¿Te pasa en las mañanas?"
+    ],
+    "A02": [
+      "'¡Ahorita, mamá!'",
+      "Si en tu casa 'ahorita' significa nunca…",
+      "Ahorita = nunca"
+    ],
+    "A03": [
+      "¿Pelean por todo?",
+      "Hermanos peleando todo el día…",
+      "Cuando los dos quieren lo mismo"
+    ],
+    "A04": [
+      "¿Su cuarto siempre se ve así?",
+      "Cuarto desordenado otra vez…",
+      "Antes vs después del sistema"
+    ],
+    "A05": [
+      "9:30 pm y siguen con pila",
+      "¿Ya es hora de dormir y siguen brincando?",
+      "Las noches no tienen que ser así"
+    ],
+    "A06": [
+      "'¡Fue él!'",
+      "El desayuno de todos los días…",
+      "Mañanas así, ¿te suenan?"
+    ],
+    "A07": [
+      "'No sé qué hacer' (con la tarea)",
+      "Si la tarea termina en llanto…",
+      "Tarea sin pleitos, ¿se puede?"
+    ],
+    "A08": [
+      "Cuando ven el cepillo de dientes…",
+      "La batalla de los dientes, todas las noches",
+      "¿Tu hijo huye del cepillo?"
+    ],
+    "K01": [
+      "Ella misma presenta su rutina",
+      "Cuando tu hija te explica su rutina",
+      "Su rutina, explicada por ella"
+    ],
+    "K02": [
+      "'¡Ya junté monedas!'",
+      "Monedas por tareas: así funciona",
+      "Ahora quieren hacer sus tareas"
+    ],
+    "T01": [
+      "El truco de los cuartos ordenados: apilar hábitos",
+      "Tour de cuartos (sí, están ordenados)",
+      "Así mantienen su cuarto en orden"
+    ],
+    "T02": [
+      "¿Cuánto tarda en tender su cama? 47 segundos",
+      "Cuánto tarda de verdad cada tarea",
+      "47 segundos. Eso era todo."
+    ],
+    "T03": [
+      "'Recoge tu cuarto' es demasiado para un niño",
+      "Divide la tarea grande en pasitos",
+      "El secreto: tareas pequeñas"
+    ],
+    "T04": [
+      "Reglas raras de mi casa que sí funcionan",
+      "3 reglas raras que funcionan",
+      "Regla #3: la lista manda, no mamá"
+    ],
+    "T05": [
+      "Anunciamos las tareas con redoble",
+      "Cómo hacer que quieran sus tareas",
+      "Las tareas, versión show"
+    ],
+    "T06": [
+      "El turno de apertura de mis hijos",
+      "15 minutos y todos listos",
+      "Turno de apertura: versión niños"
+    ],
+    "T07": [
+      "Hablemos de rutinas (desde el coche)",
+      "Algo que me hubiera gustado saber antes",
+      "Lo que nadie te dice de las rutinas"
+    ],
+    "T08": [
+      "Armamos el centro de mando familiar",
+      "Unboxing: nuestro centro de mando",
+      "Imprimir, pegar, listo"
+    ],
+    "G1": [
+      "Si tus mañanas se ven así…",
+      "Mamá al borde, nivel: lunes",
+      "¿Así empiezan tus días?"
+    ],
+    "G2": [
+      "Las mañanas no tienen que ser una guerra",
+      "Mañanas con dinosaurio incluido",
+      "Si tu casa es un zoológico a las 7 am…"
+    ],
+    "G3": [
+      "Lo que cambió en nuestra casa con 1 hoja",
+      "Del llanto a la calma",
+      "Menos dramas en las mañanas"
+    ],
+    "G4": [
+      "¿Son las 10 pm y siguen despiertos?",
+      "La hora de dormir, sin guerra",
+      "Por fin… dormidos a su hora"
+    ],
+    "G5": [
+      "La rutina de noche que sí funciona",
+      "'¡No tengo sueño!'",
+      "Guerra de almohadas a las 10 pm…"
+    ],
+    "G6": [
+      "Del berrinche al 'buenas noches, mamá'",
+      "'¡No me quiero bañar!'",
+      "Berrinches a la hora del baño"
+    ],
+    "G7": [
+      "Si la tarea termina en llanto… mira esto",
+      "Tarea sin lágrimas",
+      "'¡No le entiendo!'"
+    ],
+    "G8": [
+      "Primero la tarea, luego a jugar",
+      "Cuando no estás viendo 5 minutos…",
+      "Niños aburridos = paredes pintadas"
+    ],
+    "G9": [
+      "Mamá que trabaja desde casa, esto es para ti",
+      "Junta en 5 minutos y los niños…",
+      "Trabajar con niños en casa, sin caos"
+    ],
+    "G10": [
+      "¿Siempre llegan tarde a la escuela?",
+      "'¡Vamos tarde!' todos los días",
+      "Mañanas sin prisas, sí se puede"
+    ],
+    "G11": [
+      "'¡No encuentro mi zapato!'",
+      "La mochila se prepara desde la noche",
+      "Llegar tarde por un zapato…"
+    ],
+    "G12": [
+      "'¡Olvidé mi lonchera!'",
+      "Nunca más olvidar la lonchera",
+      "La mochila se prepara desde la noche"
+    ],
+    "G13": [
+      "¿Tus hijos no dicen 'por favor'?",
+      "Comidas en paz con niños",
+      "'¡Guácala!'"
+    ],
+    "G14": [
+      "Las palabras mágicas cambiaron nuestra mesa",
+      "Cocinar con niños alrededor…",
+      "Comidas en paz, ¿se puede?"
+    ],
+    "G15": [
+      "¿Tu sala siempre está llena de juguetes?",
+      "¡Auch! (otra vez)",
+      "Casa ordenada sin gritar"
+    ],
+    "G16": [
+      "'¡Ahorita, mamá!'",
+      "Guardar juguetes se volvió su juego favorito",
+      "Ahorita = nunca"
+    ],
+    "G17": [
+      "¿Pelean todo el día?",
+      "'¡Es mío!' '¡No, es mío!'",
+      "Hermanos en paz, sí se puede"
+    ],
+    "A09": [
+      "Siete pares de tenis… y ninguno es mío",
+      "¿Tu entrada también se ve así?",
+      "El desorden de la entrada, resuelto"
+    ],
+    "U18": [
+      "¿Solo te hacen caso a la tercera vez?",
+      "Si repites todo tres veces, mira esto",
+      "Lo que me cambió las mañanas"
+    ],
+    "T09": [
+      "Ahora él me recuerda a mí",
+      "Cuando la checklist se vuelve su idea",
+      "POV: tu hijo de 5 años te corrige la rutina"
+    ]
   },
-
   "copy_por_tema": {
-    "manana": ["Mañanas sin gritos: con las checklists del Kit Mamá en Calma tus hijos siguen su rutina solos, marcando cada paso. Imprímelo hoy y pruébalo mañana.", "Tender la cama, lavarse los dientes, desayunar… cada paso en una hoja que ellos mismos marcan. Así de simple."],
-    "noche": ["Una rutina de noche que ellos mismos van marcando: pijama, dientes, ropa lista. Menos pelea a la hora de dormir.", "Noches tranquilas sí se puede: dales su checklist de noche y deja que la lista mande."],
-    "tarea": ["Primero la tarea, luego a jugar. Con su checklist, saben qué sigue sin que tengas que repetirlo.", "Tardes de tarea sin pleitos: pasos pequeños, una casilla a la vez."],
-    "escuela": ["La mochila se prepara desde la noche. Con la checklist Mi Mochila, nadie olvida la lonchera.", "Mañanas de escuela sin prisas: todo listo desde la noche y cada quien marca lo suyo."],
-    "comida": ["Poner la mesa, lavar su plato, decir 'por favor'… hábitos que se aprenden marcando casillas.", "Comidas en paz con niños: las palabras mágicas y su checklist hacen el trabajo."],
-    "orden": ["Guardar juguetes se vuelve juego cuando ganan monedas para su dragoncito. Casa ordenada sin gritar.", "Divide 'recoge tu cuarto' en pasitos que sí pueden hacer solos."],
-    "hermanos": ["Menos peleas, más acuerdos: rutinas claras para cada uno y momentos para calmarse juntos.", "Cuando cada quien sabe qué le toca, hay menos pleitos."],
-    "casa": ["Niños que ayudan en casa sin que se los pidas: tareas a su medida, una checklist y listo.", "Doblar toallas, barrer, acomodar el súper… pequeñas tareas que los hacen sentir grandes."],
-    "reto": ["Haz el reto de 7 días: pega la checklist, déjalos marcar y observa qué pasa.", "7 días, una hoja en el refri. Pruébalo con tu familia."],
-    "general": ["Kit Mamá en Calma: 15 checklists imprimibles para que tus hijos hagan su rutina solos. Menos repetir, más calma.", "Deja de ser la alarma de la casa. Con el Kit Mamá en Calma, la lista manda."]
+    "manana": [
+      "Mañanas sin gritos: con las checklists del Kit Mamá en Calma tus hijos siguen su rutina solos, marcando cada paso. Imprímelo hoy y pruébalo mañana.",
+      "Tender la cama, lavarse los dientes, desayunar… cada paso en una hoja que ellos mismos marcan. Así de simple."
+    ],
+    "noche": [
+      "Una rutina de noche que ellos mismos van marcando: pijama, dientes, ropa lista. Menos pelea a la hora de dormir.",
+      "Noches tranquilas sí se puede: dales su checklist de noche y deja que la lista mande."
+    ],
+    "tarea": [
+      "Primero la tarea, luego a jugar. Con su checklist, saben qué sigue sin que tengas que repetirlo.",
+      "Tardes de tarea sin pleitos: pasos pequeños, una casilla a la vez."
+    ],
+    "escuela": [
+      "La mochila se prepara desde la noche. Con la checklist Mi Mochila, nadie olvida la lonchera.",
+      "Mañanas de escuela sin prisas: todo listo desde la noche y cada quien marca lo suyo."
+    ],
+    "comida": [
+      "Poner la mesa, lavar su plato, decir 'por favor'… hábitos que se aprenden marcando casillas.",
+      "Comidas en paz con niños: las palabras mágicas y su checklist hacen el trabajo."
+    ],
+    "orden": [
+      "Guardar juguetes se vuelve juego cuando ganan monedas para su dragoncito. Casa ordenada sin gritar.",
+      "Divide 'recoge tu cuarto' en pasitos que sí pueden hacer solos."
+    ],
+    "hermanos": [
+      "Menos peleas, más acuerdos: rutinas claras para cada uno y momentos para calmarse juntos.",
+      "Cuando cada quien sabe qué le toca, hay menos pleitos."
+    ],
+    "casa": [
+      "Niños que ayudan en casa sin que se los pidas: tareas a su medida, una checklist y listo.",
+      "Doblar toallas, barrer, acomodar el súper… pequeñas tareas que los hacen sentir grandes."
+    ],
+    "reto": [
+      "Haz el reto de 7 días: pega la checklist, déjalos marcar y observa qué pasa.",
+      "7 días, una hoja en el refri. Pruébalo con tu familia."
+    ],
+    "general": [
+      "Kit Mamá en Calma: 15 checklists imprimibles para que tus hijos hagan su rutina solos. Menos repetir, más calma.",
+      "Deja de ser la alarma de la casa. Con el Kit Mamá en Calma, la lista manda."
+    ]
   },
-
-  "titulares": ["Que la rutina mande, no tus gritos", "Mañanas en calma, por fin", "Niños que hacen su rutina solos", "Kit Mamá en Calma: imprime y listo", "Menos repetir, más disfrutar"],
-
+  "titulares": [
+    "Que la rutina mande, no tus gritos",
+    "Mañanas en calma, por fin",
+    "Niños que hacen su rutina solos",
+    "Kit Mamá en Calma: imprime y listo",
+    "Menos repetir, más disfrutar"
+  ],
   "cierre": {
     "titulo": "Kit Mamá en Calma",
     "subtitulo": "15 checklists imprimibles",
-    "ctas": ["Comenta RUTINA y te lo mando", "Link en el perfil", "Imprímelo hoy en levaniastore.com"]
+    "ctas": [
+      "Comenta RUTINA y te lo mando",
+      "Link en el perfil",
+      "Imprímelo hoy en levaniastore.com"
+    ]
   },
-
   "etiqueta_ia": "Contenido creado con IA"
 }

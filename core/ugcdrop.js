@@ -72,10 +72,15 @@ export function generarAutomaticas(escenas, existentes) {
     for (const g of real.filter((e) => e.tipo === "gancho" && e.tema === tema))
       for (const k of real.filter((e) => e.tipo === "ninos" && e.tema === tema))
         for (const c of real.filter((e) => e.tipo === "cierre" && (e.tema === tema || e.tema === "general"))) {
-          const esc = [g.codigo, k.codigo, c.codigo];
-          if (ya.has(esc.join(" "))) continue;
-          ya.add(esc.join(" "));
-          nuevas.push({ id: "AU" + String(n++).padStart(4, "0"), estilo: "realista", escenas: esc, automatica: true });
+          // versión corta (gancho → niños → cierre) y, si hay, versión con demo del tema (gancho → demo → niños → cierre)
+          const demos = real.filter((e) => e.tipo === "demo" && (e.tema === tema || e.tema === "general") && !e.bloqueada);
+          const d = demos.length ? demos[n % demos.length] : null;
+          for (const esc of [[g.codigo, k.codigo, c.codigo], d ? [g.codigo, d.codigo, k.codigo, c.codigo] : null]) {
+            if (!esc || ya.has(esc.join(" "))) continue;
+            ya.add(esc.join(" "));
+            n++;
+            nuevas.push({ id: "AU-" + esc.join("-"), estilo: "realista", escenas: esc, automatica: true }); // id estable: no cambia al agregar escenas
+          }
         }
   }
   return nuevas;
