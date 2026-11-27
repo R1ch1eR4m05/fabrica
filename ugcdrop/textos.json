@@ -325,6 +325,11 @@
       "Repetir lo mismo 20 veces cada mañana",
       "¿Ya te cansaste de ser la alarma de la casa?",
       "Los dientes, los zapatos, la mochila…"
+    ],
+    "A20": [
+      "¿Gritar en las mañanas es normal?",
+      "Papás: esto también es para ustedes",
+      "Yo también pensaba que era normal…"
     ]
   },
   "copy_por_tema": {
