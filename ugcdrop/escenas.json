@@ -1968,6 +1968,91 @@
    "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_074701_989f151c-05c8-467b-b9a8-fe0d00ac0020.mp4",
    "revisada": "2026-11-26: revisada cuadro por cuadro",
    "angulo": "reaccion"
+  },
+  {
+   "codigo": "A23",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "Tarea a las 9 de la noche con llanto: «Nueve de la noche y apenas vamos con la tarea…»",
+   "tema": "tarea",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_075747_055e36b0-7bc5-40b3-8c5b-441c56fd21ad.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro",
+   "angulo": "dolor"
+  },
+  {
+   "codigo": "A24",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "Mamá en llamada de trabajo y los niños gritando: «¿Cómo trabajo así?»",
+   "tema": "general",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_075746_44782d6c-f74e-4d14-8753-f45439487893.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro",
+   "angulo": "dolor"
+  },
+  {
+   "codigo": "M29",
+   "estilo": "realista",
+   "tipo": "cierre",
+   "titulo": "Los encuentra acostados: «Son las ocho… y ya están acostados. Solitos»",
+   "tema": "noche",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_075747_83855ac9-a419-4f99-98b9-e3cbe38b9ee8.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro",
+   "angulo": "reaccion"
+  },
+  {
+   "codigo": "U31",
+   "estilo": "realista",
+   "tipo": "demo",
+   "titulo": "Objeción: «¿No tienes tiempo de imprimir? Yo tampoco…»",
+   "tema": "general",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_075747_2053a43b-3864-43ef-af0b-b7cbf234aa3f.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro; ojo: escuchar «imprimí» (el prompt llevó una letra rara)",
+   "angulo": "objecion"
+  },
+  {
+   "codigo": "A25",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "«Mamá, ¿qué hago? Estoy aburrida»: «Cada cinco minutos lo mismo»",
+   "tema": "casa",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_080402_fa07b2e6-3ee1-41e1-862b-f7186bed0451.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro",
+   "angulo": "dolor"
+  },
+  {
+   "codigo": "M30",
+   "estilo": "realista",
+   "tipo": "cierre",
+   "titulo": "Con su café en el sillón: «Primera vez en meses que me tomo el café caliente»",
+   "tema": "manana",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_080405_79db5c5f-4648-46fe-9355-b4ffb1ea80aa.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro",
+   "angulo": "reaccion"
+  },
+  {
+   "codigo": "A26",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "Papá a las 10 de la noche: «…y aquí nadie quiere dormir»",
+   "tema": "noche",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_080401_9a7c0714-053a-42d4-aacd-91aeeacd8b5d.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro",
+   "angulo": "papa",
+   "persona": "papa-4"
   }
  ]
 }
