@@ -2053,6 +2053,53 @@
    "revisada": "2026-11-26: revisada cuadro por cuadro",
    "angulo": "papa",
    "persona": "papa-4"
+  },
+  {
+   "codigo": "U32",
+   "estilo": "realista",
+   "tipo": "demo",
+   "titulo": "Muestra Mi Mochila junto a la mochila: «La noche antes revisan su mochila con esta lista…»",
+   "tema": "escuela",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_083042_37fd7358-8627-45e0-bed3-19026da369fd.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro",
+   "angulo": "objecion"
+  },
+  {
+   "codigo": "N42",
+   "estilo": "realista",
+   "tipo": "ninos",
+   "titulo": "Se acaba el cereal y lleva el plato vacío al fregadero",
+   "tema": "comida",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_083041_8988b9a6-1859-4a33-a2fb-9f004e3db349.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro"
+  },
+  {
+   "codigo": "N43",
+   "estilo": "realista",
+   "tipo": "ninos",
+   "titulo": "Presume su cama tendida: «¡Tarará! Mi cama, hecha por mí»",
+   "tema": "manana",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_083043_7bb2c90a-f438-436d-98c5-fd6dd2e5f761.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro",
+   "angulo": "nino"
+  },
+  {
+   "codigo": "M31",
+   "estilo": "realista",
+   "tipo": "cierre",
+   "titulo": "Los encuentra haciendo la tarea: «Nadie les dijo nada… y ya están haciendo la tarea»",
+   "tema": "tarea",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_083042_d342b2c1-7ffd-4d35-9805-1dbea82081ba.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro",
+   "angulo": "reaccion"
   }
  ]
 }
