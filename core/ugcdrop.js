@@ -18,7 +18,7 @@ const EXT = /\.(mp4|mov|m4v|webm)$/i;
 export const TEMAS = ["manana", "noche", "tarea", "escuela", "comida", "orden", "hermanos", "casa", "reto", "general"];
 
 // ---------------- datos ----------------
-const OPCIONES_BASE = {"video": {"ancho": 1080, "alto": 1920, "fps": 30, "crf": 20, "preset": "veryfast"}, "escenas": {"recorte_inicio_seg": 0.25, "max_seg_por_escena": 7, "max_seg_gancho": 6}, "texto_gancho": {"segundos": 3.2, "fuente": "estilos/_comun/fuentes/Montserrat-ExtraBold.ttf", "tamano": 64, "color": "#FFFFFF", "fondo": "#C4837A", "posicion_y": 0.17, "max_letras_por_linea": 22}, "cierre": {"segundos": 2.6, "fondo": "#F5EDE3", "color_titulo": "#3B2F2A", "color_cta": "#FFFFFF", "fondo_cta": "#C4837A", "acento": "#8FA68E", "fuente_titulo": "estilos/_comun/fuentes/Montserrat-ExtraBold.ttf", "fuente_texto": "estilos/_comun/fuentes/Montserrat-SemiBold.ttf", "imagen_producto": "ugcdrop/producto.png"}, "etiqueta_ia": {"mostrar": false, "tamano": 30}, "musica": {"usar": true, "carpetas": ["musica/anuncios-ugc", "musica/nichos/levania"], "volumen": 0.12}, "mezcla_lote": {"porcentaje_realista": 70}};
+const OPCIONES_BASE = {"video": {"ancho": 1080, "alto": 1920, "fps": 30, "crf": 20, "preset": "veryfast"}, "escenas": {"recorte_inicio_seg": 0.15, "max_seg_por_escena": null, "max_seg_gancho": null}, "texto_gancho": {"segundos": 3.2, "fuente": "estilos/_comun/fuentes/Montserrat-ExtraBold.ttf", "tamano": 64, "color": "#FFFFFF", "fondo": "#C4837A", "posicion_y": 0.17, "max_letras_por_linea": 22}, "cierre": {"segundos": 2.6, "fondo": "#F5EDE3", "color_titulo": "#3B2F2A", "color_cta": "#FFFFFF", "fondo_cta": "#C4837A", "acento": "#8FA68E", "fuente_titulo": "estilos/_comun/fuentes/Montserrat-ExtraBold.ttf", "fuente_texto": "estilos/_comun/fuentes/Montserrat-SemiBold.ttf", "imagen_producto": "ugcdrop/producto.png"}, "etiqueta_ia": {"mostrar": false, "tamano": 30}, "musica": {"usar": true, "carpetas": ["musica/anuncios-ugc", "musica/nichos/levania"], "volumen": 0.12}, "mezcla_lote": {"porcentaje_realista": 70}, "final": {"modo": "rotar", "texto": ""}, "revision_audio": {"usar": true, "idioma": "spa"}};
 const mezclar = (a, b) => {
   const r = { ...a };
   for (const [k, v] of Object.entries(b || {})) r[k] = v && typeof v === "object" && !Array.isArray(v) && a[k] && typeof a[k] === "object" ? mezclar(a[k], v) : v;
@@ -50,6 +50,14 @@ function guardarRegistro(reg) {
   fs.writeFileSync(REGISTRO, JSON.stringify(reg, null, 1));
 }
 
+// escenas bloqueadas solas por la revisión de audio (no están en español), por compu
+const ARCH_BLOQ = path.join(DIR_SALIDA, "bloqueadas-audio.json");
+const BLOQ_AUTO = () => leerJSON(ARCH_BLOQ, {});
+function bloquearAuto(codigo, motivo) {
+  const b = BLOQ_AUTO(); b[codigo] = motivo;
+  fs.mkdirSync(DIR_SALIDA, { recursive: true }); fs.writeFileSync(ARCH_BLOQ, JSON.stringify(b, null, 1));
+}
+
 // ---------------- qué armar ----------------
 const sinEmoji = (t) => t.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu, "").replace(/\s+/g, " ").trim();
 const temaDe = (c, pc) => c.escenas.map((x) => pc[x].tema).find((t) => t && t !== "general") || "general";
@@ -65,7 +73,7 @@ function textosGancho(c, pc, textos) {
 // combinaciones automáticas por tema (realistas): gancho del tema → niños del tema → cierre del tema o general
 export function generarAutomaticas(escenas, existentes) {
   const ya = new Set(existentes.map((c) => c.escenas.join(" ")));
-  const real = escenas.filter((e) => e.estilo === "realista");
+  const real = escenas.filter((e) => e.estilo === "realista" && !e.bloqueada && !e.solo_curadas && !BLOQ_AUTO()[e.codigo]);
   const nuevas = [];
   let n = 1;
   for (const tema of [...new Set(real.map((e) => e.tema).filter((t) => t !== "general"))]) {
@@ -73,7 +81,7 @@ export function generarAutomaticas(escenas, existentes) {
       for (const k of real.filter((e) => e.tipo === "ninos" && e.tema === tema))
         for (const c of real.filter((e) => e.tipo === "cierre" && (e.tema === tema || e.tema === "general"))) {
           // versión corta (gancho → niños → cierre) y, si hay, versión con demo del tema (gancho → demo → niños → cierre)
-          const demos = real.filter((e) => e.tipo === "demo" && (e.tema === tema || e.tema === "general") && !e.bloqueada);
+          const demos = real.filter((e) => e.tipo === "demo" && (e.tema === tema || e.tema === "general"));
           const d = demos.length ? demos[n % demos.length] : null;
           for (const esc of [[g.codigo, k.codigo, c.codigo], d ? [g.codigo, d.codigo, k.codigo, c.codigo] : null]) {
             if (!esc || ya.has(esc.join(" "))) continue;
@@ -130,13 +138,17 @@ export function elegirLote(datos, n, op = {}) {
   tomar(() => true, n, true);
 
   let iTit = registro.entregados.length;
+  // final del video: el que pidan en el lote, si no el de opciones.json
+  const final = { ...ajustes.final, ...(op.final || {}) };
+  if (final.modo === "texto" && !String(final.texto || "").trim()) final.modo = "marca";
   return elegidos.map((x) => {
     const copys = textos.copy_por_tema[x.tema] || textos.copy_por_tema.general;
     return {
       id: `${x.combo.id}-v${x.variante + 1}`, combo: x.combo.id, variante: x.variante + 1, estilo: x.combo.estilo, tema: x.tema,
       escenas: x.combo.escenas, textoGancho: x.texto,
       copy: copys[x.variante % copys.length], titular: textos.titulares[iTit++ % textos.titulares.length],
-      cta: textos.cierre.ctas[x.variante % textos.cierre.ctas.length],
+      cta: final.modo === "texto" ? final.texto : final.modo === "rotar" ? textos.cierre.ctas[x.variante % textos.cierre.ctas.length] : "",
+      final,
     };
   });
 }
@@ -200,11 +212,59 @@ export async function resolverEscena(e) {
   throw new Error(`Falta la escena ${e.codigo} (${e.titulo}). Ponla en ugcdrop/escenas/ como "${e.codigo} ….mp4" o pon LEVANIA_DRIVE en el .env.`);
 }
 
+// ---------------- revisión de audio (ElevenLabs Speech to Text, una vez por escena) ----------------
+// Detecta el idioma (bloquea las que no estén en español) y dónde empieza y termina la voz, para no cortar frases.
+const DIR_AUDIO = path.join(RAIZ, "cache", "ugcdrop", "audio");
+export async function revisarAudio(e, archivo, aj) {
+  const cache = path.join(DIR_AUDIO, `${e.codigo}.json`);
+  if (fs.existsSync(cache)) return JSON.parse(fs.readFileSync(cache, "utf8"));
+  if (!aj.revision_audio?.usar || !CFG.elevenKey) return null;
+  fs.mkdirSync(DIR_AUDIO, { recursive: true });
+  const mp3 = path.join(DIR_AUDIO, `${e.codigo}.mp3`);
+  try {
+    await correr(CFG.ffmpeg, ["-y", "-loglevel", "error", "-i", archivo, "-vn", "-ac", "1", "-ar", "16000", "-b:a", "48k", mp3]);
+  } catch { return null; } // sin pista de audio
+  try {
+    const fd = new FormData();
+    fd.append("model_id", "scribe_v1");
+    fd.append("file", new Blob([fs.readFileSync(mp3)], { type: "audio/mpeg" }), "escena.mp3");
+    const r = await fetch("https://api.elevenlabs.io/v1/speech-to-text", { method: "POST", headers: { "xi-api-key": CFG.elevenKey }, body: fd, signal: AbortSignal.timeout(120000) });
+    if (!r.ok) return null;
+    const j = await r.json();
+    const pal = (j.words || []).filter((w) => w.type === "word" && String(w.text).trim());
+    const info = { idioma: j.language_code || "", prob: j.language_probability ?? null, texto: (j.text || "").trim(),
+      inicio: pal.length ? +pal[0].start : null, fin: pal.length ? +pal[pal.length - 1].end : null, fecha: new Date().toISOString() };
+    fs.writeFileSync(cache, JSON.stringify(info, null, 1));
+    const quiere = aj.revision_audio.idioma || "spa";
+    if (info.texto && info.idioma && info.idioma !== quiere && (info.prob ?? 1) >= 0.6)
+      bloquearAuto(e.codigo, `Habla en otro idioma (${info.idioma}): «${info.texto.slice(0, 80)}»`);
+    return info;
+  } catch { return null; } finally { fs.rmSync(mp3, { force: true }); }
+}
+
+// revisa el audio de todas las escenas disponibles (para hacerlo antes del primer lote)
+export async function revisarAudioTodas(avisar = () => {}) {
+  if (!CFG.elevenKey) throw new Error("Falta ELEVENLABS_API_KEY en el .env para revisar el audio.");
+  const d = cargar(), lista = revisarEscenas().filter((e) => e.donde);
+  const res = { revisadas: 0, otroIdioma: [], sinVoz: [] };
+  for (const [i, e] of lista.entries()) {
+    avisar({ progreso: i / lista.length, msg: `Escuchando ${e.codigo} (${i + 1} de ${lista.length})…` });
+    try {
+      const info = await revisarAudio(d.porCodigo[e.codigo], await resolverEscena(d.porCodigo[e.codigo]), d.ajustes);
+      res.revisadas++;
+      if (BLOQ_AUTO()[e.codigo]) res.otroIdioma.push(`${e.codigo}: ${BLOQ_AUTO()[e.codigo]}`);
+      else if (info && !info.texto) res.sinVoz.push(e.codigo);
+    } catch {}
+  }
+  return res;
+}
+
 // qué escenas ya se encuentran (sin descargar): para revisar antes del primer lote
 export function revisarEscenas() {
   const { escenas } = cargar();
   return escenas.map((e) => {
-    if (e.bloqueada) return { codigo: e.codigo, titulo: e.titulo, estilo: e.estilo, donde: null, bloqueada: e.bloqueada };
+    const auto = BLOQ_AUTO()[e.codigo];
+    if (e.bloqueada || auto) return { codigo: e.codigo, titulo: e.titulo, estilo: e.estilo, donde: null, bloqueada: e.bloqueada || auto };
     let donde = buscarPorCodigo(DIR_PROPIAS, e.codigo) ? "ugcdrop/escenas" : buscarPorCodigo(DIR_CACHE, e.codigo) ? "caché" : buscarEnDrive(e) ? "Drive" : null;
     if (!donde && e.url) donde = "se baja de Higgsfield";
     return { codigo: e.codigo, titulo: e.titulo, estilo: e.estilo, donde };
@@ -258,7 +318,7 @@ function elegirMusica(aj) {
   return null;
 }
 
-export async function renderAnuncio(a, archivos, salida, datos) {
+export async function renderAnuncio(a, archivos, salida, datos, audios = []) {
   const { ajustes: aj, textos } = datos;
   const { ancho: W, alto: H, fps } = aj.video;
   const tmp = path.join(DIR_TMP, a.id);
@@ -270,9 +330,17 @@ export async function renderAnuncio(a, archivos, salida, datos) {
   for (const [i, arch] of archivos.entries()) {
     const s = await sonda(arch);
     const esc = datos?.porCodigo?.[a.escenas[i]] || {};
-    // "desde" en escenas.json: empieza la escena en ese segundo (p. ej. para usar solo la parte buena de un clip)
-    const ini = esc.desde != null ? Math.min(esc.desde, Math.max(0, s.duracion - 1)) : Math.min(aj.escenas.recorte_inicio_seg, Math.max(0, s.duracion - 1));
-    const dur = Math.max(0.5, Math.min(i === 0 ? aj.escenas.max_seg_gancho : aj.escenas.max_seg_por_escena, s.duracion - ini - 0.05));
+    const voz = audios?.[i] || null;
+    // inicio: "desde" de la escena, o un recorte chico que nunca se come la primera palabra
+    let ini = esc.desde != null ? esc.desde : aj.escenas.recorte_inicio_seg;
+    if (esc.desde == null && voz?.inicio != null) ini = Math.min(ini, Math.max(0, voz.inicio - 0.1));
+    ini = Math.min(ini, Math.max(0, s.duracion - 1));
+    // fin: 0.45 s después de la última palabra (sin cortar frases); tope opcional de opciones.json
+    let fin = s.duracion - 0.05;
+    if (voz?.fin != null && voz.fin > ini) fin = Math.min(fin, voz.fin + 0.45);
+    const tope = i === 0 ? aj.escenas.max_seg_gancho : aj.escenas.max_seg_por_escena;
+    if (tope && !(voz?.fin > ini + tope)) fin = Math.min(fin, ini + tope); // el tope nunca corta la voz
+    const dur = Math.max(0.5, fin - ini);
     total += dur;
     args.push("-ss", ini.toFixed(2), "-t", dur.toFixed(2), "-i", arch); nIn++;
     f.push(`[${i}:v]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1,fps=${fps},format=yuv420p[v${i}]`);
@@ -280,27 +348,30 @@ export async function renderAnuncio(a, archivos, salida, datos) {
     partes.push(`[v${i}][a${i}]`);
   }
 
-  // 2. cierre de marca: título, subtítulo, foto del producto (si hay) y CTA
-  const c = aj.cierre, iC = nIn++;
-  args.push("-f", "lavfi", "-t", String(c.segundos), "-i", `color=c=${hex(c.fondo)}:s=${W}x${H}:r=${fps}`);
-  const img = path.join(RAIZ, c.imagen_producto);
-  const conImg = fs.existsSync(img);
-  let iImg = null;
-  if (conImg) { iImg = nIn++; args.push("-loop", "1", "-t", String(c.segundos), "-i", rel(img)); }
-  const titulos = [
-    ...capasTexto(tmp, "tit", [textos.cierre.titulo], { fuente: c.fuente_titulo, tamano: 78, color: c.color_titulo, y: conImg ? H * 0.15 : H * 0.36 }),
-    ...capasTexto(tmp, "sub", [textos.cierre.subtitulo], { fuente: c.fuente_texto, tamano: 44, color: c.acento, y: conImg ? H * 0.21 : H * 0.43 }),
-  ];
-  const cta = capasTexto(tmp, "cta", partir(a.cta, 24), { fuente: c.fuente_titulo, tamano: 56, color: c.color_cta, fondo: c.fondo_cta, y: H * 0.84 });
-  f.push(`[${iC}:v]format=yuv420p,${titulos.join(",")}[vcb]`);
-  if (conImg) {
-    f.push(`[${iImg}:v]scale=${Math.round(W * 0.76)}:${Math.round(H * 0.5)}:force_original_aspect_ratio=decrease,format=rgba[prod]`);
-    f.push(`[vcb][prod]overlay=(W-w)/2:${Math.round(H * 0.52)}-h/2:shortest=1[vci]`);
-  } else f.push(`[vcb]null[vci]`);
-  f.push(`[vci]${cta.join(",")},fade=t=in:st=0:d=0.25[vc]`);
-  f.push(`anullsrc=r=48000:cl=stereo,atrim=0:${c.segundos}[ac]`);
-  partes.push("[vc][ac]");
-  total += c.segundos;
+  // 2. cierre: con CTA (rotar o texto propio), solo marca, o sin cierre
+  const modoFinal = a.final?.modo || "rotar";
+  if (modoFinal !== "ninguno") {
+    const c = aj.cierre, iC = nIn++;
+    args.push("-f", "lavfi", "-t", String(c.segundos), "-i", `color=c=${hex(c.fondo)}:s=${W}x${H}:r=${fps}`);
+    const img = path.join(RAIZ, c.imagen_producto);
+    const conImg = fs.existsSync(img);
+    let iImg = null;
+    if (conImg) { iImg = nIn++; args.push("-loop", "1", "-t", String(c.segundos), "-i", rel(img)); }
+    const titulos = [
+      ...capasTexto(tmp, "tit", [textos.cierre.titulo], { fuente: c.fuente_titulo, tamano: 78, color: c.color_titulo, y: conImg ? H * 0.15 : H * 0.36 }),
+      ...capasTexto(tmp, "sub", [textos.cierre.subtitulo], { fuente: c.fuente_texto, tamano: 44, color: c.acento, y: conImg ? H * 0.21 : H * 0.43 }),
+    ];
+    const cta = a.cta ? capasTexto(tmp, "cta", partir(a.cta, 24), { fuente: c.fuente_titulo, tamano: 56, color: c.color_cta, fondo: c.fondo_cta, y: H * 0.84 }) : [];
+    f.push(`[${iC}:v]format=yuv420p,${titulos.join(",")}[vcb]`);
+    if (conImg) {
+      f.push(`[${iImg}:v]scale=${Math.round(W * 0.76)}:${Math.round(H * 0.5)}:force_original_aspect_ratio=decrease,format=rgba[prod]`);
+      f.push(`[vcb][prod]overlay=(W-w)/2:${Math.round(H * 0.52)}-h/2:shortest=1[vci]`);
+    } else f.push(`[vcb]null[vci]`);
+    f.push(`[vci]${cta.length ? cta.join(",") + "," : ""}fade=t=in:st=0:d=0.25[vc]`);
+    f.push(`anullsrc=r=48000:cl=stereo,atrim=0:${c.segundos}[ac]`);
+    partes.push("[vc][ac]");
+    total += c.segundos;
+  }
   f.push(`${partes.join("")}concat=n=${partes.length}:v=1:a=1[vcat][acat]`);
 
   // 3. texto del gancho (y etiqueta de IA si se activa en ajustes)
@@ -308,7 +379,7 @@ export async function renderAnuncio(a, archivos, salida, datos) {
   const capas = capasTexto(tmp, "gancho", partir(a.textoGancho, tg.max_letras_por_linea), { fuente: tg.fuente, tamano: tg.tamano, color: tg.color, fondo: tg.fondo, y: H * tg.posicion_y, enable: `lt(t,${tg.segundos})` });
   if (aj.etiqueta_ia.mostrar) {
     const tf = path.join(tmp, "ia.txt"); fs.writeFileSync(tf, textos.etiqueta_ia, "utf8");
-    capas.push(`drawtext=fontfile=${c.fuente_texto}:textfile=${rel(tf)}:expansion=none:fontsize=${aj.etiqueta_ia.tamano}:fontcolor=white:box=1:boxcolor=black@0.45:boxborderw=10:x=36:y=h-text_h-70:enable='lt(t,${(total - c.segundos).toFixed(2)})'`);
+    capas.push(`drawtext=fontfile=${aj.cierre.fuente_texto}:textfile=${rel(tf)}:expansion=none:fontsize=${aj.etiqueta_ia.tamano}:fontcolor=white:box=1:boxcolor=black@0.45:boxborderw=10:x=36:y=h-text_h-70:enable='lt(t,${(total - (modoFinal === "ninguno" ? 0 : aj.cierre.segundos)).toFixed(2)})'`);
   }
   f.push(`[vcat]${capas.join(",")}[vtxt]`);
 
@@ -359,7 +430,7 @@ export async function armarLote(n = 5, op = {}, avisar = () => {}) {
   do carpeta = path.join(DIR_SALIDA, `Lote ${hoy()} #${k++}`); while (fs.existsSync(carpeta));
 
   const filas = [["Anuncio", "Estilo", "Tema", "Escenas", "Texto del gancho", "Copy", "Titular", "CTA", "Duración (s)", "Archivo"]];
-  const copys = [], hechos = [], fallos = [], excluir = new Set(), faltan = new Set();
+  const copys = [], hechos = [], fallos = [], excluir = new Set(), faltan = new Set(), bloqueadasAhora = new Set();
   // si a una combinación le falta una escena, se salta y se busca otra (hasta 4 rondas)
   for (let ronda = 0; ronda < 4 && hechos.length < n; ronda++) {
     const anuncios = elegirLote(datos, n - hechos.length, { ...op, excluir });
@@ -368,18 +439,22 @@ export async function armarLote(n = 5, op = {}, avisar = () => {}) {
       excluir.add(a.combo);
       avisar({ progreso: hechos.length / n, msg: `Armando ${a.id} (${hechos.length + 1} de ${n})…` });
       try {
-        const archivos = [];
+        const archivos = [], audios = [];
         for (const cod of a.escenas) {
           if (faltan.has(cod)) throw new Error(`Falta la escena ${cod}.`);
           try { archivos.push(await resolverEscena(datos.porCodigo[cod])); } catch (e) { faltan.add(cod); throw e; }
+          // revisión de audio: idioma y límites de la voz (una sola vez por escena)
+          const voz = await revisarAudio(datos.porCodigo[cod], archivos.at(-1), datos.ajustes);
+          if (BLOQ_AUTO()[cod]) { bloqueadasAhora.add(cod); faltan.add(cod); throw new Error(`${cod}: ${BLOQ_AUTO()[cod]}`); }
+          audios.push(voz);
         }
         fs.mkdirSync(carpeta, { recursive: true });
         const salida = path.join(carpeta, `${a.id}.mp4`);
-        const r = await renderAnuncio(a, archivos, salida, datos);
+        const r = await renderAnuncio(a, archivos, salida, datos, audios);
         datos.registro.entregados.push({ id: a.id, combo: a.combo, variante: a.variante, fecha: hoy(), lote: path.basename(carpeta), estado: "entregado" });
         guardarRegistro(datos.registro);
         filas.push([a.id, a.estilo, a.tema, a.escenas.join(" → "), a.textoGancho, a.copy, a.titular, a.cta, r.duracion, `${a.id}.mp4`]);
-        copys.push(`━━━ ${a.id} ━━━\nTexto principal:\n${a.copy}\n\nTitular: ${a.titular}\nCTA: ${a.cta}\n(Al subir, marca en la app que es contenido hecho con IA)\n`);
+        copys.push(`━━━ ${a.id} ━━━\nTexto principal:\n${a.copy}\n\nTitular: ${a.titular}\n${a.cta ? `CTA: ${a.cta}\n` : ""}(Al subir, marca en la app que es contenido hecho con IA)\n`);
         hechos.push({ ...a, archivo: rel(salida), duracion: r.duracion });
       } catch (e) { fallos.push({ id: a.id, error: e.message.split("\n")[0] }); }
     }
@@ -387,9 +462,9 @@ export async function armarLote(n = 5, op = {}, avisar = () => {}) {
   if (!hechos.length) throw new Error("No salió ningún anuncio. " + [...new Set(fallos.map((x) => x.error))].slice(0, 4).join(" | "));
   fs.writeFileSync(path.join(carpeta, "resumen.csv"), "\ufeff" + filas.map((r) => r.map(csv).join(",")).join("\n"));
   fs.writeFileSync(path.join(carpeta, "copys.txt"), copys.join("\n"));
-  const faltantes = [...faltan];
-  fs.writeFileSync(path.join(carpeta, "lote.json"), JSON.stringify({ hechos, fallos, faltantes }, null, 1));
-  return { lote: path.basename(carpeta), carpeta, hechos, fallos, faltantes };
+  const faltantes = [...faltan].filter((c) => !bloqueadasAhora.has(c));
+  fs.writeFileSync(path.join(carpeta, "lote.json"), JSON.stringify({ hechos, fallos, faltantes, bloqueadasAudio: [...bloqueadasAhora] }, null, 1));
+  return { lote: path.basename(carpeta), carpeta, hechos, fallos, faltantes, bloqueadasAudio: [...bloqueadasAhora] };
 }
 
 export function listarLotes() {
@@ -400,6 +475,6 @@ export function listarLotes() {
     .sort((a, b) => fs.statSync(path.join(DIR_SALIDA, b)).mtimeMs - fs.statSync(path.join(DIR_SALIDA, a)).mtimeMs)
     .map((d) => {
       const j = leerJSON(path.join(DIR_SALIDA, d, "lote.json"), { hechos: [], fallos: [] });
-      return { lote: d, fallos: j.fallos, faltantes: j.faltantes || [], anuncios: j.hechos.map((a) => ({ ...a, estado: estado[a.id] || "entregado", url: "/" + a.archivo.split("/").map(encodeURIComponent).join("/") })) };
+      return { lote: d, fallos: j.fallos, faltantes: j.faltantes || [], bloqueadasAudio: j.bloqueadasAudio || [], anuncios: j.hechos.map((a) => ({ ...a, estado: estado[a.id] || "entregado", url: "/" + a.archivo.split("/").map(encodeURIComponent).join("/") })) };
     });
 }

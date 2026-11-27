@@ -455,9 +455,11 @@ async function api(req, res, partes) {
       if (m === "POST") {
         const b = await cuerpo(req).catch(() => ({}));
         if (b.accion === "marcar") return json(res, 200, U.marcar(b.id, b.estado));
+        if (b.accion === "audio") { encolar("_ugc", "render", (av) => U.revisarAudioTodas(av)); return json(res, 200, { ok: true }); }
         if (b.accion === "lote") {
           const n = Math.min(30, Math.max(1, Number(b.n) || 5));
-          encolar("_ugc", "render", (av) => U.armarLote(n, { estilo: b.estilo || null, tema: b.tema || null }, av));
+          const final = b.final === "ninguno" ? { modo: "ninguno" } : b.final === "marca" ? { modo: "marca" } : b.final === "texto" ? { modo: "texto", texto: String(b.textoFinal || "") } : { modo: "rotar" };
+          encolar("_ugc", "render", (av) => U.armarLote(n, { estilo: b.estilo || null, tema: b.tema || null, final }, av));
           return json(res, 200, { ok: true });
         }
       }

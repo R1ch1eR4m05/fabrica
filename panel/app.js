@@ -1480,7 +1480,8 @@ function escuchar() {
       return;
     }
     if (ev.id === "_ugc") { // Anuncios UGC por combinaciones
-      if (ev.estado === "listo") { const r = ev.resultado || {}; avisar(`Listos ${r.hechos?.length || 0} anuncios${r.faltantes?.length ? ` (faltan escenas: ${r.faltantes.join(", ")})` : ""}.`, !!r.faltantes?.length); }
+      if (ev.estado === "listo") { const r = ev.resultado || {}; if (r.revisadas != null) avisar(r.otroIdioma?.length ? `Escuché ${r.revisadas} escenas; bloqueé ${r.otroIdioma.length} que no están en español.` : `Escuché ${r.revisadas} escenas: todas en español.`);
+        else avisar(`Listos ${r.hechos?.length || 0} anuncios${r.bloqueadasAudio?.length ? `; bloqueé por idioma: ${r.bloqueadasAudio.join(", ")}` : ""}${r.faltantes?.length ? ` (faltan escenas: ${r.faltantes.join(", ")})` : ""}.`, !!r.faltantes?.length); }
       if (ev.estado === "error") avisar(ev.msg, true);
       if (S.vista === "ugc") { if (["listo", "error"].includes(ev.estado)) anunciosUGC(); else if ($("#ugProg")) $("#ugProg").textContent = ev.msg || ""; }
       return;
@@ -1535,18 +1536,26 @@ async function anunciosUGC() {
         <div><label>¿Cuántos?</label><input id="ugN" type="number" min="1" max="30" value="5" style="width:80px"></div>
         <div><label>Estilo</label><select id="ugEstilo"><option value="">Mezcla (70 % realistas)</option><option value="realista">Solo realistas (UGC)</option><option value="animado">Solo animados 3D</option></select></div>
         <div><label>Tema</label><select id="ugTema"><option value="">Todos</option>${d.temas.map((t) => `<option value="${t}">${h(NOMBRE_TEMA[t] || t)}</option>`).join("")}</select></div>
+        <div><label>Final del video</label><select id="ugFinal"><option value="rotar">CTA que va rotando (Comenta RUTINA, Link en el perfil…)</option><option value="texto">Otro texto…</option><option value="marca">Solo la marca (sin CTA)</option><option value="ninguno">Sin final</option></select></div>
+        <div id="ugTextoFinalCaja" style="display:none"><label>Texto del final</label><input id="ugTextoFinal" placeholder="p. ej. Link en el perfil" style="width:220px"></div>
         <button class="btn primario" id="ugIr" ${d.trabajando || !d.armables ? "disabled" : ""}>${d.trabajando ? "Armando…" : "Dame los anuncios"}</button>
       </div>
       <p class="estado" id="ugProg" style="margin-top:8px"></p>
+      <p class="estado" style="margin-top:8px">Antes de armar, cada escena se escucha una vez (ElevenLabs, centavos): las que no están en español se bloquean solas y ninguna frase se corta. <button class="btn" id="ugAudio">Escuchar todas las escenas ahora</button></p>
     </div>
     ${d.lotes.length ? d.lotes.map((l) => `<h3 style="margin:18px 0 8px">${h(l.lote)} <a class="estado" style="font-size:12px" target="_blank" href="/listos/anuncios-ugc/${encodeURIComponent(l.lote)}/copys.txt">copys.txt</a></h3>
+      ${l.bloqueadasAudio?.length ? `<p class="estado">Bloqueadas por audio en otro idioma: ${h(l.bloqueadasAudio.join(", "))}.</p>` : ""}
       ${l.faltantes?.length ? `<p class="estado">Se saltaron combinaciones porque faltan estas escenas: ${h(l.faltantes.join(", "))} (ponlas en ugcdrop/escenas/ o revisa LEVANIA_DRIVE en el .env).</p>` : ""}
       <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">${l.anuncios.map(tarjeta).join("")}</div>`).join("") : `<p class="estado">Aún no hay lotes. Dale «Dame los anuncios».</p>`}`;
   const todos = d.lotes.flatMap((l) => l.anuncios);
   $("#ugIr").onclick = async () => {
-    try { await api("/api/ugc", "POST", { accion: "lote", n: Number($("#ugN").value) || 5, estilo: $("#ugEstilo").value, tema: $("#ugTema").value }); avisar("Armando los anuncios…"); $("#ugIr").disabled = true; $("#ugIr").textContent = "Armando…"; }
+    try { await api("/api/ugc", "POST", { accion: "lote", n: Number($("#ugN").value) || 5, estilo: $("#ugEstilo").value, tema: $("#ugTema").value, final: $("#ugFinal").value, textoFinal: $("#ugTextoFinal").value }); avisar("Armando los anuncios…"); $("#ugIr").disabled = true; $("#ugIr").textContent = "Armando…"; }
     catch (e) { avisar(e.message, true); }
   };
+  try { const f = JSON.parse(localStorage.getItem("ugcFinal") || "{}"); if (f.final) $("#ugFinal").value = f.final; if (f.texto) $("#ugTextoFinal").value = f.texto; } catch {}
+  const verFinal = () => { $("#ugTextoFinalCaja").style.display = $("#ugFinal").value === "texto" ? "" : "none"; try { localStorage.setItem("ugcFinal", JSON.stringify({ final: $("#ugFinal").value, texto: $("#ugTextoFinal").value })); } catch {} };
+  $("#ugFinal").onchange = verFinal; $("#ugTextoFinal").oninput = verFinal; verFinal();
+  $("#ugAudio").onclick = async () => { try { await api("/api/ugc", "POST", { accion: "audio" }); avisar("Escuchando las escenas…"); } catch (e) { avisar(e.message, true); } };
   for (const b of document.querySelectorAll("[data-ugcid]")) b.onclick = async () => {
     try { await api("/api/ugc", "POST", { accion: "marcar", id: b.dataset.ugcid, estado: b.dataset.ugcest }); anunciosUGC(); } catch (e) { avisar(e.message, true); }
   };

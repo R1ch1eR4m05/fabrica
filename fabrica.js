@@ -38,6 +38,8 @@
 //   node fabrica.js plan-dia [informe.md] [--crear] [--forzar]   informe de la mañana → 5 videos (3 Shorts, 1 largo, 1 experimento) con horario; --crear los crea
 //   node fabrica.js comparar-voces ["texto"] [--estilo id]   mismo texto con cada modelo de voz → listos/comparar-voces/
 //   node fabrica.js ugc-lote [N] [--realista|--animado] [--tema noche] [--combo UG064,AN001] [--prueba]
+//        Final: [--final "Link en el perfil"] [--solo-marca] [--sin-final]   (sin nada: rota los CTA de textos.json)
+//   node fabrica.js ugc-audio                       escucha todas las escenas (ElevenLabs) y bloquea las que no están en español
 //        Anuncios UGC por combinaciones (estilo UGCdrop): N anuncios TERMINADOS (MP4 + copy) → listos/anuncios-ugc/Lote …/
 //   node fabrica.js ugc-escenas                     qué escenas encuentra (carpeta propia, Drive, Higgsfield) y cuáles faltan
 //   node fabrica.js ugc-estado                      cuántos anuncios UGC van, ganadores y cuántos quedan
@@ -372,12 +374,22 @@ async function main() {
       const r = await U.armarLote(Number(libres[0]) || 5, {
         estilo: args.includes("--realista") ? "realista" : args.includes("--animado") ? "animado" : null,
         tema: opc("tema") || null, combos: opc("combo") ? String(opc("combo")).split(",") : null, prueba: args.includes("--prueba"),
+        final: args.includes("--sin-final") ? { modo: "ninguno" } : args.includes("--solo-marca") ? { modo: "marca" } : opc("final") ? { modo: "texto", texto: String(opc("final")) } : undefined,
       }, avisar);
       if (!r.lote) { for (const a of r.anuncios) console.log(`${a.id}  [${a.estilo}/${a.tema}]  ${a.escenas.join(" → ")}  |  «${a.textoGancho}»`); return; }
       console.log(`\n\nListo: ${r.hechos.length} anuncios en ${r.carpeta}`);
       for (const a of r.hechos) console.log(`  ✓ ${a.id}  ${a.duracion} s  «${a.textoGancho}»`);
+      if (r.bloqueadasAudio?.length) console.log(`  (Bloqueé por audio en otro idioma: ${r.bloqueadasAudio.join(", ")}; se usaron otras combinaciones.)`);
       if (r.faltantes.length) console.log(`  (Se saltaron combinaciones porque faltan estas escenas: ${r.faltantes.join(", ")}. Ponlas en ugcdrop/escenas/ o revisa LEVANIA_DRIVE.)`);
       console.log("Copys para Meta/TikTok en copys.txt; resumen en resumen.csv.");
+      return;
+    }
+    case "ugc-audio": {
+      const r = await (await import("./core/ugcdrop.js")).revisarAudioTodas(avisar);
+      console.log(`\n\nEscuché ${r.revisadas} escenas.`);
+      if (r.otroIdioma.length) console.log("Bloqueadas (no están en español):\n  " + r.otroIdioma.join("\n  "));
+      else console.log("Todas están en español.");
+      if (r.sinVoz.length) console.log("Sin voz: " + r.sinVoz.join(" "));
       return;
     }
     case "ugc-escenas": {

@@ -27,6 +27,8 @@ node fabrica.js ugc-lote 10 --realista         solo UGC realista   (--animado: s
 node fabrica.js ugc-lote 5 --tema noche        manana, noche, tarea, escuela, comida, orden, hermanos, casa, reto
 node fabrica.js ugc-lote 3 --combo UG064,AN001 combinaciones exactas
 node fabrica.js ugc-lote 5 --prueba            solo muestra qué armaría
+node fabrica.js ugc-lote 5 --final "Link en el perfil"   otro texto al final (también --solo-marca o --sin-final)
+node fabrica.js ugc-audio                      escucha todas las escenas y bloquea las que no están en español
 node fabrica.js ugc-estado                     entregados, ganadores, cuántos quedan
 node fabrica.js ugc-marcar UG064-v2 ganador    (publicado / ganador / descartado)
 ```
@@ -52,6 +54,15 @@ Si a una combinación le falta una escena, se salta y el lote toma otra; al fina
 
 - Escena nueva → agrégala a `escenas.json` con su tema: entra sola en las combinaciones automáticas (gancho del tema → niños del tema → cierre).
 - Cada texto de gancho nuevo en `textos.json` = un anuncio más por cada combinación con esa escena.
+
+## Final del video
+En el panel, «Final del video»: CTA que va rotando (los de `textos.json` → `cierre.ctas`), otro texto que escribas, solo la marca (Kit Mamá en Calma sin CTA) o sin final. El valor por defecto está en `opciones.json` → `final`.
+
+## Revisión automática del audio
+La primera vez que se usa cada escena se escucha con ElevenLabs Speech to Text (centavos; queda en `cache/ugcdrop/audio/`):
+- Si no está en español, se bloquea sola (`listos/anuncios-ugc/bloqueadas-audio.json`) y el lote usa otra combinación.
+- Cada escena termina 0.45 s después de la última palabra y nunca se corta una frase (ya no hay tope de segundos por escena).
+Los formatos completos (tour de cuartos, reto de 7 días, respuesta a comentario…) llevan `"solo_curadas": true`: no se mezclan en combinaciones automáticas.
 
 ## Revisión de cada escena nueva (antes de agregarla)
 Mirar 5-6 cuadros de cada clip (sobre todo cuando marcan la checklist) y rechazar si:

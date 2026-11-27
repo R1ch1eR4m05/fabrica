@@ -1,5 +1,5 @@
 {
- "_nota": "Catálogo de escenas. 'archivo' es la ruta dentro de la carpeta Levania de Drive; si termina en un código (U01), se busca cualquier archivo que empiece con ese código. 'url' es respaldo de descarga directa. 'bloqueada' = la escena tiene un error (no se usa hasta rehacerla). 'revisada' = pasó la revisión cuadro por cuadro.",
+ "_nota": "Catálogo de escenas. 'archivo' es la ruta dentro de la carpeta Levania de Drive; si termina en un código (U01), se busca cualquier archivo que empiece con ese código. 'url' es respaldo de descarga directa. 'bloqueada' = la escena tiene un error (no se usa hasta rehacerla). 'revisada' = pasó la revisión cuadro por cuadro. 'solo_curadas' = es un formato completo (tour, reto, respuesta a comentario…) que no se mezcla en combinaciones automáticas. 'desde' = segundo en que empieza la parte buena.",
  "escenas": [
   {
    "codigo": "G1",
@@ -589,7 +589,8 @@
    "tema": "general",
    "duracion": null,
    "archivo": "Videos animados IA/07 UGC realista avatar mama/U07",
-   "url": null
+   "url": null,
+   "solo_curadas": true
   },
   {
    "codigo": "U08",
@@ -800,7 +801,8 @@
    "tema": "noche",
    "duracion": null,
    "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/N12",
-   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_132112_8d5bbace-b1fc-4634-8a31-badb4724a786.mp4"
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_132112_8d5bbace-b1fc-4634-8a31-badb4724a786.mp4",
+   "bloqueada": "Salen dos niñas en vez de la niña y el niño"
   },
   {
    "codigo": "N13",
@@ -810,7 +812,8 @@
    "tema": "noche",
    "duracion": null,
    "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/N13",
-   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_132120_d9adae7f-3536-4e9b-af2b-bd5739a2c8e9.mp4"
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_132120_d9adae7f-3536-4e9b-af2b-bd5739a2c8e9.mp4",
+   "bloqueada": "Marca «Guardar mis juguetes» después de dejar su ropa y al final queda un lápiz flotando"
   },
   {
    "codigo": "N14",
@@ -960,7 +963,9 @@
    "tema": "general",
    "duracion": null,
    "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/M11",
-   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_211243_a142adec-bd1a-430a-8a97-0a6fcbaeb511.mp4"
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_211243_a142adec-bd1a-430a-8a97-0a6fcbaeb511.mp4",
+   "bloqueada": "Trae un segundo celular en la mano (toma tipo selfie)",
+   "solo_curadas": true
   },
   {
    "codigo": "M12",
@@ -970,7 +975,9 @@
    "tema": "reto",
    "duracion": null,
    "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/M12",
-   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_211244_9217ca3b-2cad-498a-ab36-5c8c395a702d.mp4"
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_211244_9217ca3b-2cad-498a-ab36-5c8c395a702d.mp4",
+   "bloqueada": "La checklist sale en espejo (texto al revés)",
+   "solo_curadas": true
   },
   {
    "codigo": "M13",
@@ -980,7 +987,8 @@
    "tema": "reto",
    "duracion": null,
    "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/M13",
-   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_211242_324d33eb-e758-4803-b5f2-d0cd86ca9fba.mp4"
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_211242_324d33eb-e758-4803-b5f2-d0cd86ca9fba.mp4",
+   "solo_curadas": true
   },
   {
    "codigo": "A01",
@@ -990,7 +998,8 @@
    "tema": "escuela",
    "duracion": null,
    "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/A01",
-   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_131207_f7d162f6-918d-4424-a478-55f2752cfc78.mp4"
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_131207_f7d162f6-918d-4424-a478-55f2752cfc78.mp4",
+   "bloqueada": "Dice que no se quiere poner los zapatos pero ya los trae puestos"
   },
   {
    "codigo": "A02",
@@ -1070,7 +1079,8 @@
    "tema": "general",
    "duracion": null,
    "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/K01",
-   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_211240_c99fa9b0-d782-48ec-a058-9cad8e1c7ff5.mp4"
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_211240_c99fa9b0-d782-48ec-a058-9cad8e1c7ff5.mp4",
+   "solo_curadas": true
   },
   {
    "codigo": "K02",
@@ -1080,7 +1090,8 @@
    "tema": "orden",
    "duracion": null,
    "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/K02",
-   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_211244_0d4189f3-6c39-4396-b4b7-4e0e6aa55766.mp4"
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_211244_0d4189f3-6c39-4396-b4b7-4e0e6aa55766.mp4",
+   "solo_curadas": true
   },
   {
    "codigo": "T01",
@@ -1090,7 +1101,8 @@
    "tema": "orden",
    "duracion": null,
    "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/T01",
-   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_231246_4a7ea9da-03b4-47a5-97e3-1b96400fdbce.mp4"
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_231246_4a7ea9da-03b4-47a5-97e3-1b96400fdbce.mp4",
+   "solo_curadas": true
   },
   {
    "codigo": "T02",
@@ -1100,7 +1112,8 @@
    "tema": "manana",
    "duracion": null,
    "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/T02",
-   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_231246_137ca611-39b6-443e-bcfd-ba25d478fc14.mp4"
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_231246_137ca611-39b6-443e-bcfd-ba25d478fc14.mp4",
+   "solo_curadas": true
   },
   {
    "codigo": "T03",
@@ -1110,7 +1123,8 @@
    "tema": "orden",
    "duracion": null,
    "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/T03",
-   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_231246_8e37a08b-b687-4325-b18c-be45e6716f38.mp4"
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_231246_8e37a08b-b687-4325-b18c-be45e6716f38.mp4",
+   "solo_curadas": true
   },
   {
    "codigo": "T04",
@@ -1120,7 +1134,8 @@
    "tema": "general",
    "duracion": null,
    "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/T04",
-   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_231244_419352f9-454f-4f8f-8add-7a7013954d53.mp4"
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_231244_419352f9-454f-4f8f-8add-7a7013954d53.mp4",
+   "solo_curadas": true
   },
   {
    "codigo": "T05",
@@ -1130,7 +1145,8 @@
    "tema": "casa",
    "duracion": null,
    "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/T05",
-   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_231244_705f9f2e-e7c0-43ff-a04c-23c8a8078924.mp4"
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_231244_705f9f2e-e7c0-43ff-a04c-23c8a8078924.mp4",
+   "solo_curadas": true
   },
   {
    "codigo": "T06",
@@ -1140,7 +1156,8 @@
    "tema": "manana",
    "duracion": null,
    "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/T06",
-   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_231244_28997968-74ce-4d45-8809-04bea00f4cf6.mp4"
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_231244_28997968-74ce-4d45-8809-04bea00f4cf6.mp4",
+   "solo_curadas": true
   },
   {
    "codigo": "T07",
@@ -1150,7 +1167,8 @@
    "tema": "general",
    "duracion": null,
    "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/T07",
-   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_231247_4979ddf7-5b7e-4c90-96cf-3898e488f5ad.mp4"
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_231247_4979ddf7-5b7e-4c90-96cf-3898e488f5ad.mp4",
+   "solo_curadas": true
   },
   {
    "codigo": "T08",
@@ -1160,7 +1178,8 @@
    "tema": "general",
    "duracion": null,
    "archivo": "Videos animados IA/08 UGC realista ninos haciendo tareas/T08",
-   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_231245_9b1dfc04-390d-4862-952a-65ab22c5dfe8.mp4"
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261125_231245_9b1dfc04-390d-4862-952a-65ab22c5dfe8.mp4",
+   "solo_curadas": true
   },
   {
    "codigo": "N19",
@@ -1359,7 +1378,8 @@
    "duracion": null,
    "archivo": null,
    "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_023123_49155bff-1cac-49ee-99fd-f865fc8d5f9d.mp4",
-   "revisada": "2026-11-26: revisada cuadro por cuadro"
+   "revisada": "2026-11-26: revisada cuadro por cuadro",
+   "solo_curadas": true
   },
   {
    "codigo": "N25",
@@ -1447,6 +1467,39 @@
    "duracion": null,
    "archivo": null,
    "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_023941_d38b8ced-0d91-43fa-89c3-2fe7687353bf.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro"
+  },
+  {
+   "codigo": "A13",
+   "estilo": "realista",
+   "tipo": "gancho",
+   "titulo": "«¡Mamá, Teo no me deja jugar!»",
+   "tema": "hermanos",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_024925_e7c9bb87-579e-4e38-bac6-f08b9c71b052.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro"
+  },
+  {
+   "codigo": "U22",
+   "estilo": "realista",
+   "tipo": "demo",
+   "titulo": "Muestra las checklists en abanico: «las imprimes y listo»",
+   "tema": "general",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_024925_1051cc62-cf2f-4275-9519-2eaf1c025d6e.mp4",
+   "revisada": "2026-11-26: revisada cuadro por cuadro"
+  },
+  {
+   "codigo": "N29",
+   "estilo": "realista",
+   "tipo": "ninos",
+   "titulo": "Comparte su juguete: «Ahora te toca a ti»",
+   "tema": "hermanos",
+   "duracion": null,
+   "archivo": null,
+   "url": "https://d8j0ntlcm91z4.cloudfront.net/user_3462juOqktcfFDhSQhuUxQu6BE3/hf_20261127_024924_f3da985f-83ce-40c6-bba8-7774d13afb9c.mp4",
    "revisada": "2026-11-26: revisada cuadro por cuadro"
   }
  ]
